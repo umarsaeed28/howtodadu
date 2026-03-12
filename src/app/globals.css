@@ -1,0 +1,483 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-space-mono), "Space Mono", ui-monospace, monospace;
+  --font-mono: ui-monospace, monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+:root {
+  --radius: 4px;
+  --radius-sm: 4px;
+  --radius-pill: 999px;
+  /* Terra.System theme - warm cream / dark green */
+  --background: #F4F2EC;
+  --foreground: #2C4A3B;
+  --card: #F4F2EC;
+  --card-foreground: #2C4A3B;
+  --popover: #F4F2EC;
+  --popover-foreground: #2C4A3B;
+  --primary: #2C4A3B;
+  --primary-foreground: #F4F2EC;
+  --muted: rgba(44, 74, 59, 0.05);
+  --muted-foreground: #567364;
+  --accent: #F4F2EC;
+  --accent-foreground: #2C4A3B;
+  --destructive: #dc2626;
+  --border: #2C4A3B;
+  --input: #2C4A3B;
+  --ring: #2C4A3B;
+  --chart-1: #2C4A3B;
+  --chart-2: #567364;
+  --chart-3: #3d5f4d;
+  --chart-4: #7A7A71;
+  --chart-5: #9a9a8e;
+  --sidebar: #F4F2EC;
+  --sidebar-foreground: #2C4A3B;
+  --sidebar-primary: #2C4A3B;
+  --sidebar-primary-foreground: #F4F2EC;
+  --sidebar-accent: rgba(44, 74, 59, 0.05);
+  --sidebar-accent-foreground: #2C4A3B;
+  --sidebar-border: #2C4A3B;
+  --sidebar-ring: #2C4A3B;
+  --secondary: rgba(44, 74, 59, 0.05);
+  --secondary-foreground: #2C4A3B;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+.font-serif,
+.serif,
+.font-display {
+  font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
+}
+
+.font-data {
+  font-family: var(--font-space-mono), "Space Mono", ui-monospace, monospace;
+}
+
+.overline,
+.label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted-foreground);
+  font-weight: 500;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.data-value {
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-space-mono), "Space Mono", monospace;
+}
+
+/* Deal screening visualizations */
+@keyframes gauge-draw {
+  from {
+    stroke-dashoffset: var(--gauge-circumference, 339.3);
+  }
+}
+
+@keyframes bar-fill-scale {
+  from {
+    transform: scaleX(0);
+    opacity: 0.7;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes donut-fill {
+  from {
+    stroke-dasharray: 0 999;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes radial-sweep {
+  from {
+    stroke-dasharray: 0 var(--segment-total);
+  }
+}
+
+.animate-gauge-draw {
+  animation: gauge-draw 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-bar-fill {
+  transform-origin: left;
+  animation: bar-fill-scale 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Sun path: draw-in animation (pathLength=100 normalizes) */
+@keyframes sun-path-draw {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Wind: flowing dashes (marching ants) */
+@keyframes wind-flow {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -20; }
+}
+
+.animate-sun-path {
+  stroke-dasharray: 4 3;
+  animation: sun-path-draw 2s ease-out forwards;
+}
+
+.animate-wind-flow {
+  stroke-dasharray: 8 12;
+  animation: wind-flow 1.5s linear infinite;
+}
+
+/* Terra.System feasibility dashboard */
+.terra-dashboard {
+  --terra-bg: var(--background);
+  --terra-ink: var(--foreground);
+  --terra-ink-muted: var(--muted-foreground);
+  --terra-border: var(--border);
+  /* Map aura vars for child components */
+  --aura-bg: var(--background);
+  --aura-surface: var(--card);
+  --aura-surface-alt: var(--muted);
+  --aura-text: var(--foreground);
+  --aura-text-muted: var(--muted-foreground);
+  --aura-accent: var(--primary);
+  --aura-accent-hover: #1e3329;
+  --aura-border: var(--border);
+  --aura-border-dark: var(--muted-foreground);
+}
+
+/* Legacy aura - map to terra */
+.aura-dashboard {
+  --aura-bg: var(--background);
+  --aura-surface: var(--card);
+  --aura-surface-alt: var(--muted);
+  --aura-text: var(--foreground);
+  --aura-text-muted: var(--muted-foreground);
+  --aura-accent: var(--primary);
+  --aura-accent-hover: #1e3329;
+  --aura-border: var(--border);
+  --aura-border-dark: var(--muted-foreground);
+}
+
+.aura-serif {
+  font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
+}
+
+.aura-overline {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--aura-text-muted);
+  font-weight: 500;
+}
+
+.aura-panel {
+  background-color: var(--aura-surface);
+  border: 1px solid var(--aura-border);
+  border-radius: var(--aura-radius);
+  padding: 24px;
+}
+
+.aura-data-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.aura-data-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  font-size: 13px;
+  align-items: baseline;
+}
+
+.aura-data-label {
+  color: var(--aura-text-muted);
+}
+
+.aura-data-value {
+  color: var(--aura-text);
+}
+
+.aura-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--aura-accent);
+  color: white;
+  border: none;
+  border-radius: var(--aura-radius-pill);
+  padding: 10px 24px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.aura-btn:hover {
+  background-color: var(--aura-accent-hover);
+}
+
+.aura-btn-outline {
+  background-color: transparent;
+  color: var(--aura-accent);
+  border: 1px solid var(--aura-accent);
+}
+
+.aura-btn-outline:hover {
+  background-color: var(--aura-accent);
+  color: white;
+}
+
+.aura-score-hero {
+  background-color: var(--aura-surface-alt);
+  border-radius: var(--aura-radius);
+  padding: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--aura-border);
+}
+
+.aura-score-hero::before {
+  content: "FEASIBILITY";
+  position: absolute;
+  font-family: var(--font-playfair), "Playfair Display", serif;
+  font-size: clamp(72px, 12vw, 120px);
+  color: rgba(235, 232, 224, 0.5);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.aura-score-graphic {
+  width: 160px;
+  height: 220px;
+  background-color: var(--aura-surface);
+  border-radius: var(--aura-radius-arch);
+  box-shadow: 0 0 40px var(--aura-accent-glow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 32px;
+  border: 1px solid var(--aura-border);
+}
+
+.aura-score-number {
+  font-size: 64px;
+  line-height: 1;
+  color: var(--aura-accent);
+  font-family: var(--font-playfair), "Playfair Display", serif;
+}
+
+.aura-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 24px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--aura-border-dark);
+  padding-top: 32px;
+}
+
+.aura-metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.aura-data-bar-bg {
+  width: 100%;
+  height: 2px;
+  background-color: var(--aura-border-dark);
+  position: relative;
+  margin-top: 4px;
+}
+
+.aura-data-bar-fill {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  height: 4px;
+  background-color: var(--aura-accent);
+  border-radius: 2px;
+}
+
+.aura-data-bar-fill::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--aura-surface);
+  border: 2px solid var(--aura-accent);
+  border-radius: 50%;
+}
+
+.aura-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--aura-border);
+  margin-bottom: 24px;
+}
+
+.aura-tab {
+  font-size: 14px;
+  color: var(--aura-text-muted);
+  padding-bottom: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.aura-tab:hover {
+  color: var(--aura-text);
+}
+
+.aura-tab.active {
+  color: var(--aura-text);
+  font-weight: 500;
+}
+
+.aura-tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--aura-text);
+}
+
+.aura-scenario-card {
+  padding: 20px;
+  border: 1px solid var(--aura-border);
+  border-radius: var(--aura-radius);
+  margin-bottom: 16px;
+  transition: all 0.2s;
+  cursor: pointer;
+  background-color: var(--aura-surface);
+}
+
+.aura-scenario-card:hover {
+  border-color: var(--aura-border-dark);
+}
+
+.aura-scenario-card.active {
+  border-color: var(--aura-accent);
+  background-color: var(--aura-bg);
+}
+
+.aura-scenario-badge {
+  font-size: 11px;
+  padding: 4px 8px;
+  background-color: var(--aura-surface-alt);
+  color: var(--aura-accent);
+  border-radius: 4px;
+  font-weight: 500;
+}
+
