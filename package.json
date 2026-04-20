@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "vitest run && next build",
+    "postbuild": "node scripts/feedback-digest.mjs",
+    "feedback:digest": "node scripts/feedback-digest.mjs",
+    "feedback:git-sync": "node scripts/feedback-git-sync.mjs",
     "build:only": "next build",
     "start": "next start",
     "lint": "eslint",

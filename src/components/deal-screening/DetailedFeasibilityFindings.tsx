@@ -17,6 +17,11 @@ import {
   MapPin,
 } from "lucide-react";
 import { AccessVisual } from "./AccessVisual";
+import {
+  coverageAvailabilityBand,
+  coverageAvailabilityHint,
+  coverageAvailabilityValueClass,
+} from "@/lib/metric-health";
 
 interface DetailedFeasibilityFindingsProps {
   report: ADUReport;
@@ -31,6 +36,10 @@ function CheckIcon({ status }: { status: FeasibilityCheck["status"] }) {
 }
 
 export function DetailedFeasibilityFindings({ report, result }: DetailedFeasibilityFindingsProps) {
+  const covBand = report.coverage
+    ? coverageAvailabilityBand(report.coverage.availableSqft)
+    : "unknown";
+
   return (
     <section
       className="aura-panel overflow-hidden"
@@ -92,8 +101,14 @@ export function DetailedFeasibilityFindings({ report, result }: DetailedFeasibil
                     style={{ width: `${Math.min(100, (report.coverage.currentPercent / report.coverage.maxPercent) * 100)}%` }}
                   />
                 </div>
-                <p className="text-xs text-[var(--aura-text-muted)] mt-2">
-                  Available: {report.coverage.availableSqft.toLocaleString()} sq ft
+                <p
+                  className="text-xs mt-2 tabular-nums"
+                  title={coverageAvailabilityHint(covBand)}
+                >
+                  <span className="text-[var(--aura-text-muted)]">Available: </span>
+                  <span className={`font-semibold ${coverageAvailabilityValueClass(covBand)}`}>
+                    {report.coverage.availableSqft.toLocaleString()} sq ft
+                  </span>
                 </p>
               </div>
             )}

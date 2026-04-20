@@ -74,17 +74,17 @@ function makeFactors(overrides: Partial<FeasibilityData> = {}): FeasibilityData 
 }
 
 /*
- * Scoring breakdown (new system):
- *   Core: zoning(25) + adu(10) + size(15) + cov(10) + width(5) + depth(5) = 70
- *   Access: alley(+18) | corner(+15) | side-adequate(+15) | side-tight(+5) | none(+0)
- *   Garage: +5
- *   Tree canopy >25%: -min(10, round((pct-25)*0.3))
+ * Scoring breakdown (stricter model):
+ *   Core: zoning(NR27 | SF25 | RSL22 | LR16) + adu(10) + size(15) + cov(10) + width(5) + depth(5)
+ *   Access: alley(+16) | corner(+14) | side-adequate(+13) | side-tight(+4) | none(+0)
+ *   Garage: +3
+ *   Tree canopy >25%: floor +6 then tiered deduction, cap 28 (steeper above 35%)
  *   ECA: variable (see computeEca)
- *   No access penalty: -10 (if type=none and width>0)
+ *   No access penalty: -13 (if type=none and width>0)
+ *   Labels: Strong ≥84 | Moderate 58–83 | Low 28–57 | Unlikely <28
  *
  * Default lot: interior, w=50, cov=0.22, lot=5400
- *   sideYard = ((50 - min(30, sqrt(1188*1.3))) / 2) ≈ 10 ft → adequate
- *   Score = 70 + 15 = 85 → High Feasibility
+ *   sideYard ≈ 10 ft → adequate → 70 + 13 = 83 (Moderate)
  */
 
 /* ═══════════════════════════════════════════════════════════
@@ -92,49 +92,56 @@ function makeFactors(overrides: Partial<FeasibilityData> = {}): FeasibilityData 
    ═══════════════════════════════════════════════════════════ */
 
 describe("Confidence Score", () => {
-  it("scores 85 for a good interior lot with adequate side access", () => {
+  it("scores 83 for a good interior lot with adequate side access (Moderate)", () => {
     const report = generateADUReport(makeParcel(), makeFactors());
-    // 70 core + 15 side-adequate = 85
-    expect(report.confidence).toBe(85);
-    expect(report.confidenceLabel).toBe("High Feasibility");
+    // 70 core + 13 side-adequate = 83
+    expect(report.confidence).toBe(83);
+    expect(report.confidenceLabel).toBe("Moderate Feasibility");
   });
 
   it("scores higher with alley access", () => {
     const report = generateADUReport(makeParcel(), makeFactors({ hasAlley: true }));
-    // 70 core + 18 alley = 88
-    expect(report.confidence).toBe(88);
-    expect(report.confidenceLabel).toBe("High Feasibility");
+    // 70 core + 16 alley = 86
+    expect(report.confidence).toBe(86);
+    expect(report.confidenceLabel).toBe("Strong Feasibility");
   });
 
   it("scores higher with corner lot", () => {
     const report = generateADUReport(makeParcel(), makeFactors({ lotType: "corner" }));
-    // 70 core + 15 corner = 85
-    expect(report.confidence).toBe(85);
+    // 70 core + 14 corner = 84
+    expect(report.confidence).toBe(84);
   });
 
-  it("adds +5 for detached garage", () => {
+  it("adds +3 for detached garage", () => {
     const report = generateADUReport(makeParcel(), makeFactors({ detachedGarageCount: 1, detachedGarageSqft: 280 }));
-    // 70 core + 15 side-adequate + 5 garage = 90
-    expect(report.confidence).toBe(90);
+    // 70 core + 13 side-adequate + 3 garage = 86
+    expect(report.confidence).toBe(86);
   });
 
-  it("maxes out at ~93 with alley + garage", () => {
+  it("maxes out at ~89 with alley + garage", () => {
     const report = generateADUReport(makeParcel(), makeFactors({ hasAlley: true, detachedGarageCount: 1, detachedGarageSqft: 300 }));
-    // 70 + 18 + 5 = 93
-    expect(report.confidence).toBe(93);
+    // 70 + 16 + 3 = 89
+    expect(report.confidence).toBe(89);
   });
 
   it("scores very low when zoning is ineligible and lot fails all checks", () => {
     const report = generateADUReport(
       makeParcel({ zoning: "C1", zoningCategory: "C1", lotSqft: 2000 }),
-      makeFactors({ lotWidth: 20, lotDepth: 50, totalADU: 3, lotCoveragePercent: 0.5, lotCoverageOver: true })
+      makeFactors({
+        lotWidth: 20,
+        lotDepth: 50,
+        totalADU: 3,
+        /* Above Seattle max coverage for a 2k sf lot (1,300 sf) so numeric check fails */
+        lotCoveragePercent: 0.66,
+        lotCoverageOver: true,
+      })
     );
-    // 0 core + 5 (tight side) = 5
-    expect(report.confidence).toBe(5);
+    // 0 core + 4 (tight side) = 4
+    expect(report.confidence).toBe(4);
     expect(report.confidenceLabel).toBe("Unlikely");
   });
 
-  it("penalizes inadequate side access (gives only +5 instead of +15)", () => {
+  it("penalizes inadequate side access (only +4 vs +13 when adequate)", () => {
     // Very narrow lot → side yard < 10ft
     const report = generateADUReport(
       makeParcel({ lotSqft: 5400 }),
@@ -142,10 +149,10 @@ describe("Confidence Score", () => {
     );
     // sideYard = ((30 - min(18, sqrt(1188*1.3))) / 2) = (30-18)/2 = 6 → inadequate
     expect(report.access.adequate).toBe(false);
-    expect(report.confidence).toBeLessThan(85);
+    expect(report.confidence).toBeLessThan(83);
   });
 
-  it("penalizes no access by -10", () => {
+  it("penalizes no access more than a lot with side access", () => {
     // Very tight lot with high coverage → no meaningful side yard
     const withAccess = generateADUReport(makeParcel(), makeFactors());
     const noAccess = generateADUReport(
@@ -161,10 +168,18 @@ describe("Confidence Score", () => {
     expect(highCanopy.confidence).toBeLessThan(base.confidence);
   });
 
-  it("caps tree canopy penalty at 10 points", () => {
+  it("applies a steeper deduction when canopy exceeds 35%", () => {
+    const at35 = generateADUReport(makeParcel(), makeFactors({ treeCanopyPercent: 0.35 }));
+    const at40 = generateADUReport(makeParcel(), makeFactors({ treeCanopyPercent: 0.4 }));
+    expect(at40.confidence).toBeLessThan(at35.confidence);
+  });
+
+  it("caps tree canopy total deduction at 28 points", () => {
     const normal = generateADUReport(makeParcel(), makeFactors());
-    const extreme = generateADUReport(makeParcel(), makeFactors({ treeCanopyPercent: 0.9 }));
-    expect(normal.confidence - extreme.confidence).toBe(10);
+    const extreme = generateADUReport(makeParcel(), makeFactors({ treeCanopyPercent: 0.99 }));
+    const diff = normal.confidence - extreme.confidence;
+    expect(diff).toBeLessThanOrEqual(28);
+    expect(diff).toBe(28);
   });
 
   it("clamps confidence between 0 and 100", () => {
@@ -174,18 +189,22 @@ describe("Confidence Score", () => {
   });
 
   it("assigns correct labels at threshold boundaries", () => {
-    // ≥85 → High
-    const high = generateADUReport(makeParcel(), makeFactors());
-    expect(high.confidence).toBeGreaterThanOrEqual(85);
-    expect(high.confidenceLabel).toBe("High Feasibility");
+    // ≥84 → Strong (interior alone tops out at 83 → Moderate)
+    const alley = generateADUReport(makeParcel(), makeFactors({ hasAlley: true }));
+    expect(alley.confidence).toBeGreaterThanOrEqual(84);
+    expect(alley.confidenceLabel).toBe("Strong Feasibility");
 
-    // 60-84 → Moderate
+    const interior = generateADUReport(makeParcel(), makeFactors());
+    expect(interior.confidence).toBe(83);
+    expect(interior.confidenceLabel).toBe("Moderate Feasibility");
+
+    // 58–83 → Moderate band
     const moderate = generateADUReport(
       makeParcel(),
-      makeFactors({ lotDepth: 50, floodProne: true, knownSlide: true })
+      makeFactors({ lotDepth: 75, floodProne: true, knownSlide: true })
     );
-    expect(moderate.confidence).toBeGreaterThanOrEqual(60);
-    expect(moderate.confidence).toBeLessThan(85);
+    expect(moderate.confidence).toBeGreaterThanOrEqual(58);
+    expect(moderate.confidence).toBeLessThan(84);
     expect(moderate.confidenceLabel).toBe("Moderate Feasibility");
   });
 });
@@ -202,33 +221,33 @@ describe("ECA Analysis", () => {
     expect(report.eca.labels).toHaveLength(0);
   });
 
-  it("detects flood-prone ECA and penalizes score by 8", () => {
+  it("detects flood-prone ECA and penalizes score by 10", () => {
     const clean = generateADUReport(makeParcel(), makeFactors());
     const flood = generateADUReport(makeParcel(), makeFactors({ floodProne: true }));
     expect(flood.eca.hasIssues).toBe(true);
     expect(flood.eca.labels).toContain("Flood-prone area");
-    expect(flood.confidence).toBe(clean.confidence - 8);
+    expect(flood.confidence).toBe(clean.confidence - 10);
   });
 
-  it("detects known slide ECA and penalizes by 10", () => {
+  it("detects known slide ECA and penalizes by 12", () => {
     const clean = generateADUReport(makeParcel(), makeFactors());
     const slide = generateADUReport(makeParcel(), makeFactors({ knownSlide: true }));
     expect(slide.eca.labels).toContain("Known landslide area");
-    expect(slide.confidence).toBe(clean.confidence - 10);
+    expect(slide.confidence).toBe(clean.confidence - 12);
   });
 
-  it("detects peat ECA and penalizes by 5", () => {
+  it("detects peat ECA and penalizes by 6", () => {
     const clean = generateADUReport(makeParcel(), makeFactors());
     const peat = generateADUReport(makeParcel(), makeFactors({ peat: true }));
     expect(peat.eca.labels).toContain("Peat settlement zone");
-    expect(peat.confidence).toBe(clean.confidence - 5);
+    expect(peat.confidence).toBe(clean.confidence - 6);
   });
 
-  it("detects liquefaction ECA and penalizes by 4", () => {
+  it("detects liquefaction ECA and penalizes by 5", () => {
     const clean = generateADUReport(makeParcel(), makeFactors());
     const liq = generateADUReport(makeParcel(), makeFactors({ liquefaction: true }));
     expect(liq.eca.labels).toContain("Liquefaction zone");
-    expect(liq.confidence).toBe(clean.confidence - 4);
+    expect(liq.confidence).toBe(clean.confidence - 5);
   });
 
   it("detects steep slope ECA (>10%)", () => {
@@ -248,8 +267,8 @@ describe("ECA Analysis", () => {
       makeFactors({ floodProne: true, knownSlide: true, peat: true, liquefaction: true })
     );
     expect(report.eca.count).toBe(4);
-    // 8 + 10 + 5 + 4 = 27
-    expect(report.eca.totalPenalty).toBe(27);
+    // 10 + 12 + 6 + 5 = 33
+    expect(report.eca.totalPenalty).toBe(33);
   });
 
   it("detects wetland ECA", () => {
@@ -315,14 +334,36 @@ describe("Coverage Calculation", () => {
     expect(report.coverage!.availableSqft).toBe(report.coverage!.maxSqft - report.coverage!.usedSqft);
   });
 
+  it("treats COVERAGE_PC as percent when GIS returns 0–100 instead of a fraction", () => {
+    const report = generateADUReport(makeParcel({ lotSqft: 5400 }), makeFactors({ lotCoveragePercent: 22 }));
+    expect(report.coverage).not.toBeNull();
+    expect(report.coverage!.currentPercent).toBeCloseTo(22, 0);
+    expect(report.coverage!.usedSqft).toBe(Math.round(0.22 * 5400));
+  });
+
   it("uses 35% max coverage for lots >= 5000 sqft", () => {
     const report = generateADUReport(makeParcel({ lotSqft: 6000 }), makeFactors());
     expect(report.coverage!.maxPercent).toBe(35);
   });
 
-  it("uses graduated coverage for lots < 5000 sqft", () => {
-    const report = generateADUReport(makeParcel({ lotSqft: 3500, zoning: "SF 5000" }), makeFactors());
-    expect(report.coverage!.maxPercent).toBeCloseTo(29, 0);
+  it("uses 1,000 + 15% lot area max coverage for lots < 5000 sqft (SDCI ADU rule)", () => {
+    const lot = 3500;
+    const report = generateADUReport(makeParcel({ lotSqft: lot, zoning: "SF 5000" }), makeFactors());
+    const expectedMax = Math.round(1000 + 0.15 * lot);
+    expect(report.coverage!.maxSqft).toBe(expectedMax);
+    expect(report.coverage!.maxPercent).toBeCloseTo((expectedMax / lot) * 100, 1);
+  });
+
+  it("matches ADUniverse-style coverage headroom for a ~3916 sf lot at 17.5% coverage", () => {
+    const lot = 3916;
+    const report = generateADUReport(
+      makeParcel({ lotSqft: lot, zoning: "NR3" }),
+      makeFactors({ lotCoveragePercent: 0.175 })
+    );
+    const maxSqft = Math.round(1000 + 0.15 * lot);
+    expect(report.coverage!.maxSqft).toBe(maxSqft);
+    expect(report.coverage!.usedSqft).toBe(Math.round(0.175 * lot));
+    expect(report.coverage!.availableSqft).toBe(maxSqft - Math.round(0.175 * lot));
   });
 
   it("does NOT subtract garage from coverage", () => {
@@ -472,6 +513,14 @@ describe("Feasibility Checks", () => {
     }
   });
 
+  it("scores NR higher than LR for the same site factors (DADU prioritization)", () => {
+    const f = makeFactors();
+    const nr = generateADUReport(makeParcel({ zoning: "NR3", zoningCategory: "NR" }), f);
+    const lr = generateADUReport(makeParcel({ zoning: "LR2 (M)", zoningCategory: "LR2" }), f);
+    expect(nr.confidence).toBeGreaterThan(lr.confidence);
+    expect(nr.confidence - lr.confidence).toBe(11);
+  });
+
   it("fails zoning for commercial zones", () => {
     const report = generateADUReport(makeParcel({ zoning: "C1" }), makeFactors());
     const zoningCheck = report.checks.find((c) => c.label === "Zoning");
@@ -619,6 +668,14 @@ describe("Property Traits", () => {
     const t = report.traits.find((t) => t.title === "Tree canopy");
     expect(t).toBeTruthy();
     expect(t!.sentiment).toBe("bad");
+    expect(t!.note.toLowerCase()).not.toContain("arborist");
+  });
+
+  it("when canopy exceeds 35%, warns about arborist and heavier permitting risk", () => {
+    const report = generateADUReport(makeParcel(), makeFactors({ treeCanopyPercent: 0.45 }));
+    const t = report.traits.find((tr) => tr.title === "Tree canopy");
+    expect(t?.sentiment).toBe("bad");
+    expect(t!.note.toLowerCase()).toContain("arborist");
   });
 
   it("marks low tree canopy (<=25%) as neutral", () => {

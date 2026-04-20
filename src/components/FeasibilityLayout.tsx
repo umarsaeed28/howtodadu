@@ -2,17 +2,12 @@
 
 import Link from "next/link";
 import { FeasibilityClient } from "@/components/FeasibilityClient";
-import { FeasibilityProvider, useFeasibilityContext } from "@/contexts/FeasibilityContext";
+import { FeasibilityProvider } from "@/contexts/FeasibilityContext";
 
 function FeasibilityLayoutInner() {
-  const ctx = useFeasibilityContext();
-  const hasResults = ctx?.hasResults ?? false;
-
   return (
     <div className="bg-[var(--background)] text-[var(--foreground)] min-h-screen flex flex-col">
-      {/* Minimal header - shown only when no results (hero state) */}
-      {!hasResults && (
-        <header className="flex items-center justify-between px-6 md:px-12 py-4 border-b border-[var(--border)] bg-[var(--background)] sticky top-0 z-50 uppercase tracking-[0.15em] text-[13px] font-bold">
+      <header className="flex items-center justify-between px-6 md:px-12 py-4 border-b border-[var(--border)] bg-[var(--background)] sticky top-0 z-50 uppercase tracking-[0.15em] text-[13px] font-bold">
         <Link href="/" className="font-display text-base tracking-[0.05em] no-underline text-[var(--foreground)] hover:opacity-80">
           HOW TO DADU
         </Link>
@@ -20,12 +15,14 @@ function FeasibilityLayoutInner() {
           <Link href="/" className="text-sm no-underline">
             Home
           </Link>
+          <Link href="/feasibility?view=favorites" className="text-sm no-underline">
+            Favorites
+          </Link>
           <Link href="/faq" className="text-sm no-underline">
             FAQ
           </Link>
         </nav>
       </header>
-      )}
 
       <main className="flex-1">
         <FeasibilityClient />

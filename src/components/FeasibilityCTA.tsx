@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { pushRecentAddress } from "@/lib/recent-addresses";
 import { Button } from "@/components/ui/button";
 import { Search, MapPin } from "lucide-react";
 
@@ -12,8 +13,10 @@ export function FeasibilityCTA() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!address.trim()) return;
-    router.push(`/feasibility?address=${encodeURIComponent(address)}`);
+    const a = address.trim();
+    if (!a) return;
+    pushRecentAddress(a);
+    router.push(`/feasibility?address=${encodeURIComponent(a)}`);
   }
 
   return (

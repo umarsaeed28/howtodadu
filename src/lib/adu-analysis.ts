@@ -1,4 +1,4 @@
-import type { ParcelData, FeasibilityData } from "./feasibility";
+import { parcelZoningLabel, type ParcelData, type FeasibilityData } from "./feasibility";
 
 export type CheckStatus = "pass" | "fail" | "info" | "warning";
 
@@ -113,8 +113,15 @@ function zoneFamily(zoning: string | null): string | null {
   return null;
 }
 
-function maxCoverageFrac(lotSqft: number): number {
-  return (lotSqft >= 5000 ? 35 : 15 + (lotSqft / 5000) * 20) / 100;
+/**
+ * Seattle residential max lot coverage (sq ft), aligned with SDCI ADU guidance:
+ * lots under 5,000 sf → 1,000 sq ft + 15% of lot area; lots 5,000 sf+ → 35% of lot area.
+ * (Continuity: at exactly 5,000 sf both formulas yield 1,750 sq ft.)
+ */
+export function maxLotCoverageSqft(lotSqft: number): number {
+  if (lotSqft <= 0) return 0;
+  if (lotSqft >= 5000) return Math.round(0.35 * lotSqft);
+  return Math.round(1000 + 0.15 * lotSqft);
 }
 
 function heightLimits(width: number) {
@@ -312,23 +319,31 @@ function computeEca(factors: FeasibilityData | null): EcaSummary {
   if (factors?.steepSlopePercent != null && factors.steepSlopePercent > 0.1) {
     const pct = Math.round(factors.steepSlopePercent * 100);
     labels.push(`Steep slope (${pct}% of lot)`);
-    penalty += pct > 40 ? 10 : 5;
+    penalty += pct > 40 ? 12 : 6;
   }
-  if (factors?.floodProne) { labels.push("Flood-prone area"); penalty += 8; }
-  if (factors?.knownSlide) { labels.push("Known landslide area"); penalty += 10; }
-  if (factors?.potentialSlide) { labels.push("Potential slide area"); penalty += 5; }
-  if (factors?.peat) { labels.push("Peat settlement zone"); penalty += 5; }
-  if (factors?.liquefaction) { labels.push("Liquefaction zone"); penalty += 4; }
+  if (factors?.floodProne) { labels.push("Flood-prone area"); penalty += 10; }
+  if (factors?.knownSlide) { labels.push("Known landslide area"); penalty += 12; }
+  if (factors?.potentialSlide) { labels.push("Potential slide area"); penalty += 6; }
+  if (factors?.peat) { labels.push("Peat settlement zone"); penalty += 6; }
+  if (factors?.liquefaction) { labels.push("Liquefaction zone"); penalty += 5; }
   if (factors?.wetlandPercent != null && factors.wetlandPercent > 0.05) {
     labels.push(`Wetland (${Math.round(factors.wetlandPercent * 100)}% of lot)`);
-    penalty += 6;
+    penalty += 7;
   }
   if (factors?.riparianPercent != null && factors.riparianPercent > 0.05) {
     labels.push("Riparian corridor");
-    penalty += 4;
+    penalty += 5;
   }
   if (factors?.shoreline && factors.shoreline !== "None" && factors.shoreline !== "none") {
     labels.push(`Shoreline: ${factors.shoreline}`);
+    penalty += 6;
+  }
+  if (factors?.landfill) {
+    labels.push("Historical landfill");
+    penalty += 8;
+  }
+  if (factors?.wildlifePercent != null && factors.wildlifePercent > 0.05) {
+    labels.push(`Fish and wildlife habitat (~${Math.round(factors.wildlifePercent * 100)}% of lot)`);
     penalty += 5;
   }
 
@@ -404,21 +419,37 @@ export function generateADUReport(
   parcel: ParcelData | null,
   factors: FeasibilityData | null
 ): ADUReport {
-  const zone = parcel?.zoning || parcel?.zoningCategory || null;
+  const zone = parcelZoningLabel(parcel);
   const family = zoneFamily(zone);
   const lot = parcel?.lotSqft ?? 0;
   const w = factors?.lotWidth ?? 0;
   const d = factors?.lotDepth ?? 0;
-  const covFrac = factors?.lotCoveragePercent ?? 0;
+  /* ArcGIS COVERAGE_PC is sometimes 0–100; our math expects a 0–1 fraction */
+  let covFrac = factors?.lotCoveragePercent ?? 0;
+  if (covFrac > 1) covFrac = covFrac / 100;
   const totalADU = factors?.totalADU ?? 0;
 
+  const maxCovSqft = maxLotCoverageSqft(lot);
+  /** When lot area is unknown (0), use legacy 15% cap so cov(0%) still passes the numeric check. */
+  const maxCovFrac = lot > 0 ? maxCovSqft / lot : 0.15;
+  const usedSqft = Math.round(covFrac * lot);
+
   const zoningOk = family !== null && ADU_ELIGIBLE_ZONES.includes(family);
+  /** DADU confidence by zone: NR prioritized; LR allowed but not treated as prime DADU context. */
+  const zoningPoints = (() => {
+    if (!zoningOk || !family) return 0;
+    if (family === "NR") return 27;
+    if (family === "SF") return 25;
+    if (family === "RSL") return 22;
+    if (family === "LR") return 16;
+    return 0;
+  })();
   const sizeOk = lot >= MIN_LOT_SIZE;
   const widthOk = w >= MIN_LOT_WIDTH;
   const depthOk = d >= MIN_LOT_DEPTH;
   const aduOk = totalADU < 2;
-  const maxCov = maxCoverageFrac(lot);
-  const covOk = factors?.lotCoverageOver === false || covFrac < maxCov;
+  /** GIS may flag over-limit; numeric check uses Seattle max coverage curve (see maxLotCoverageSqft). */
+  const covOk = factors?.lotCoverageOver === false || covFrac < maxCovFrac;
 
   const eca = computeEca(factors);
   const access = computeAccess(factors, w, lot);
@@ -427,47 +458,59 @@ export function generateADUReport(
 
   let score = 0;
 
-  // Core requirements (70 pts max)
-  if (zoningOk) score += 25;
+  // Core requirements (max ~72 when NR + full passes — zoning weight varies by zone family)
+  score += zoningPoints;
   if (aduOk) score += 10;
   if (sizeOk) score += 15;
   if (covOk) score += 10;
   if (widthOk) score += 5;
   if (depthOk) score += 5;
 
-  // Access bonuses (up to +18)
-  if (access.type === "alley") score += 18;
-  else if (access.type === "corner") score += 15;
-  else if (access.type === "side" && access.adequate) score += 15;
-  else if (access.type === "side" && !access.adequate) score += 5;
+  // Access bonuses (capped — alley/corner help, but other constraints still dominate)
+  if (access.type === "alley") score += 16;
+  else if (access.type === "corner") score += 14;
+  else if (access.type === "side" && access.adequate) score += 13;
+  else if (access.type === "side" && !access.adequate) score += 4;
   // no access: +0
 
   // Detached garage is a practical positive (easy to demo for DADU)
-  if ((factors?.detachedGarageCount ?? 0) > 0) score += 5;
+  if ((factors?.detachedGarageCount ?? 0) > 0) score += 3;
 
-  // Tree canopy penalty (soft)
-  const canopyPc = (factors?.treeCanopyPercent ?? 0) * 100;
+  // Tree canopy penalty: anything over 25% is a material DADU drag (permits, retention, arborist)
+  const tcRaw = factors?.treeCanopyPercent;
+  const canopyPc =
+    tcRaw == null || !Number.isFinite(tcRaw)
+      ? 0
+      : tcRaw <= 1 && tcRaw >= 0
+        ? tcRaw * 100
+        : tcRaw;
   if (canopyPc > 25) {
-    score -= Math.min(10, Math.round((canopyPc - 25) * 0.3));
+    let treePenalty = 6;
+    const upTo35 = Math.min(35, canopyPc);
+    treePenalty += Math.min(10, Math.round((upTo35 - 25) * 0.52));
+    if (canopyPc > 35) {
+      treePenalty += Math.min(17, Math.round((canopyPc - 35) * 0.75));
+    }
+    score -= Math.min(28, treePenalty);
   }
 
   // ECA penalty (hard — these are real barriers)
   score -= eca.totalPenalty;
 
   // No access is a significant practical concern
-  if (access.type === "none" && w > 0) score -= 10;
+  if (access.type === "none" && w > 0) score -= 13;
 
   const confidence = Math.max(0, Math.min(100, score));
 
   let confidenceLabel: string;
   let headline: string;
-  if (confidence >= 85) {
-    confidenceLabel = "High Feasibility";
+  if (confidence >= 84) {
+    confidenceLabel = "Strong Feasibility";
     headline = "Your lot looks great for a DADU.";
-  } else if (confidence >= 60) {
+  } else if (confidence >= 58) {
     confidenceLabel = "Moderate Feasibility";
     headline = "Your lot has potential — a few things to verify.";
-  } else if (confidence >= 30) {
+  } else if (confidence >= 28) {
     confidenceLabel = "Low Feasibility";
     headline = "There are some challenges with this lot.";
   } else {
@@ -481,7 +524,11 @@ export function generateADUReport(
       status: zoningOk ? "pass" : "fail",
       value: zone || "Unknown",
       shortNote: zoningOk
-        ? "ADUs are allowed in this zone."
+        ? family === "NR"
+          ? "Neighborhood Residential — a strong context for backyard DADUs when other checks pass."
+          : family === "LR"
+            ? "Lowrise zone — ADUs are allowed, but this area often favors townhomes or small multifamily; confirm a DADU fits your plan."
+            : "ADUs are allowed in this zone."
         : "This zone may not allow ADUs.",
     },
     {
@@ -524,19 +571,17 @@ export function generateADUReport(
       status: covOk ? "pass" : "warning",
       value: `${(covFrac * 100).toFixed(1)}%`,
       shortNote: covOk
-        ? `Under the ${(maxCov * 100).toFixed(0)}% limit — room to build.`
-        : `Near or over the ${(maxCov * 100).toFixed(0)}% limit.`,
+        ? `Under max lot coverage (${maxCovSqft.toLocaleString()} sq ft) — room to build.`
+        : `At or near max lot coverage (${maxCovSqft.toLocaleString()} sq ft).`,
     },
   ];
 
-  const maxCovSqft = Math.round(maxCov * lot);
-  const usedSqft = Math.round(covFrac * lot);
   const availCov = Math.max(0, maxCovSqft - usedSqft);
   const coverage: CoverageData | null =
     lot > 0
       ? {
           currentPercent: covFrac * 100,
-          maxPercent: maxCov * 100,
+          maxPercent: maxCovFrac * 100,
           usedSqft,
           maxSqft: maxCovSqft,
           availableSqft: availCov,
@@ -586,11 +631,21 @@ export function generateADUReport(
 
   // Neutral: Tree canopy
   if (factors?.treeCanopyPercent != null && factors.treeCanopyPercent > 0) {
-    const pc = Math.round(factors.treeCanopyPercent * 100);
+    const tcr = factors.treeCanopyPercent;
+    const pcRaw = tcr <= 1 && tcr >= 0 ? tcr * 100 : tcr;
+    const pc = Math.round(pcRaw);
+    let note: string;
+    if (pcRaw > 35) {
+      note = `~${pc}% cover — heavy canopy; protected trees or permitting may apply. An arborist site visit is likely before permitting.`;
+    } else if (pc > 25) {
+      note = `~${pc}% cover. Significant removal may need a permit and adds cost.`;
+    } else {
+      note = `~${pc}% cover. Removal may need a permit.`;
+    }
     traits.push({
       icon: "tree",
       title: "Tree canopy",
-      note: `~${pc}% cover. ${pc > 25 ? "Significant removal may need a permit and adds cost." : "Removal may need a permit."}`,
+      note,
       sentiment: pc > 25 ? "bad" : "neutral",
     });
   }
@@ -626,6 +681,22 @@ export function generateADUReport(
   }
   if (factors?.peat) {
     traits.push({ icon: "hazard", title: "Peat settlement", note: "ECA — special foundation design needed. Adds significant cost.", sentiment: "bad" });
+  }
+  if (factors?.landfill) {
+    traits.push({
+      icon: "hazard",
+      title: "Historical landfill",
+      note: "ECA — methane and settlement risks; special foundation and monitoring may be required.",
+      sentiment: "bad",
+    });
+  }
+  if (factors?.wildlifePercent != null && factors.wildlifePercent > 0.05) {
+    traits.push({
+      icon: "lot",
+      title: "Fish and wildlife habitat",
+      note: "ECA — habitat buffers may limit clearing and buildable footprint.",
+      sentiment: "bad",
+    });
   }
   if (factors?.shoreline && factors.shoreline !== "None" && factors.shoreline !== "none") {
     traits.push({ icon: "water", title: "Shoreline zone", note: `${factors.shoreline}. ECA — Shoreline Master Program rules apply.`, sentiment: "bad" });

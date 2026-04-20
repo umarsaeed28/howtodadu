@@ -16,6 +16,11 @@ import {
   MapPin,
 } from "lucide-react";
 import { SiteFootprintView } from "@/components/SiteFootprintView";
+import {
+  coverageAvailabilityBand,
+  coverageAvailabilityHint,
+  coverageAvailabilityValueClass,
+} from "@/lib/metric-health";
 
 interface FeasibilityDetailsProps {
   report: ADUReport;
@@ -34,6 +39,9 @@ export function FeasibilityDetails({ report, result }: FeasibilityDetailsProps) 
   const confColor =
     report.confidence >= 60 ? "stroke-emerald-500" :
     report.confidence >= 30 ? "stroke-amber-500" : "stroke-neutral-400";
+  const covBand = report.coverage
+    ? coverageAvailabilityBand(report.coverage.availableSqft)
+    : "unknown";
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12 md:py-16 space-y-12">
@@ -113,10 +121,14 @@ export function FeasibilityDetails({ report, result }: FeasibilityDetailsProps) 
       {/* ── Coverage bar ── */}
       {report.coverage && (
         <section aria-label="Lot coverage">
-          <div className="flex justify-between text-xs text-muted-foreground mb-2">
+          <div className="flex justify-between text-xs text-muted-foreground mb-2 gap-2">
             <span>Coverage</span>
-            <span>
-              {report.coverage.currentPercent.toFixed(0)}% used · {report.coverage.availableSqft.toLocaleString()} sq ft available
+            <span className="text-right" title={coverageAvailabilityHint(covBand)}>
+              {report.coverage.currentPercent.toFixed(0)}% used ·{" "}
+              <span className={`font-medium tabular-nums ${coverageAvailabilityValueClass(covBand)}`}>
+                {report.coverage.availableSqft.toLocaleString()} sq ft
+              </span>{" "}
+              available
             </span>
           </div>
           <div className="h-2 rounded-full bg-muted-foreground/15 overflow-hidden">

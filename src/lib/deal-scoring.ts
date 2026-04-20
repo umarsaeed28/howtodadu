@@ -1,5 +1,5 @@
-import type { FeasibilityResult } from "./feasibility";
-import type { ADUReport } from "./adu-analysis";
+import { parcelZoningLabel, type FeasibilityResult } from "./feasibility";
+import { maxLotCoverageSqft, type ADUReport } from "./adu-analysis";
 
 /* ── Signal types for deal scoring ── */
 
@@ -76,35 +76,35 @@ const WEIGHTS = {
   context: 10,
 };
 
-/* ── Score bands (investor acquisition framing) ── */
-/* 90–100 Exceptional | 80–89 Strong | 65–79 Promising | 50–64 Mixed | 35–49 High risk | 0–34 Weak */
+/* ── Score bands (investor acquisition framing) — slightly strict vs headline tiers ── */
+/* 92–100 Exceptional | 82–91 Strong | 68–81 Promising | 52–67 Mixed | 36–51 High risk | 0–35 Weak */
 
 function getScoreBand(rounded: number): { category: ScoreCategory; interpretation: string } {
-  if (rounded >= 90) {
+  if (rounded >= 92) {
     return {
       category: "Exceptional candidate",
       interpretation: "Strong early candidate for a backyard DADU. Worth detailed review.",
     };
   }
-  if (rounded >= 80) {
+  if (rounded >= 82) {
     return {
       category: "Strong candidate",
       interpretation: "Strong early candidate for a backyard DADU. Worth a closer look.",
     };
   }
-  if (rounded >= 65) {
+  if (rounded >= 68) {
     return {
       category: "Promising but needs review",
       interpretation: "Promising acquisition target with a few constraints to verify.",
     };
   }
-  if (rounded >= 50) {
+  if (rounded >= 52) {
     return {
       category: "Mixed signals",
       interpretation: "Mixed signals. Some factors support development; others need careful review.",
     };
   }
-  if (rounded >= 35) {
+  if (rounded >= 36) {
     return {
       category: "High risk",
       interpretation: "Higher risk site that needs careful diligence before purchase.",
@@ -226,9 +226,9 @@ export interface UnifiedScreeningResult {
 /* ── Acquisition recommendation from score ── */
 
 export function getAcquisitionRecommendation(score: number): AcquisitionRecommendation {
-  if (score >= 80) return "Pursue";
-  if (score >= 65) return "Investigate";
-  if (score >= 50) return "Caution";
+  if (score >= 82) return "Pursue";
+  if (score >= 67) return "Investigate";
+  if (score >= 52) return "Caution";
   return "Pass";
 }
 
@@ -247,9 +247,9 @@ export function generateDealInterpretation(
   const rec = getAcquisitionRecommendation(scoreResult.score);
 
   let opportunity: string;
-  if (scoreResult.score >= 70) {
+  if (scoreResult.score >= 72) {
     opportunity = `DADU-eligible zone with strong potential. ${signals.siteOverview.accessSignal} access and ${signals.siteOverview.backyardRating.toLowerCase()} backyard buildability support development.`;
-  } else if (scoreResult.score >= 50) {
+  } else if (scoreResult.score >= 52) {
     opportunity = `This property may support a DADU. Lot size and zoning are favorable, but some factors need verification.`;
   } else {
     opportunity = `Limited opportunity. Several constraints may make this a difficult or costly DADU project.`;
@@ -294,7 +294,8 @@ function getBackyardRating(
   coverageFrac: number,
   lotWidth: number
 ): { rating: BackyardRating; score: number } {
-  const availSqft = Math.max(0, (0.35 - coverageFrac) * lotSqft);
+  const maxCovSqft = maxLotCoverageSqft(lotSqft);
+  const availSqft = Math.max(0, maxCovSqft - coverageFrac * lotSqft);
   const minUsable = 400;
   if (availSqft >= 600 && lotWidth >= 25) return { rating: "High", score: 85 };
   if (availSqft >= minUsable && lotWidth >= 20) return { rating: "Moderate", score: 60 };
@@ -314,6 +315,28 @@ function getAccessRating(
   return { rating: "Constrained", score: 15 };
 }
 
+/** Aligns with ADU report: NR best for rear DADU story; LR lower — often other housing types dominate. */
+function daduZoneFamilyFromLabel(zoneLabel: string): string | null {
+  const z = zoneLabel.trim().toUpperCase();
+  if (!z) return null;
+  if (z.startsWith("NR")) return "NR";
+  if (z.startsWith("RSL")) return "RSL";
+  if (z.startsWith("LR")) return "LR";
+  if (z.startsWith("SF")) return "SF";
+  return null;
+}
+
+/** 0–100 subscore for deal weighting (zoning column). NR prioritized over SF/RSL; LR discounted. */
+export function daduZoningScoreForDeal(zoneLabel: string | null | undefined, lotSqft: number): number {
+  const fam = daduZoneFamilyFromLabel(zoneLabel ?? "");
+  if (fam === "NR") return 95;
+  if (fam === "SF") return 88;
+  if (fam === "RSL") return 78;
+  if (fam === "LR") return 62;
+  if (lotSqft > 0) return 30;
+  return 0;
+}
+
 /* ── getSeattleDealSignals: aggregate FeasibilityResult + ADUReport into deal signals ── */
 
 export function getSeattleDealSignals(
@@ -327,10 +350,9 @@ export function getSeattleDealSignals(
   const lotWidth = feasibility?.lotWidth ?? 0;
   const steepSlope = feasibility?.steepSlopePercent ?? 0;
 
-  /* Zoning: DADU-eligible zones get high score */
-  const zoneFamily = parcel?.zoning?.slice(0, 2) ?? parcel?.zoningCategory?.slice(0, 2) ?? "";
-  const zoningOk = ["NR", "RSL", "LR", "SF"].some((z) => zoneFamily.toUpperCase().startsWith(z));
-  const zoningScore = zoningOk ? 90 : lotSqft > 0 ? 30 : 0;
+  const zoneLabel = parcelZoningLabel(parcel) ?? "";
+  const zoningFam = daduZoneFamilyFromLabel(zoneLabel);
+  const zoningScore = daduZoningScoreForDeal(zoneLabel, lotSqft);
 
   /* Lot size */
   const lotSizeScore = lotSqft >= 5000 ? 95 : lotSqft >= 4000 ? 85 : lotSqft >= 3200 ? 70 : lotSqft >= 2500 ? 40 : 15;
@@ -362,6 +384,14 @@ export function getSeattleDealSignals(
   if (terrainRating === "High terrain risk" || terrainRating === "Moderate terrain risk")
     risks.push("Slope complexity");
   if (lotSqft < 4000) risks.push("Tight lot");
+  if (zoningFam === "LR")
+    risks.push("Lowrise zoning — DADUs are allowed, but townhomes or small multifamily are often more typical; confirm a rear DADU strategy.");
+  const ecaGis = feasibility?.ecaSeattleGisLayers;
+  if (ecaGis && ecaGis.length > 0) {
+    risks.push(
+      `Seattle ARC GIS ECA overlap (${ecaGis.length} ${ecaGis.length === 1 ? "layer" : "layers"}): ${ecaGis.slice(0, 4).join("; ")}${ecaGis.length > 4 ? "…" : ""}.`
+    );
+  }
   if (report.eca.hasIssues) risks.push("Environmental constraints");
   if (backyard.rating === "Low") risks.push("Layout constraints");
   const riskList = risks.slice(0, 4);

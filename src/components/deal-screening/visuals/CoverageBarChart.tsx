@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  coverageAvailabilityBand,
+  coverageAvailabilityBuildableBarClass,
+  coverageAvailabilityValueClass,
+} from "@/lib/metric-health";
+
 interface CoverageBarChartProps {
   usedPercent: number;
   maxPercent: number;
@@ -18,6 +24,7 @@ export function CoverageBarChart({
 }: CoverageBarChartProps) {
   const usedWidth = (Math.min(usedPercent, maxPercent) / maxPercent) * 100;
   const availableWidth = 100 - usedWidth;
+  const availBand = coverageAvailabilityBand(availableSqft);
 
   return (
     <div className={className}>
@@ -31,7 +38,7 @@ export function CoverageBarChart({
           style={{ width: `${usedWidth}%` }}
         />
         <div
-          className="h-full bg-emerald-500/70 transition-all duration-500 shrink-0"
+          className={`h-full transition-all duration-500 shrink-0 ${coverageAvailabilityBuildableBarClass(availBand)}`}
           style={{ width: `${availableWidth}%` }}
         />
       </div>
@@ -41,11 +48,14 @@ export function CoverageBarChart({
           Existing footprint
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/70" aria-hidden />
+          <span
+            className={`w-2.5 h-2.5 rounded-sm ${coverageAvailabilityBuildableBarClass(availBand)}`}
+            aria-hidden
+          />
           Buildable footprint
         </span>
         {availableSqft != null && (
-          <span className="tabular-nums font-medium text-[var(--foreground)]">
+          <span className={`tabular-nums font-semibold ${coverageAvailabilityValueClass(availBand)}`}>
             {availableSqft.toLocaleString()} sq ft available
           </span>
         )}

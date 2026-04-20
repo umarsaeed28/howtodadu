@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  coverageAvailabilityBand,
+  coverageAvailabilityBuildableBarClass,
+  coverageAvailabilityValueClass,
+} from "@/lib/metric-health";
+
 interface CoverageGridProps {
   usedPercent: number;
   maxPercent: number;
@@ -21,6 +27,8 @@ export function CoverageGrid({
   const usedCells = Math.round((usedPercent / 100) * totalCells);
   const availableCells = Math.round(((maxPercent - usedPercent) / 100) * totalCells);
   const overLimitCells = totalCells - usedCells - Math.max(0, availableCells);
+  const availBand = coverageAvailabilityBand(availableSqft);
+  const availFillClass = coverageAvailabilityBuildableBarClass(availBand);
 
   return (
     <div className={className}>
@@ -47,7 +55,7 @@ export function CoverageGrid({
                 fill === "used"
                   ? "bg-[var(--foreground)]"
                   : fill === "available"
-                    ? "bg-emerald-500/70"
+                    ? availFillClass
                     : "bg-[var(--muted)]"
               }`}
             />
@@ -60,11 +68,11 @@ export function CoverageGrid({
           Existing footprint
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/70" aria-hidden />
+          <span className={`w-2.5 h-2.5 rounded-sm ${availFillClass}`} aria-hidden />
           Buildable footprint
         </span>
         {availableSqft != null && (
-          <span className="tabular-nums font-medium text-[var(--foreground)]">
+          <span className={`tabular-nums font-semibold ${coverageAvailabilityValueClass(availBand)}`}>
             {availableSqft.toLocaleString()} sq ft available
           </span>
         )}

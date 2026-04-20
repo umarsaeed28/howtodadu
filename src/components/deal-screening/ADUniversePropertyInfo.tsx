@@ -1,12 +1,33 @@
 "use client";
 
-import type { FeasibilityResult } from "@/lib/feasibility";
+import { parcelZoningLabel, type FeasibilityResult } from "@/lib/feasibility";
 import type { ADUReport } from "@/lib/adu-analysis";
-import { CheckCircle2, AlertTriangle, XCircle, Trees, Home, MapPin, Building2 } from "lucide-react";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Trees,
+  Home,
+  MapPin,
+  Building2,
+  Waypoints,
+} from "lucide-react";
+import {
+  COVERAGE_AVAIL_CRITICAL_BELOW,
+  COVERAGE_AVAIL_GOOD_MIN,
+  coverageAvailabilityBand,
+  coverageAvailabilityHint,
+  coverageAvailabilityPanelToneClass,
+  coverageAvailabilityValueClass,
+} from "@/lib/metric-health";
 
 const MIN_LOT_SIZE = 3200;
 const MIN_LOT_WIDTH = 25;
 const MIN_LOT_DEPTH = 70;
+
+/** Matches /feasibility dashboard: zinc neutrals + teal accent */
+const accent = "text-[var(--feasibility-accent,#0d9488)]";
+const accentBg = "bg-[var(--feasibility-accent,#0d9488)]";
 
 interface ADUniversePropertyInfoProps {
   result: FeasibilityResult;
@@ -34,39 +55,31 @@ function StatusCard({
         : AlertTriangle;
 
   const statusStyles = {
-    pass: "border-[var(--foreground)] bg-[rgba(44,74,59,0.04)]",
-    warning: "border-amber-600/60 bg-amber-500/5",
-    fail: "border-red-600/60 bg-red-500/5",
+    pass: "border-emerald-200/80 bg-emerald-50/50",
+    warning: "border-amber-200/80 bg-amber-50/40",
+    fail: "border-red-200/80 bg-red-50/50",
   };
   const iconStyles = {
-    pass: "text-[var(--foreground)]",
+    pass: accent,
     warning: "text-amber-700",
     fail: "text-red-600",
   };
 
   return (
     <div
-      className={`p-4 border ${statusStyles[status]} rounded-sm flex flex-col gap-2`}
+      className={`flex flex-col gap-2 rounded-xl border border-zinc-200/90 p-4 shadow-sm ${statusStyles[status]}`}
     >
       <div className="flex items-start gap-3">
-        <Icon className={`size-5 shrink-0 mt-0.5 ${iconStyles[status]}`} aria-hidden />
+        <Icon className={`mt-0.5 size-5 shrink-0 ${iconStyles[status]}`} aria-hidden />
         <div className="min-w-0 flex-1">
-          <p className="label text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]">
-            {label}
-          </p>
-          <p className="font-display text-lg font-medium text-[var(--foreground)] mt-0.5">
-            {value}
-          </p>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">{label}</p>
+          <p className="mt-0.5 text-lg font-semibold tracking-tight text-zinc-900">{value}</p>
         </div>
       </div>
-      <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
-        {explanation}
-      </p>
-      {subNote && (
-        <p className="text-[11px] text-[var(--muted-foreground)] italic leading-relaxed">
-          {subNote}
-        </p>
-      )}
+      <p className="text-xs leading-relaxed text-zinc-600">{explanation}</p>
+      {subNote ? (
+        <p className="text-[11px] italic leading-relaxed text-zinc-500">{subNote}</p>
+      ) : null}
     </div>
   );
 }
@@ -84,7 +97,8 @@ function getZoningExplanation(zone: string | null): string {
 export function ADUniversePropertyInfo({ result, report }: ADUniversePropertyInfoProps) {
   const p = result.parcel;
   const f = result.feasibility;
-  const zone = p?.zoning ?? report.stats.find((s) => s.label === "Zoning")?.value ?? null;
+  const zone =
+    parcelZoningLabel(p) ?? report.stats.find((s) => s.label === "Zoning")?.value ?? null;
   const lotSqft = p?.lotSqft ?? f?.shapeArea ?? 0;
   const lotWidth = f?.lotWidth ?? 0;
   const lotDepth = f?.lotDepth ?? 0;
@@ -100,6 +114,7 @@ export function ADUniversePropertyInfo({ result, report }: ADUniversePropertyInf
   const widthOk = lotWidth >= MIN_LOT_WIDTH;
   const depthOk = lotDepth >= MIN_LOT_DEPTH;
   const coverageOk = !report.checks.find((c) => c.label === "Lot Coverage")?.status?.includes("fail");
+  const availBand = cov ? coverageAvailabilityBand(cov.availableSqft) : "unknown";
 
   const heightTable = [
     { width: "<30 ft", base: 14, pitched: 3, shed: 3 },
@@ -112,26 +127,25 @@ export function ADUniversePropertyInfo({ result, report }: ADUniversePropertyInf
 
   return (
     <section
-      className="border border-[var(--border)] bg-[var(--background)] rounded-sm overflow-hidden"
+      className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm"
       aria-labelledby="aduniverse-property-heading"
     >
       <h2 id="aduniverse-property-heading" className="sr-only">
         ADU requirements and property characteristics
       </h2>
 
-      <div className="p-6 md:p-8 space-y-8">
-        {p?.pin && (
-          <p className="text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]">
+      <div className="space-y-8 p-5 md:p-6">
+        {p?.pin ? (
+          <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
             Parcel {p.pin}
           </p>
-        )}
+        ) : null}
 
-        {/* Requirements grid */}
         <div>
-          <h3 className="font-display text-xl mb-4 text-[var(--foreground)]">
+          <h3 className="mb-3 text-sm font-semibold tracking-tight text-zinc-900">
             Requirements for all ADUs
           </h3>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
             <StatusCard
               label="Zoning"
               value={zone ?? "—"}
@@ -151,16 +165,15 @@ export function ADUniversePropertyInfo({ result, report }: ADUniversePropertyInf
           </div>
         </div>
 
-        {/* DADU requirements */}
         <div>
-          <h3 className="font-display text-xl mb-4 text-[var(--foreground)]">
+          <h3 className="mb-1 text-sm font-semibold tracking-tight text-zinc-900">
             Additional requirements for a DADU
           </h3>
-          <p className="text-xs text-[var(--muted-foreground)] mb-4">
+          <p className="mb-4 text-xs leading-relaxed text-zinc-600">
             See Seattle Land Use Code Section 23.44.041 for full standards.
           </p>
 
-          <div className="grid sm:grid-cols-2 gap-4 mb-6">
+          <div className="mb-6 grid gap-3 sm:grid-cols-2 sm:gap-4">
             <StatusCard
               label="Lot size"
               value={lotSqft ? `${Number(lotSqft).toLocaleString()} sq ft` : "—"}
@@ -182,39 +195,62 @@ export function ADUniversePropertyInfo({ result, report }: ADUniversePropertyInf
               explanation={depthOk ? "Deep enough for a DADU." : "May be too shallow."}
               subNote={`Minimum ${MIN_LOT_DEPTH} ft.`}
             />
-            {cov && (
+            {cov ? (
               <div className="sm:col-span-2">
-                <div className="p-4 border border-[var(--border)] bg-[var(--background)] rounded-sm">
-                  <p className="label text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] mb-2">
+                <div
+                  className={`rounded-xl border p-4 transition-colors ${coverageAvailabilityPanelToneClass(availBand)}`}
+                  title={coverageAvailabilityHint(availBand)}
+                >
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
                     Lot coverage
                   </p>
-                  <div className="flex items-baseline gap-3 mb-2">
-                    <span className="font-display text-2xl tabular-nums text-[var(--foreground)]">
+                  <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span className="text-2xl font-semibold tabular-nums tracking-tight text-zinc-900">
                       {cov.currentPercent.toFixed(1)}%
                     </span>
-                    <span className="text-xs text-[var(--muted-foreground)]">
-                      of 35% max · ~{cov.availableSqft?.toLocaleString() ?? "—"} sq ft available
+                    <span className="text-xs leading-relaxed text-zinc-600">
+                      current · max {cov.maxPercent.toFixed(1)}% (
+                      {cov.maxSqft.toLocaleString()} sq ft cap) ·{" "}
+                      <strong
+                        className={`font-semibold tabular-nums ${coverageAvailabilityValueClass(availBand)}`}
+                      >
+                        {cov.availableSqft.toLocaleString()} sq ft
+                      </strong>{" "}
+                      coverage available (est.)
                     </span>
                   </div>
-                  <div className="h-3 bg-[var(--muted)] rounded-full overflow-hidden">
+                  <p className="mb-2 text-[11px] leading-snug text-zinc-600">
+                    {availBand === "good"
+                      ? `${COVERAGE_AVAIL_GOOD_MIN}+ sq ft available — strong headroom for a new footprint.`
+                      : availBand === "caution"
+                        ? `Under ${COVERAGE_AVAIL_GOOD_MIN} sq ft available — limited headroom.`
+                        : availBand === "severe"
+                          ? `Under ${COVERAGE_AVAIL_CRITICAL_BELOW} sq ft available — very tight; expect design tradeoffs.`
+                          : null}
+                  </p>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-zinc-200/80">
                     <div
                       className={`h-full rounded-full transition-all ${
-                        coverageOk ? "bg-[var(--foreground)]" : "bg-amber-600"
+                        coverageOk ? `${accentBg} opacity-90` : "bg-amber-500"
                       }`}
-                      style={{ width: `${Math.min(100, cov.currentPercent)}%` }}
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (cov.currentPercent / Math.max(cov.maxPercent, 0.01)) * 100
+                        )}%`,
+                      }}
                     />
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
-          {/* Visual height table */}
-          <div className="border border-[var(--border)] rounded-sm overflow-hidden">
-            <p className="label text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] p-3 border-b border-[var(--border)] bg-[var(--muted)]">
+          <div className="overflow-hidden rounded-xl border border-zinc-200/90">
+            <p className="border-b border-zinc-200/80 bg-zinc-50/80 px-3 py-2.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
               Max DADU height by lot width
             </p>
-            <div className="divide-y divide-[var(--border)]">
+            <div className="divide-y divide-zinc-100">
               {heightTable.map((row, i) => {
                 const isActive =
                   lotWidth >= 50
@@ -227,26 +263,26 @@ export function ADUniversePropertyInfo({ result, report }: ADUniversePropertyInf
                 return (
                   <div
                     key={i}
-                    className={`flex items-center gap-4 p-3 ${isActive ? "bg-[rgba(44,74,59,0.04)]" : ""}`}
+                    className={`flex items-center gap-4 p-3 ${
+                      isActive ? "bg-teal-50/40" : "bg-white"
+                    }`}
                   >
-                    <span className="w-20 text-xs font-medium text-[var(--foreground)] shrink-0">
-                      {row.width}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex gap-1 h-4 items-center">
+                    <span className="w-20 shrink-0 text-xs font-medium text-zinc-800">{row.width}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex h-4 items-center gap-1">
                         <div
-                          className="h-3 bg-[var(--foreground)] rounded-sm"
+                          className={`h-3 rounded-sm ${isActive ? accentBg : "bg-zinc-400"}`}
                           style={{ width: `${(row.base / maxHeight) * 100}%`, minWidth: 8 }}
                           title={`Base: ${row.base} ft`}
                         />
                         <div
-                          className="h-2 bg-[var(--muted-foreground)] rounded-sm opacity-70"
+                          className="h-2 rounded-sm bg-zinc-300 opacity-90"
                           style={{ width: `${(row.pitched / maxHeight) * 100}%`, minWidth: 4 }}
                           title={`+ pitched: ${row.pitched} ft`}
                         />
                       </div>
                     </div>
-                    <span className="text-xs tabular-nums text-[var(--muted-foreground)] shrink-0">
+                    <span className="shrink-0 text-xs tabular-nums text-zinc-600">
                       {row.base}+{Math.max(row.pitched, row.shed)} ft
                     </span>
                   </div>
@@ -256,91 +292,116 @@ export function ADUniversePropertyInfo({ result, report }: ADUniversePropertyInf
           </div>
         </div>
 
-        {/* Characteristics – visual chips */}
         <div>
-          <h3 className="font-display text-xl mb-4 text-[var(--foreground)]">
+          <h3 className="mb-3 text-sm font-semibold tracking-tight text-zinc-900">
             Characteristics of this property
           </h3>
           <div className="flex flex-wrap gap-2">
-            {lotType && (
+            {lotType ? (
               <div
-                className="inline-flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-sm bg-[var(--background)]"
+                className="inline-flex items-center gap-2 rounded-lg border border-zinc-200/90 bg-white px-3 py-2 text-sm shadow-sm"
                 title={
                   lotType === "corner"
                     ? "Street access on two sides"
                     : "Neighbors on both sides"
                 }
               >
-                <MapPin className="size-4 text-[var(--muted-foreground)]" />
-                <span className="text-sm font-medium text-[var(--foreground)]">
+                <MapPin className="size-4 text-zinc-500" aria-hidden />
+                <span className="font-medium text-zinc-900">
                   {lotType === "corner" ? "Corner lot" : "Interior lot"}
                 </span>
               </div>
-            )}
-            {garageSqft > 0 && (
+            ) : null}
+            {f?.hasAlley ? (
               <div
-                className="inline-flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-sm bg-[var(--background)]"
+                className="inline-flex items-center gap-2 rounded-lg border border-zinc-200/90 bg-white px-3 py-2 text-sm shadow-sm"
+                title="Alley access can simplify DADU entry and utilities"
+              >
+                <Waypoints className="size-4 text-zinc-500" aria-hidden />
+                <span className="font-medium text-zinc-900">Alley access</span>
+              </div>
+            ) : null}
+            {garageSqft > 0 ? (
+              <div
+                className="inline-flex items-center gap-2 rounded-lg border border-zinc-200/90 bg-white px-3 py-2 text-sm shadow-sm"
                 title="Potential conversion candidate"
               >
-                <Building2 className="size-4 text-[var(--muted-foreground)]" />
-                <span className="text-sm font-medium text-[var(--foreground)]">
+                <Building2 className="size-4 text-zinc-500" aria-hidden />
+                <span className="font-medium text-zinc-900">
                   {garageSqft.toLocaleString()} sq ft garage
                 </span>
               </div>
-            )}
-            {treePct != null && (
+            ) : null}
+            {treePct != null ? (
               <div
-                className="inline-flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-sm bg-[var(--background)]"
-                title="Tree protection may apply"
+                className={
+                  treePct > 35
+                    ? "inline-flex items-center gap-2 rounded-lg border border-amber-300/90 bg-amber-50/80 px-3 py-2 text-sm shadow-sm ring-1 ring-amber-200/60"
+                    : "inline-flex items-center gap-2 rounded-lg border border-zinc-200/90 bg-white px-3 py-2 text-sm shadow-sm"
+                }
+                title={
+                  treePct > 35
+                    ? "Heavy canopy — arborist visit likely; tree rules may constrain clearing"
+                    : "Tree protection may apply"
+                }
               >
-                <Trees className="size-4 text-[var(--muted-foreground)]" />
-                <span className="text-sm font-medium text-[var(--foreground)]">
+                <Trees className={treePct > 35 ? "size-4 text-amber-700" : "size-4 text-zinc-500"} aria-hidden />
+                <span className={`font-medium ${treePct > 35 ? "text-amber-950" : "text-zinc-900"}`}>
                   ~{treePct.toFixed(1)}% canopy
+                  {treePct > 35 ? " — review likely" : ""}
                 </span>
               </div>
-            )}
+            ) : null}
           </div>
-          {(lotType || garageSqft > 0 || treePct != null) && (
-            <p className="text-xs text-[var(--muted-foreground)] mt-3 leading-relaxed">
-              Corner lots simplify access. Detached garages may be convertible. Tree removal may require permits.
+          {(lotType || f?.hasAlley || garageSqft > 0 || treePct != null) ? (
+            <p className="mt-3 text-xs leading-relaxed text-zinc-600">
+              Corner lots and alleys simplify access. Detached garages may be convertible. Tree removal
+              may require permits.
             </p>
-          )}
+          ) : null}
         </div>
 
-        {/* Nearby ADUs – distance visualization */}
-        {report.nearby.length > 0 && (
+        {report.nearby.length > 0 ? (
           <div>
-            <h3 className="font-display text-xl mb-4 text-[var(--foreground)]">
-              ADUs near you
-            </h3>
-            <div className="flex flex-wrap gap-4">
+            <h3 className="mb-3 text-sm font-semibold tracking-tight text-zinc-900">ADUs near you</h3>
+            <div className="flex flex-wrap gap-3">
               {report.nearby.map((n) => (
                 <div
                   key={n.type}
-                  className="flex items-center gap-3 p-4 border border-[var(--border)] rounded-sm bg-[var(--background)] min-w-[200px]"
+                  className="flex min-w-[200px] items-center gap-3 rounded-xl border border-zinc-200/90 bg-white p-4 shadow-sm"
                 >
-                  <div className="size-10 rounded-full border border-[var(--border)] flex items-center justify-center shrink-0">
-                    <Home className="size-5 text-[var(--muted-foreground)]" />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-200/80 bg-zinc-50/80">
+                    <Home className="size-5 text-zinc-500" aria-hidden />
                   </div>
                   <div>
-                    <p className="font-display font-medium text-[var(--foreground)]">
-                      {n.count} {n.type}{n.count !== 1 ? "s" : ""}
+                    <p className="font-semibold text-zinc-900">
+                      {n.count} {n.type}
+                      {n.count !== 1 ? "s" : ""}
                     </p>
-                    <p className="text-xs text-[var(--muted-foreground)]">
+                    <p className="text-xs text-zinc-600">
                       within ¼ mile
-                      {n.nearestFeet != null && (
+                      {n.nearestFeet != null ? (
                         <> · nearest {n.nearestFeet.toLocaleString()} ft</>
-                      )}
+                      ) : null}
                     </p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        )}
+        ) : null}
 
-        <p className="text-[11px] text-[var(--muted-foreground)] pt-6 border-t border-[var(--border)]">
-          Preliminary insights from Seattle City GIS / ADUniverse. Not a final determination. Not legal advice. Not a permit approval.
+        <p className="border-t border-zinc-200/80 pt-6 text-[11px] leading-relaxed text-zinc-500">
+          Preliminary insights from Seattle City GIS / ADUniverse layers (
+          <a
+            href="https://aduniverse-seattlecitygis.hub.arcgis.com/pages/feasibility"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`font-medium ${accent} underline-offset-2 hover:underline`}
+          >
+            city feasibility page
+          </a>
+          ). Not a final determination. Not legal advice. Not a permit approval.
         </p>
       </div>
     </section>

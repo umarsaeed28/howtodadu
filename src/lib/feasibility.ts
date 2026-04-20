@@ -1,3 +1,15 @@
+/**
+ * Prefer detailed zoning code (e.g. NR3) over legacy assessor bucket (e.g. SF 5000 from ZONELUT).
+ */
+export function parcelZoningLabel(parcel: ParcelData | null): string | null {
+  if (!parcel) return null;
+  const z = parcel.zoning?.trim();
+  if (z) return z;
+  const b = parcel.baseZone?.trim();
+  if (b) return b;
+  return parcel.zoningCategory?.trim() || null;
+}
+
 export interface ParcelData {
   address: string | null;
   pin: string | null;
@@ -61,6 +73,58 @@ export interface FeasibilityData {
   parcelLineCount: number | null;
   shapeArea: number | null;
   shapeLength: number | null;
+  /**
+   * Seattle ARC GIS ECA layers (Environmentally_Critical_Areas_ECA) that intersect the parcel or point.
+   * Populated server-side; scoring merges these into hazard flags on {@link FeasibilityData}.
+   */
+  ecaSeattleGisLayers?: string[] | null;
+}
+
+/** Defaults for merging GIS-only ECA hits when the feasibility factors layer is missing. */
+export function emptyFeasibilityData(): FeasibilityData {
+  return {
+    lotType: null,
+    hasAlley: false,
+    totalBuildingSqft: null,
+    lotCoveragePercent: null,
+    lotCoverageOver: false,
+    lotWidth: null,
+    lotDepth: null,
+    boundRatio: null,
+    steepSlopePercent: null,
+    steepSlopeArea: null,
+    wetlandPercent: null,
+    wetlandArea: null,
+    wildlifePercent: null,
+    wildlifeArea: null,
+    riparianPercent: null,
+    riparianArea: null,
+    floodProne: false,
+    liquefaction: false,
+    knownSlide: false,
+    potentialSlide: false,
+    peat: false,
+    landfill: false,
+    shoreline: null,
+    treeCanopyPercent: null,
+    existingAADU: null,
+    existingDADU: null,
+    totalADU: null,
+    nearbyDADU: null,
+    nearbyAADU: null,
+    nearestAADUDist: null,
+    nearestDADUDist: null,
+    detachedGarageCount: null,
+    detachedGarageSqft: null,
+    basementSqft: null,
+    daylightBasement: null,
+    minYearBuilt: null,
+    maxYearRenovated: null,
+    parcelLineCount: null,
+    shapeArea: null,
+    shapeLength: null,
+    ecaSeattleGisLayers: null,
+  };
 }
 
 export interface ContourLine {

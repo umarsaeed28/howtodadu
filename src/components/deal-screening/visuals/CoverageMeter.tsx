@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  coverageAvailabilityBand,
+  coverageAvailabilityHint,
+  coverageAvailabilityValueClass,
+} from "@/lib/metric-health";
+
 interface CoverageMeterProps {
   usedPercent: number;
   maxPercent: number;
@@ -16,6 +22,7 @@ export function CoverageMeter({
 }: CoverageMeterProps) {
   const fillPct = Math.min(100, (usedPercent / maxPercent) * 100);
   const isOver = usedPercent > maxPercent;
+  const availBand = coverageAvailabilityBand(availableSqft);
 
   return (
     <div className={className}>
@@ -32,8 +39,15 @@ export function CoverageMeter({
         />
       </div>
       {availableSqft != null && (
-        <p className="text-xs text-[var(--muted-foreground)] mt-2 tabular-nums">
-          ~{availableSqft.toLocaleString()} sq ft available
+        <p
+          className="text-xs mt-2 tabular-nums"
+          title={coverageAvailabilityHint(availBand)}
+        >
+          <span className="text-[var(--muted-foreground)]">~</span>
+          <span className={`font-semibold ${coverageAvailabilityValueClass(availBand)}`}>
+            {availableSqft.toLocaleString()} sq ft
+          </span>
+          <span className="text-[var(--muted-foreground)]"> available</span>
         </p>
       )}
     </div>
