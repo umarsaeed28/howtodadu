@@ -17,37 +17,31 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "How to DADU — Acquisition Service | Seattle Middle Housing",
+  title: "How to DADU. Buy well. Build smart.",
   description:
-    "A Seattle acquisition service focused on middle housing. We help investors identify the right property, evaluate development potential, and design projects ready for permits.",
+    "We help investors find, plan, and build middle housing in Seattle. From the right property to permit ready plans.",
   keywords: [
+    "Seattle middle housing",
     "DADU Seattle",
-    "Seattle DADU guide",
-    "middle housing Seattle",
-    "Seattle property acquisition",
-    "DADU architect Seattle",
     "backyard cottage Seattle",
-    "ADU design Seattle",
-    "duplex design Seattle",
-    "triplex design Seattle",
-    "fourplex Seattle",
-    "Seattle development",
-    "DADU feasibility Seattle",
+    "middle housing investing",
+    "Seattle property development",
+    "ADU Seattle",
   ],
   openGraph: {
-    title: "How to DADU — Acquisition Service | Seattle Middle Housing",
+    title: "How to DADU. Buy well. Build smart.",
     description:
-      "A Seattle acquisition service focused on middle housing. We help investors identify properties, evaluate development potential, and prepare permit-ready drawings.",
+      "We help investors find, plan, and build middle housing in Seattle. From the right property to permit ready plans.",
     type: "website",
     locale: "en_US",
     url: "https://howtodadu.com",
-    siteName: "HOW TO DADU",
+    siteName: "How to DADU",
   },
   twitter: {
     card: "summary_large_image",
-    title: "How to DADU — Acquisition Service | Seattle Middle Housing",
+    title: "How to DADU. Buy well. Build smart.",
     description:
-      "A Seattle acquisition service focused on middle housing. We help investors identify properties, evaluate development potential, and prepare permit-ready drawings.",
+      "We help investors find, plan, and build middle housing in Seattle. From the right property to permit ready plans.",
   },
   robots: {
     index: true,

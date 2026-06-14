@@ -1,8 +1,8 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Space_Grotesk, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
-import "../app/app.css";
-import FeasibilityPencil from "@/components/feasibility-pencil/FeasibilityPencil";
+import "maplibre-gl/dist/maplibre-gl.css";
+import "./app.css";
+import StoreHydrator from "@/components/pencil-app/StoreHydrator";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -26,17 +26,20 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Check a property — How to DADU",
+  title: "Pencil — Find parcels that pencil",
   description:
-    "See what a Seattle lot can become. Get an early read on middle-housing potential, with a clear score and verdict. Preliminary insights from Seattle City GIS.",
+    "Browse Seattle / Puget Sound parcels and instantly see which ones pencil for middle housing.",
 };
 
-export default function FeasibilityPage() {
+export default function AppLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className={`pencil-app ${spaceGrotesk.variable} ${plexSans.variable} ${plexMono.variable}`}>
-      <Suspense>
-        <FeasibilityPencil />
-      </Suspense>
+    <div
+      className={`pencil-app ${spaceGrotesk.variable} ${plexSans.variable} ${plexMono.variable}`}
+    >
+      <StoreHydrator />
+      {children}
     </div>
   );
 }

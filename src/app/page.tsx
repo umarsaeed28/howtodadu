@@ -1,31 +1,59 @@
-import { Header } from "@/components/Header";
-import { Hero } from "@/components/Hero";
-import { WhatThisServiceIs } from "@/components/WhatThisServiceIs";
-import { WhoThisIsFor } from "@/components/WhoThisIsFor";
-import { WhatWeHelpWith } from "@/components/WhatWeHelpWith";
-import { FeasibilityTool } from "@/components/FeasibilityTool";
-import { HowTheProcessWorks } from "@/components/HowTheProcessWorks";
-import { EducationAndGuides } from "@/components/EducationAndGuides";
-import { Newsletter } from "@/components/Newsletter";
-import { FAQ } from "@/components/FAQ";
-import { Footer } from "@/components/Footer";
+import { Spectral, Hanken_Grotesk, IBM_Plex_Mono } from "next/font/google";
+import "./htd.css";
+
+import Nav from "@/components/htd/Nav";
+import Hero from "@/components/htd/Hero";
+import WhatWeDo from "@/components/htd/WhatWeDo";
+import WhoItsFor from "@/components/htd/WhoItsFor";
+import Opportunity from "@/components/htd/Opportunity";
+import HowItWorks from "@/components/htd/HowItWorks";
+import SeeNumbers from "@/components/htd/SeeNumbers";
+import CheckProperty from "@/components/htd/CheckProperty";
+import Properties from "@/components/htd/Properties";
+import WhyUs from "@/components/htd/WhyUs";
+import Faq from "@/components/htd/Faq";
+import TalkToUs from "@/components/htd/TalkToUs";
+import Footer from "@/components/htd/Footer";
+
+const spectral = Spectral({
+  variable: "--font-spectral",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["600", "700"],
+});
+
+const hanken = Hanken_Grotesk({
+  variable: "--font-hanken",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500"],
+});
+
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500"],
+});
 
 export default function Home() {
   return (
-    <>
-      <Header />
+    <div className={`htd-site ${spectral.variable} ${hanken.variable} ${plexMono.variable}`}>
+      <Nav />
       <main>
         <Hero />
-        <WhatThisServiceIs />
-        <WhoThisIsFor />
-        <WhatWeHelpWith />
-        <FeasibilityTool />
-        <HowTheProcessWorks />
-        <EducationAndGuides />
-        <Newsletter />
-        <FAQ />
+        <WhatWeDo />
+        <WhoItsFor />
+        <Opportunity />
+        <HowItWorks />
+        <SeeNumbers />
+        <CheckProperty />
+        <Properties />
+        <WhyUs />
+        <Faq />
+        <TalkToUs />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

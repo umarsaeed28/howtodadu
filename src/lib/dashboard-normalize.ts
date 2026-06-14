@@ -32,6 +32,9 @@ export interface DashboardPropertySlim {
   lotSizeSqft: number | null;
   zoning: string | null;
   zip: string | null;
+  /** Property centroid for real imagery (Street View / aerial). */
+  lat: number | null;
+  lng: number | null;
   daduScore: number;
   /** Short label for chips */
   confidenceBand: ConfidenceBand;
@@ -164,6 +167,8 @@ export function buildDashboardPropertySlim(
     lotSizeSqft: result.parcel?.lotSqft ?? null,
     zoning: parcelZoningLabel(result.parcel),
     zip: result.parcel?.zip?.trim() ?? null,
+    lat: Number.isFinite(result.coordinates?.lat) ? result.coordinates.lat : null,
+    lng: Number.isFinite(result.coordinates?.lng) ? result.coordinates.lng : null,
     daduScore: full.daduScore,
     confidenceBand: band,
     confidenceShort: short,
@@ -197,6 +202,8 @@ export function buildDashboardPropertyFailed(
     lotSizeSqft: null,
     zoning: null,
     zip: null,
+    lat: null,
+    lng: null,
     daduScore: 0,
     confidenceBand: "low",
     confidenceShort: "—",
