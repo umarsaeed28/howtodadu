@@ -49,13 +49,30 @@ function build(parcel: Parcel): Scenario[] {
   return out.slice(0, 3);
 }
 
-export default function ScenarioTiles({ parcel }: { parcel: Parcel }) {
-  const scenarios = build(parcel);
+export interface ScenarioTile extends Scenario {
+  /** Buildable area implied by this scenario, used to recompute on switch. */
+  buildableSqft?: number;
+}
+
+export default function ScenarioTiles({
+  parcel,
+  scenarios: liveScenarios,
+  selectedIndex,
+  onSelect,
+}: {
+  parcel: Parcel;
+  /** Live, model-computed scenarios. Falls back to the parcel illustration when omitted. */
+  scenarios?: ScenarioTile[];
+  selectedIndex?: number;
+  onSelect?: (scenario: ScenarioTile, index: number) => void;
+}) {
+  const scenarios: ScenarioTile[] = liveScenarios ?? build(parcel);
   const bestIdx = scenarios.reduce(
     (b, s, i, arr) => (s.margin > arr[b].margin ? i : b),
     0
   );
-  const [selected, setSelected] = useState(bestIdx);
+  const [internalSelected, setInternalSelected] = useState(bestIdx);
+  const selected = selectedIndex ?? internalSelected;
 
   return (
     <section>
@@ -70,7 +87,10 @@ export default function ScenarioTiles({ parcel }: { parcel: Parcel }) {
             <button
               key={s.name}
               type="button"
-              onClick={() => setSelected(i)}
+              onClick={() => {
+                setInternalSelected(i);
+                onSelect?.(s, i);
+              }}
               aria-pressed={isSel}
               className="pa-card p-4 text-left transition-transform"
               style={{

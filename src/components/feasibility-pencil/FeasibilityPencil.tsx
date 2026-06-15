@@ -17,7 +17,7 @@ import { verdictFromScore } from "@/lib/feasibility-verdict";
 import FeasAppBar from "./FeasAppBar";
 import FeasFilterBar from "./FeasFilterBar";
 import FeasCard from "./FeasCard";
-import FeasDetailModal from "./FeasDetailModal";
+import FeasDetailPanel from "./FeasDetailPanel";
 import { ResultsSkeleton, NoSearchResults } from "@/components/pencil-app/states";
 import type { FeasSortKey } from "./types";
 
@@ -257,6 +257,20 @@ export default function FeasibilityPencil() {
         loading={singleLoading}
       />
 
+      {selectedSlim ? (
+        <main className="mx-auto w-full max-w-[1500px] flex-1 px-4 py-6 md:px-6">
+          <FeasDetailPanel
+            slim={selectedSlim}
+            detailRow={detailRow}
+            loading={detailLoading}
+            error={detailError}
+            favorite={favoritesSet.has(selectedSlim.address.trim().toLowerCase())}
+            onToggleFavorite={() => toggleFavorite(selectedSlim.address)}
+            onBack={() => setSelectedId(null)}
+          />
+        </main>
+      ) : (
+        <>
       <FeasFilterBar
         count={filtered.length}
         pencilsOnly={pencilsOnly}
@@ -349,17 +363,7 @@ export default function FeasibilityPencil() {
           </>
         )}
       </main>
-
-      {selectedSlim && (
-        <FeasDetailModal
-          slim={selectedSlim}
-          detailRow={detailRow}
-          loading={detailLoading}
-          error={detailError}
-          favorite={favoritesSet.has(selectedSlim.address.trim().toLowerCase())}
-          onToggleFavorite={() => toggleFavorite(selectedSlim.address)}
-          onClose={() => setSelectedId(null)}
-        />
+        </>
       )}
     </div>
   );

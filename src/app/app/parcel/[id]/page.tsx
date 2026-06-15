@@ -5,9 +5,7 @@ import { parcels, getParcel } from "@/lib/parcels";
 import { usdM } from "@/lib/format";
 import AppBar from "@/components/pencil-app/AppBar";
 import Gallery from "@/components/pencil-app/detail/Gallery";
-import VerdictBlock from "@/components/pencil-app/detail/VerdictBlock";
-import ProForma from "@/components/pencil-app/detail/ProForma";
-import ScenarioTiles from "@/components/pencil-app/detail/ScenarioTiles";
+import ParcelDealWorkspace from "@/components/pencil-app/detail/ParcelDealWorkspace";
 import SiteFacts from "@/components/pencil-app/detail/SiteFacts";
 import MiniMapLazy from "@/components/pencil-app/detail/MiniMapLazy";
 import ActionBar from "@/components/pencil-app/detail/ActionBar";
@@ -26,8 +24,6 @@ export default async function ParcelDetail({
   const { id } = await params;
   const parcel = getParcel(id);
   if (!parcel) notFound();
-
-  const honest = parcel.verdict !== "PENCILS";
 
   return (
     <div className="min-h-dvh pb-28 md:pb-0">
@@ -60,20 +56,8 @@ export default async function ParcelDetail({
 
         <div className="mt-5 grid grid-cols-1 gap-6 md:grid-cols-[1fr_320px]">
           <div className="space-y-6">
-            <VerdictBlock parcel={parcel} />
+            <ParcelDealWorkspace parcel={parcel} />
 
-            {honest && (
-              <p
-                className="rounded-[6px] border px-3 py-2.5 text-sm"
-                style={{ borderColor: "var(--hairline)", color: "var(--slate)", background: "var(--card)" }}
-              >
-                This is a preliminary screen on sample data. A full feasibility study confirms the
-                number with verified costs, financing, and site constraints before you commit.
-              </p>
-            )}
-
-            <ProForma parcel={parcel} />
-            <ScenarioTiles parcel={parcel} />
             <SiteFacts parcel={parcel} />
 
             <section>
