@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { parcels, getParcel } from "@/lib/parcels";
 import { usdM } from "@/lib/format";
-import AppBar from "@/components/pencil-app/AppBar";
 import Gallery from "@/components/pencil-app/detail/Gallery";
 import ParcelDealWorkspace from "@/components/pencil-app/detail/ParcelDealWorkspace";
 import SiteFacts from "@/components/pencil-app/detail/SiteFacts";
@@ -26,9 +25,7 @@ export default async function ParcelDetail({
   if (!parcel) notFound();
 
   return (
-    <div className="min-h-dvh pb-28 md:pb-0">
-      <AppBar />
-
+    <div className="pb-28 md:pb-0">
       <main className="mx-auto max-w-6xl px-4 py-4">
         <Link
           href="/app"

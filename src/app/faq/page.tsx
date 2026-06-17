@@ -1,22 +1,15 @@
 import type { Metadata } from "next";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Section, Container, Eyebrow, Heading, Lede } from "@/components/ui";
 
 export const metadata: Metadata = {
-  title: "FAQ — HOW TO DADU",
+  title: "FAQ — Pencil",
   description:
     "Frequently asked questions about DADU design, middle housing, property acquisition, and our process in Seattle.",
 };
 
 const faqs = [
   {
-    category: "About Us",
+    category: "About us",
     items: [
       {
         question: "What makes you different from an architecture firm?",
@@ -56,7 +49,7 @@ const faqs = [
     ],
   },
   {
-    category: "Middle Housing",
+    category: "Middle housing",
     items: [
       {
         question: "What is middle housing?",
@@ -84,55 +77,45 @@ const faqs = [
 
 export default function FAQPage() {
   return (
-    <>
-      <Header />
-      <main className="pt-20">
-        <section className="py-24 md:py-32">
-          <div className="mx-auto max-w-3xl px-6 md:px-12">
-            <div className="mb-16">
-              <p className="overline mb-4">
-                FAQ
-              </p>
-              <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight leading-tight mb-6 text-[var(--foreground)]">
-                Frequently asked
-                <br />
-                questions
-              </h1>
-              <p className="text-lg text-[var(--muted-foreground)] leading-relaxed max-w-xl">
-                Everything you need to know about working with us,
-                middle housing in Seattle, and our process.
-              </p>
-            </div>
+    <main>
+      <Section>
+        <Container style={{ maxWidth: 820 }}>
+          <Eyebrow>FAQ</Eyebrow>
+          <Heading level={1} style={{ marginTop: 18 }}>
+            Frequently asked questions.
+          </Heading>
+          <Lede style={{ marginTop: 22, maxWidth: "36rem" }}>
+            Everything you need to know about working with us, middle housing in Seattle, and our
+            process.
+          </Lede>
 
-            <div className="space-y-16">
-              {faqs.map((group) => (
-                <div key={group.category}>
-                  <p className="overline mb-6">
-                    {group.category}
-                  </p>
-                  <Accordion type="single" collapsible className="w-full">
-                    {group.items.map((faq, i) => (
-                      <AccordionItem
-                        key={i}
-                        value={`${group.category}-${i}`}
-                        className="border-b border-[var(--border)]"
+          <div style={{ marginTop: 48, display: "grid", gap: 48 }}>
+            {faqs.map((group) => (
+              <div key={group.category}>
+                <Eyebrow style={{ color: "var(--slate)", marginBottom: 12 }}>{group.category}</Eyebrow>
+                <div>
+                  {group.items.map((faq, i) => (
+                    <details
+                      key={i}
+                      style={{ borderBottom: "1px solid var(--line)", paddingBlock: 18 }}
+                    >
+                      <summary
+                        className="s-h3"
+                        style={{ cursor: "pointer", listStyle: "none", fontSize: "1.05rem" }}
                       >
-                        <AccordionTrigger className="text-left text-base font-medium py-5 hover:no-underline text-[var(--foreground)] [&[data-state=open]>svg]:rotate-180">
-                          {faq.question}
-                        </AccordionTrigger>
-                        <AccordionContent className="text-[var(--muted-foreground)] leading-relaxed pb-5">
-                          {faq.answer}
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
+                        {faq.question}
+                      </summary>
+                      <p className="s-body" style={{ marginTop: 12, fontSize: "0.98rem" }}>
+                        {faq.answer}
+                      </p>
+                    </details>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        </section>
-      </main>
-      <Footer />
-    </>
+        </Container>
+      </Section>
+    </main>
   );
 }

@@ -1,39 +1,16 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { Space_Grotesk, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
-import "../app/app.css";
 import FeasibilityPencil from "@/components/feasibility-pencil/FeasibilityPencil";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["500", "700"],
-});
-
-const plexSans = IBM_Plex_Sans({
-  variable: "--font-plex-sans",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["400", "500", "600"],
-});
-
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["400", "500"],
-});
-
 export const metadata: Metadata = {
-  title: "Check a property — How to DADU",
+  title: "Check a property — Pencil",
   description:
     "See what a Seattle lot can become. Get an early read on middle-housing potential, with a clear score and verdict. Preliminary insights from Seattle City GIS.",
 };
 
 export default function FeasibilityPage() {
   return (
-    <div className={`pencil-app ${spaceGrotesk.variable} ${plexSans.variable} ${plexMono.variable}`}>
+    <div className="pencil-app">
       <Suspense>
         <FeasibilityPencil />
       </Suspense>

@@ -1,25 +1,55 @@
 import type { Metadata } from "next";
-import { Space_Mono, Playfair_Display } from "next/font/google";
+import {
+  Space_Grotesk,
+  IBM_Plex_Sans,
+  IBM_Plex_Mono,
+  Spectral,
+  Hanken_Grotesk,
+} from "next/font/google";
 import "./globals.css";
+import "./app/app.css";
+import "./site.css";
+import SiteShell from "@/components/site/SiteShell";
 
-const spaceMono = Space_Mono({
-  variable: "--font-space-mono",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "700"],
+  weight: ["500", "700"],
 });
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-plex-sans",
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "600"],
+  weight: ["400", "500", "600"],
+});
+
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500"],
+});
+
+const spectral = Spectral({
+  variable: "--font-spectral",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["600", "700"],
+});
+
+const hanken = Hanken_Grotesk({
+  variable: "--font-hanken",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "How to DADU. Buy well. Build smart.",
+  title: "Pencil — See what a lot can become.",
   description:
-    "We help investors find, plan, and build middle housing in Seattle. From the right property to permit ready plans.",
+    "Pencil helps you find, plan, and build middle housing in Seattle. It reads the parcel, the zoning, and real costs, then tells you what a lot can become and whether it pencils.",
   keywords: [
     "Seattle middle housing",
     "DADU Seattle",
@@ -29,37 +59,32 @@ export const metadata: Metadata = {
     "ADU Seattle",
   ],
   openGraph: {
-    title: "How to DADU. Buy well. Build smart.",
+    title: "Pencil — See what a lot can become.",
     description:
-      "We help investors find, plan, and build middle housing in Seattle. From the right property to permit ready plans.",
+      "Find, plan, and build middle housing in Seattle. Pencil tells you what a lot can become and whether it pencils.",
     type: "website",
     locale: "en_US",
-    url: "https://howtodadu.com",
-    siteName: "How to DADU",
+    url: "https://pencil.studio",
+    siteName: "Pencil",
   },
   twitter: {
     card: "summary_large_image",
-    title: "How to DADU. Buy well. Build smart.",
+    title: "Pencil — See what a lot can become.",
     description:
-      "We help investors find, plan, and build middle housing in Seattle. From the right property to permit ready plans.",
+      "Find, plan, and build middle housing in Seattle. Pencil tells you what a lot can become and whether it pencils.",
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body
-        className={`${spaceMono.variable} ${playfair.variable} antialiased`}
+        className={`${spaceGrotesk.variable} ${plexSans.variable} ${plexMono.variable} ${spectral.variable} ${hanken.variable} antialiased`}
       >
-        {children}
+        <SiteShell>{children}</SiteShell>
       </body>
     </html>
   );

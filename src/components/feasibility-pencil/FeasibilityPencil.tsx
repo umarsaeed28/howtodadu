@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, MapPin, Calculator, BadgeCheck } from "lucide-react";
 import { fetchFeasibility } from "@/lib/feasibility";
+import FeasAddressSearch from "./FeasAddressSearch";
 import { generateADUReport } from "@/lib/adu-analysis";
 import { buildFeasibilityTableRow, type FeasibilityTableRow } from "@/lib/feasibility-table-model";
 import { buildDashboardPropertySlim, type DashboardPropertySlim } from "@/lib/dashboard-normalize";
@@ -18,7 +19,7 @@ import FeasAppBar from "./FeasAppBar";
 import FeasFilterBar from "./FeasFilterBar";
 import FeasCard from "./FeasCard";
 import FeasDetailPanel from "./FeasDetailPanel";
-import { ResultsSkeleton, NoSearchResults } from "@/components/pencil-app/states";
+import { NoSearchResults } from "@/components/pencil-app/states";
 import type { FeasSortKey } from "./types";
 
 const PAGE = 24;
@@ -243,10 +244,113 @@ export default function FeasibilityPencil() {
   }, []);
 
   const showSkeleton = (singleLoading || bulkLoading) && rows.length === 0;
-  const empty = rows.length === 0 && !showSkeleton;
+  const hasResults = rows.length > 0;
+  const showHero = !hasResults && !showSkeleton && !selectedSlim;
+
+  if (showHero) {
+    return (
+      <div className="flex min-h-[calc(100dvh_-_var(--nav-h))] flex-col items-center justify-center px-4 py-16">
+        <div className="w-full max-w-2xl text-center">
+          <p className="pa-eyebrow" style={{ color: "var(--green)" }}>
+            Free feasibility check
+          </p>
+          <h1 className="pa-display mt-3 text-3xl md:text-4xl" style={{ color: "var(--ink)" }}>
+            Check a Seattle address.
+          </h1>
+          <p className="mt-3 text-[15px] leading-relaxed" style={{ color: "var(--slate)" }}>
+            Enter an address to see what the lot allows, the ways to build it, and an early read on
+            whether it pencils. No signup.
+          </p>
+
+          {errorBanner && (
+            <div
+              className="mx-auto mt-5 max-w-xl rounded-[8px] border px-4 py-3 text-left text-sm"
+              style={{ background: "var(--red-tint)", borderColor: "var(--red)", color: "var(--red)" }}
+              role="alert"
+            >
+              {errorBanner}
+            </div>
+          )}
+
+          <form
+            className="mx-auto mt-6 flex w-full max-w-xl flex-col gap-2.5 sm:flex-row"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void runSingle(singleAddress);
+            }}
+          >
+            <FeasAddressSearch
+              value={singleAddress}
+              onChange={setSingleAddress}
+              onPick={(address) => {
+                setSingleAddress(address);
+                void runSingle(address);
+              }}
+              loading={singleLoading}
+            />
+            <button
+              type="submit"
+              className="pa-btn pa-btn-primary shrink-0"
+              disabled={singleLoading}
+              style={{ minHeight: 44 }}
+            >
+              {singleLoading ? <Loader2 size={15} className="animate-spin" aria-hidden /> : "Check it"}
+            </button>
+          </form>
+
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-sm" style={{ color: "var(--slate)" }}>
+            <span>Screening a list?</span>
+            <label className="inline-flex cursor-pointer items-center gap-1.5 font-medium" style={{ color: "var(--green)" }}>
+              <Upload size={14} aria-hidden />
+              Upload a CSV
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="sr-only"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void onCsvFile(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+
+          <div className="mx-auto mt-10 grid max-w-xl grid-cols-1 gap-3 text-left sm:grid-cols-3">
+            {[
+              { Icon: MapPin, title: "Reads the rules", body: "Zoning, overlays, and the transit test." },
+              { Icon: Calculator, title: "Runs real costs", body: "Quantities priced against local trades." },
+              { Icon: BadgeCheck, title: "Gives a verdict", body: "A clear read, with the margin behind it." },
+            ].map(({ Icon, title, body }) => (
+              <div
+                key={title}
+                className="rounded-[10px] border p-4"
+                style={{ borderColor: "var(--hairline)", background: "var(--card)" }}
+              >
+                <span style={{ color: "var(--green)" }}>
+                  <Icon size={18} aria-hidden />
+                </span>
+                <p className="mt-2 text-sm font-semibold" style={{ color: "var(--ink)" }}>
+                  {title}
+                </p>
+                <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--slate)" }}>
+                  {body}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <p className="mx-auto mt-8 max-w-xl text-xs leading-relaxed" style={{ color: "var(--slate)" }}>
+            Preliminary GIS estimate, not a permit or legal opinion. We confirm everything before any
+            acquisition.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-[calc(100dvh_-_var(--nav-h))] flex-col">
       <FeasAppBar
         value={singleAddress}
         onChange={setSingleAddress}
@@ -271,98 +375,85 @@ export default function FeasibilityPencil() {
         </main>
       ) : (
         <>
-      <FeasFilterBar
-        count={filtered.length}
-        pencilsOnly={pencilsOnly}
-        onTogglePencils={() => setPencilsOnly((p) => !p)}
-        verdicts={verdicts}
-        onToggleVerdict={toggleVerdict}
-        zoningOptions={zoningOptions}
-        zonings={zonings}
-        onToggleZoning={toggleZoning}
-        onClearZoning={() => setZonings(new Set())}
-        favoritesOnly={favoritesOnly}
-        onToggleFavorites={() => setFavoritesOnly((f) => !f)}
-        sort={sort}
-        onSort={setSort}
-        onCsvFile={(f) => void onCsvFile(f)}
-        busy={bulkLoading}
-      />
+          {hasResults && (
+            <FeasFilterBar
+              count={filtered.length}
+              pencilsOnly={pencilsOnly}
+              onTogglePencils={() => setPencilsOnly((p) => !p)}
+              verdicts={verdicts}
+              onToggleVerdict={toggleVerdict}
+              zoningOptions={zoningOptions}
+              zonings={zonings}
+              onToggleZoning={toggleZoning}
+              onClearZoning={() => setZonings(new Set())}
+              favoritesOnly={favoritesOnly}
+              onToggleFavorites={() => setFavoritesOnly((f) => !f)}
+              sort={sort}
+              onSort={setSort}
+              onCsvFile={(f) => void onCsvFile(f)}
+              busy={bulkLoading}
+            />
+          )}
 
-      <main className="mx-auto w-full max-w-[1500px] flex-1 px-4 py-6 md:px-6">
-        {errorBanner && (
-          <div
-            className="mb-4 rounded-[8px] border px-4 py-3 text-sm"
-            style={{ background: "var(--red-tint)", borderColor: "var(--red)", color: "var(--red)" }}
-            role="alert"
-          >
-            {errorBanner}
-          </div>
-        )}
-
-        {bulkLoading && bulkPhase && (
-          <p className="pa-mono mb-4 flex items-center gap-2 text-xs" style={{ color: "var(--slate)" }}>
-            <Loader2 size={13} className="animate-spin" aria-hidden /> {bulkPhase}
-          </p>
-        )}
-
-        {showSkeleton ? (
-          <ResultsSkeleton />
-        ) : empty ? (
-          <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
-            <h1 className="pa-display text-2xl" style={{ color: "var(--ink)" }}>
-              Check a Seattle address.
-            </h1>
-            <p className="mt-2 max-w-md text-sm" style={{ color: "var(--slate)" }}>
-              Get an early read on what a lot can become. Search one address, or upload a CSV to
-              screen many at once.
-            </p>
-            <button
-              type="button"
-              className="pa-btn pa-btn-primary mt-5"
-              onClick={() => {
-                setSingleAddress("4214 NW 62nd St, Seattle");
-                void runSingle("4214 NW 62nd St, Seattle");
-              }}
-            >
-              Try a sample address
-            </button>
-          </div>
-        ) : sorted.length === 0 ? (
-          <NoSearchResults />
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {pageRows.map((slim) => (
-                <FeasCard
-                  key={slim.id}
-                  slim={slim}
-                  favorite={favoritesSet.has(slim.address.trim().toLowerCase())}
-                  onToggleFavorite={() => toggleFavorite(slim.address)}
-                  onOpen={() => setSelectedId(slim.id)}
-                />
-              ))}
-            </div>
-
-            {visible < sorted.length && (
-              <div className="mt-8 flex justify-center">
-                <button
-                  type="button"
-                  className="pa-btn"
-                  onClick={() => setVisible((v) => v + PAGE)}
-                >
-                  Show more ({sorted.length - visible} left)
-                </button>
+          <main className="mx-auto w-full max-w-[1500px] flex-1 px-4 py-6 md:px-6">
+            {errorBanner && (
+              <div
+                className="mb-4 rounded-[8px] border px-4 py-3 text-sm"
+                style={{ background: "var(--red-tint)", borderColor: "var(--red)", color: "var(--red)" }}
+                role="alert"
+              >
+                {errorBanner}
               </div>
             )}
 
-            <p className="mt-8 text-xs leading-relaxed" style={{ color: "var(--slate)" }}>
-              Preliminary GIS estimate, not a permit or legal opinion. Assessed value shown until MLS
-              is integrated. We confirm everything before any acquisition.
-            </p>
-          </>
-        )}
-      </main>
+            {bulkLoading && bulkPhase && (
+              <p className="pa-mono mb-4 flex items-center gap-2 text-xs" style={{ color: "var(--slate)" }}>
+                <Loader2 size={13} className="animate-spin" aria-hidden /> {bulkPhase}
+              </p>
+            )}
+
+            {showSkeleton ? (
+              <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
+                <Loader2 size={28} className="animate-spin" aria-hidden style={{ color: "var(--green)" }} />
+                <p className="mt-4 text-sm" style={{ color: "var(--slate)" }}>
+                  {bulkLoading ? bulkPhase || "Screening addresses…" : "Checking the property…"}
+                </p>
+              </div>
+            ) : sorted.length === 0 ? (
+              <NoSearchResults />
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {pageRows.map((slim) => (
+                    <FeasCard
+                      key={slim.id}
+                      slim={slim}
+                      favorite={favoritesSet.has(slim.address.trim().toLowerCase())}
+                      onToggleFavorite={() => toggleFavorite(slim.address)}
+                      onOpen={() => setSelectedId(slim.id)}
+                    />
+                  ))}
+                </div>
+
+                {visible < sorted.length && (
+                  <div className="mt-8 flex justify-center">
+                    <button
+                      type="button"
+                      className="pa-btn"
+                      onClick={() => setVisible((v) => v + PAGE)}
+                    >
+                      Show more ({sorted.length - visible} left)
+                    </button>
+                  </div>
+                )}
+
+                <p className="mt-8 text-xs leading-relaxed" style={{ color: "var(--slate)" }}>
+                  Preliminary GIS estimate, not a permit or legal opinion. Assessed value shown until
+                  MLS is integrated. We confirm everything before any acquisition.
+                </p>
+              </>
+            )}
+          </main>
         </>
       )}
     </div>

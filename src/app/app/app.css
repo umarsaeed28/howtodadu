@@ -2,21 +2,21 @@
    tokens never leak into the existing howtodadu theme or the /pencil landing. */
 
 .pencil-app {
-  --paper: #f4f5f2;
+  --paper: #f7f8f6;
   --card: #ffffff;
-  --ink: #1d1f22;
-  --slate: #5a5e5c;
-  --green: #1e6b45;
+  --ink: #14161a;
+  --slate: #5b6066;
+  --green: #1f6b45;
   --green-bright: #34a867;
-  --green-tint: #e7f1ea;
+  --green-tint: #ecf3ee;
   --amber: #b07a1e;
   --amber-tint: #f6edda;
   --red: #b23a2e;
   --red-tint: #f5e3e0;
   --blue: #21527d;
-  --hairline: rgba(29, 31, 34, 0.12);
-  --shadow-raised: 0 1px 3px rgba(29, 31, 34, 0.06);
-  --shadow-pop: 0 6px 24px rgba(29, 31, 34, 0.14);
+  --hairline: rgba(20, 22, 26, 0.1);
+  --shadow-raised: 0 1px 2px rgba(20, 22, 26, 0.04);
+  --shadow-pop: 0 6px 24px rgba(20, 22, 26, 0.12);
 
   background-color: var(--paper);
   color: var(--ink);
@@ -25,7 +25,13 @@
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  min-height: 100vh;
+}
+
+/* Content pad used by simple product pages (saved, daily deals). */
+.app-content-pad {
+  max-width: 1140px;
+  margin-inline: auto;
+  padding: 40px 24px 80px;
 }
 
 .pencil-app *,

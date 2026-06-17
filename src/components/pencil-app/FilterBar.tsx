@@ -36,7 +36,7 @@ export default function FilterBar() {
 
   return (
     <div
-      className="sticky top-[53px] z-20 border-b bg-[var(--paper)]"
+      className="sticky top-0 z-20 border-b bg-[var(--paper)]"
       style={{ borderColor: "var(--hairline)" }}
     >
       {/* Mobile search collapses into the filter bar */}

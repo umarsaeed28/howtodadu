@@ -1,4 +1,3 @@
-import AppBar from "@/components/pencil-app/AppBar";
 import ParcelCard from "@/components/pencil-app/ParcelCard";
 import SubscribeBanner from "@/components/pencil-app/SubscribeBanner";
 import DealsDate from "@/components/pencil-app/DealsDate";
@@ -12,9 +11,7 @@ export default function DailyDealsPage() {
     .sort((a, b) => b.marginPct - a.marginPct);
 
   return (
-    <div className="min-h-dvh pb-20 md:pb-0">
-      <AppBar />
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
+      <main className="app-content-pad space-y-6">
         <header>
           <p className="pa-eyebrow" style={{ color: "var(--blue)" }}>
             Daily sourcing · <DealsDate />
@@ -42,6 +39,5 @@ export default function DailyDealsPage() {
           ))}
         </div>
       </main>
-    </div>
   );
 }
