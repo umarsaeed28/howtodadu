@@ -110,6 +110,8 @@ export default function ParcelDealWorkspace({ parcel }: { parcel: Parcel }) {
           initialInputs={initialInputs}
           showResult={false}
           neighborhood={parcel.neighborhood}
+          lotSqft={parcel.lotSqft}
+          zoning={parcel.zoning}
         />
       </section>
 

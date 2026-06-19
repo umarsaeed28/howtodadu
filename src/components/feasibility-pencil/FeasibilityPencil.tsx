@@ -258,8 +258,8 @@ export default function FeasibilityPencil() {
             Check a Seattle address.
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed" style={{ color: "var(--slate)" }}>
-            Enter an address to see what the lot allows, the ways to build it, and an early read on
-            whether it pencils. No signup.
+            Enter an address to see what the property allows, the ways to build it, and an early read
+            on whether it pencils. No signup.
           </p>
 
           {errorBanner && (

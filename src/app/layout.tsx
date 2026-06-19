@@ -47,9 +47,9 @@ const hanken = Hanken_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Pencil — See what a lot can become.",
+  title: "Pencil — See what a property can become.",
   description:
-    "Pencil helps you find, plan, and build middle housing in Seattle. It reads the parcel, the zoning, and real costs, then tells you what a lot can become and whether it pencils.",
+    "Pencil helps you find, plan, and build middle housing in Seattle. It reads the parcel, the zoning, and real costs, then tells you what a property can become and whether it pencils.",
   keywords: [
     "Seattle middle housing",
     "DADU Seattle",
@@ -59,9 +59,9 @@ export const metadata: Metadata = {
     "ADU Seattle",
   ],
   openGraph: {
-    title: "Pencil — See what a lot can become.",
+    title: "Pencil — See what a property can become.",
     description:
-      "Find, plan, and build middle housing in Seattle. Pencil tells you what a lot can become and whether it pencils.",
+      "Find, plan, and build middle housing in Seattle. Pencil tells you what a property can become and whether it pencils.",
     type: "website",
     locale: "en_US",
     url: "https://pencil.studio",
@@ -69,9 +69,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Pencil — See what a lot can become.",
+    title: "Pencil — See what a property can become.",
     description:
-      "Find, plan, and build middle housing in Seattle. Pencil tells you what a lot can become and whether it pencils.",
+      "Find, plan, and build middle housing in Seattle. Pencil tells you what a property can become and whether it pencils.",
   },
   robots: { index: true, follow: true },
 };

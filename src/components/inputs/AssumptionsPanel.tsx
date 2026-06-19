@@ -12,6 +12,7 @@ import {
 } from "@/lib/deal-store";
 import { usd, pct } from "@/lib/format";
 import { suggestComps } from "@/lib/feasibility/comps";
+import { computeFar, maxFarForZone } from "@/lib/feasibility/far";
 import VerdictPill from "@/components/pencil-app/VerdictPill";
 import AssumptionGroup from "./AssumptionGroup";
 import AssumptionField from "./AssumptionField";
@@ -32,6 +33,8 @@ export default function AssumptionsPanel({
   initialInputs,
   showResult = true,
   neighborhood,
+  lotSqft,
+  zoning,
 }: {
   dealId: string;
   initialInputs: DealInputs;
@@ -39,6 +42,10 @@ export default function AssumptionsPanel({
   showResult?: boolean;
   /** Submarket used to suggest resale value from comps. */
   neighborhood?: string;
+  /** Lot area, used to compute a live floor area ratio (FAR) for the scenario. */
+  lotSqft?: number | null;
+  /** Zone label, used for the max-FAR estimate. */
+  zoning?: string | null;
 }) {
   const ensure = useDealStore((s) => s.ensure);
   const setField = useDealStore((s) => s.setField);
@@ -58,6 +65,12 @@ export default function AssumptionsPanel({
   const newBuild = inputs.hard.buildableSqft * inputs.hard.costPerSqft;
   const rehab = (inputs.hard.rehabSqft ?? 0) * (inputs.hard.rehabCostPerSqft ?? 0);
   const hb = inputs.hard.hardCostOverride ?? newBuild + rehab;
+
+  // Floor area ratio — recomputed live as buildable/rehab area changes.
+  const proposedFloorArea = inputs.hard.buildableSqft + (inputs.hard.rehabSqft ?? 0);
+  const far = computeFar(proposedFloorArea, lotSqft);
+  const maxFar = maxFarForZone(zoning);
+  const farOverMax = far.ratio != null && maxFar != null && far.ratio > maxFar;
 
   // ARV (after-repair / total resale value) is the per-unit price across all
   // units. Editable from either side: changing one updates the other.
@@ -203,6 +216,30 @@ export default function AssumptionsPanel({
           step={5}
           onChange={(v) => set("hard", "rehabCostPerSqft", v as number)}
         />
+
+        {lotSqft != null && lotSqft > 0 && (
+          <div
+            className="mt-2 flex items-center justify-between gap-3 rounded-[6px] px-3 py-2.5"
+            style={{ background: farOverMax ? "var(--amber-tint, #fdf6e7)" : "var(--green-tint)" }}
+          >
+            <div className="min-w-0">
+              <p className="text-sm" style={{ color: "var(--ink)" }}>
+                Floor area ratio (FAR)
+              </p>
+              <p className="pa-mono text-xs" style={{ color: "var(--slate)" }}>
+                {proposedFloorArea.toLocaleString()} sq ft floor ÷ {Math.round(lotSqft).toLocaleString()} sq ft lot
+                {maxFar != null ? ` · max ~${maxFar.toFixed(2)} est.` : ""}
+              </p>
+            </div>
+            <span
+              className="pa-mono shrink-0 text-lg font-medium"
+              style={{ color: farOverMax ? "var(--amber)" : "var(--green)" }}
+              title={farOverMax ? "Above the estimated max FAR for this zone" : undefined}
+            >
+              {far.display}
+            </span>
+          </div>
+        )}
 
         <SubLabel label="Subtotal + contingency" value={usd(result.costBreakdown.hard)} />
         <AssumptionField

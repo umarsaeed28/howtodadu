@@ -38,7 +38,7 @@ export default function Home() {
       <Section className="s-section">
         <Container style={{ maxWidth: 880, textAlign: "center", marginInline: "auto" }}>
           <Heading level={1} style={{ marginInline: "auto" }}>
-            See what a lot can become.
+            See what a property can become.
           </Heading>
           <Lede style={{ marginTop: 22, marginInline: "auto", maxWidth: "40rem" }}>
             Pencil reads a parcel, the zoning, and real costs, then tells you what you can build and
@@ -175,7 +175,7 @@ export default function Home() {
         <Container>
           <Card style={{ padding: "clamp(2rem, 5vw, 4rem)", textAlign: "center" }}>
             <Heading level={2} style={{ marginInline: "auto", maxWidth: "20ch" }}>
-              Check any Seattle lot, free.
+              Check any Seattle property, free.
             </Heading>
             <Lede style={{ marginTop: 16, marginInline: "auto", maxWidth: "34rem" }}>
               No signup. Enter an address and see what it allows, the options, and an early read on the
