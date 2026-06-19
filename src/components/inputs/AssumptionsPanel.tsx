@@ -72,16 +72,40 @@ export default function AssumptionsPanel({
   const maxFar = maxFarForZone(zoning);
   const farOverMax = far.ratio != null && maxFar != null && far.ratio > maxFar;
 
-  // ARV (after-repair / total resale value) is the per-unit price across all
-  // units. Editable from either side: changing one updates the other.
-  const perUnit = inputs.exit.salePricePerUnit ?? 0;
-  const arv = perUnit * inputs.units;
+  // Per-unit ARV: each unit is priced individually and summed to total ARV.
+  const units = Math.max(inputs.units, 1);
+  const unitPrices: number[] = Array.from({ length: units }, (_, i) => {
+    const arr = inputs.exit.unitSalePrices;
+    return arr?.[i] ?? arr?.[(arr?.length ?? 0) - 1] ?? inputs.exit.salePricePerUnit ?? 0;
+  });
+  const defaultUnitPrices: number[] = Array.from({ length: units }, (_, i) => {
+    const arr = defaults.exit.unitSalePrices;
+    return arr?.[i] ?? defaults.exit.salePricePerUnit ?? 0;
+  });
+  const arv = unitPrices.reduce((a, b) => a + b, 0);
   const comps = suggestComps({
     neighborhood,
-    units: inputs.units,
+    units,
     buildableSqft: inputs.hard.buildableSqft,
   });
-  const compsApplied = perUnit === comps.pricePerUnit;
+  const compsApplied = unitPrices.length > 0 && unitPrices.every((p) => p === comps.pricePerUnit);
+
+  function setUnitPrice(i: number, v: number) {
+    const next = [...unitPrices];
+    next[i] = v;
+    setField(dealId, "exit", "unitSalePrices", next);
+    setField(
+      dealId,
+      "exit",
+      "salePricePerUnit",
+      Math.round(next.reduce((a, b) => a + b, 0) / Math.max(units, 1))
+    );
+  }
+  function applyComps() {
+    const next = Array.from({ length: units }, () => comps.pricePerUnit);
+    setField(dealId, "exit", "unitSalePrices", next);
+    setField(dealId, "exit", "salePricePerUnit", comps.pricePerUnit);
+  }
 
   function edited<G extends DealGroup, K extends keyof DealInputs[G]>(g: G, k: K): boolean {
     return inputs[g][k] !== defaults[g][k];
@@ -454,33 +478,35 @@ export default function AssumptionsPanel({
           </>
         ) : (
           <>
-            <AssumptionField
-              kind="currency"
-              label="Sale price / unit"
-              value={inputs.exit.salePricePerUnit ?? 0}
-              edited={edited("exit", "salePricePerUnit")}
-              note={`${inputs.units} units → ${usd(arv)} ARV`}
-              min={0}
-              step={5000}
-              onChange={(v) => set("exit", "salePricePerUnit", v as number)}
-            />
-            <AssumptionField
-              kind="currency"
-              label="ARV (total resale value)"
-              value={arv}
-              edited={edited("exit", "salePricePerUnit")}
-              note={`${usd(perUnit)} / unit × ${inputs.units}`}
-              min={0}
-              step={10000}
-              onChange={(v) =>
-                set("exit", "salePricePerUnit", Math.round((v as number) / Math.max(inputs.units, 1)))
-              }
-            />
+            <SubLabel label="Resale value by unit" value={usd(arv)} />
+            {unitPrices.map((p, i) => (
+              <AssumptionField
+                key={i}
+                kind="currency"
+                label={`Unit ${i + 1} ARV`}
+                value={p}
+                edited={p !== defaultUnitPrices[i]}
+                min={0}
+                step={5000}
+                onChange={(v) => setUnitPrice(i, v as number)}
+              />
+            ))}
+            <div
+              className="mt-1 flex items-center justify-between rounded-[6px] px-3 py-2.5"
+              style={{ background: "var(--green-tint)" }}
+            >
+              <span className="text-sm font-medium" style={{ color: "var(--ink)" }}>
+                Total ARV · {units} {units === 1 ? "unit" : "units"}
+              </span>
+              <span className="pa-mono text-base font-medium" style={{ color: "var(--ink)" }}>
+                {usd(arv)}
+              </span>
+            </div>
             <SuggestionRow
               text={`Comps suggest ${usd(comps.pricePerUnit)} / unit · ${usd(comps.arv)} ARV`}
               hint={comps.basis}
               applied={compsApplied}
-              onApply={() => set("exit", "salePricePerUnit", comps.pricePerUnit)}
+              onApply={applyComps}
             />
           </>
         )}

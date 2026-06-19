@@ -46,7 +46,10 @@ export interface DealInputs {
   exit: {
     strategy: ExitStrategy;
     salePricePerSqft?: number;
+    /** Average sale price per unit. Kept as a seed/fallback; unitSalePrices wins. */
     salePricePerUnit?: number;
+    /** Per-unit resale value (ARV). Each unit is priced individually and summed. */
+    unitSalePrices?: number[];
     rentPerUnitMonthly?: number;
     vacancyPct?: number;
     capRatePct?: number;
@@ -132,11 +135,19 @@ function exitEconomics(
     return { grossRevenue: stabilizedValue, stabilizedValue, yieldOnCost };
   }
 
-  // sell_finished / sell_permit_ready share the same revenue formula; the inputs
-  // (build cost, sale price) differ to reflect the strategy.
+  // sell_finished / sell_permit_ready share the same revenue formula. Per-unit
+  // ARV is the source of truth: each unit is priced individually and summed.
+  // A shorter array repeats its last value; a per-unit average or $/sqft are
+  // fallbacks for inputs that never set explicit unit prices.
   let gross = 0;
-  if (e.salePricePerUnit != null) gross = e.salePricePerUnit * units;
-  else if (e.salePricePerSqft != null) gross = e.salePricePerSqft * inputs.hard.buildableSqft;
+  const arr = e.unitSalePrices;
+  if (arr && arr.length > 0) {
+    for (let i = 0; i < units; i++) gross += arr[i] ?? arr[arr.length - 1] ?? 0;
+  } else if (e.salePricePerUnit != null) {
+    gross = e.salePricePerUnit * units;
+  } else if (e.salePricePerSqft != null) {
+    gross = e.salePricePerSqft * inputs.hard.buildableSqft;
+  }
   return { grossRevenue: gross };
 }
 

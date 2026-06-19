@@ -60,11 +60,26 @@ describe("computeFeasibility", () => {
     const r = computeFeasibility({
       ...base,
       hard: { ...base.hard, hardCostOverride: 0 },
-      exit: { ...base.exit, strategy: "sell_permit_ready", salePricePerUnit: 250_000 },
+      exit: {
+        ...base.exit,
+        strategy: "sell_permit_ready",
+        salePricePerUnit: 250_000,
+        unitSalePrices: Array.from({ length: base.units }, () => 250_000),
+      },
     });
     expect(r.grossRevenue).toBe(250_000 * base.units);
     // With no vertical build, margin on cost should be strongly positive.
     expect(r.marginOnCost).toBeGreaterThan(0);
+  });
+
+  it("sums per-unit ARV when unitSalePrices is set", () => {
+    const base = inputs();
+    const prices = [600_000, 575_000, 550_000, 525_000, 500_000, 480_000];
+    const r = computeFeasibility({
+      ...base,
+      exit: { ...base.exit, strategy: "sell_finished", unitSalePrices: prices },
+    });
+    expect(r.grossRevenue).toBe(prices.reduce((a, b) => a + b, 0));
   });
 
   it("hold_rent produces a stabilized value and yield on cost", () => {

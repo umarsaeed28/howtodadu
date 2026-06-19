@@ -135,6 +135,7 @@ export function baseDealInputs(opts: {
     exit: {
       strategy: "sell_finished",
       salePricePerUnit: c.salePricePerUnit,
+      unitSalePrices: Array.from({ length: Math.max(units, 1) }, () => c.salePricePerUnit),
       rentPerUnitMonthly: c.rentPerUnitMonthly,
       vacancyPct: 5,
       capRatePct: 5.5,
@@ -189,6 +190,7 @@ export function parcelToDealInputs(parcel: Parcel): DealInputs {
   // Anchor sale price so net revenue (after selling costs) ≈ projectedValue.
   const grossTarget = parcel.projectedValue / (1 - inputs.exit.sellingCostsPct / 100);
   inputs.exit.salePricePerUnit = Math.round(grossTarget / units);
+  inputs.exit.unitSalePrices = Array.from({ length: units }, () => inputs.exit.salePricePerUnit ?? 0);
 
   return inputs;
 }

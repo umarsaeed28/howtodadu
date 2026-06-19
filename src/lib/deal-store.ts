@@ -83,10 +83,20 @@ export const useDealStore = create<DealState>((set) => ({
       const prevUnits = Math.max(entry.inputs.units, 1);
       const perUnitSqft = entry.inputs.hard.buildableSqft / prevUnits;
       const buildableSqft = Math.round(perUnitSqft * nextUnits);
+      // Resize per-unit ARV to match the new unit count: keep existing prices,
+      // fill any new units with the last known price (or the per-unit fallback).
+      const prevPrices = entry.inputs.exit.unitSalePrices ?? [];
+      const fillPrice =
+        prevPrices[prevPrices.length - 1] ?? entry.inputs.exit.salePricePerUnit ?? 0;
+      const unitSalePrices = Array.from(
+        { length: nextUnits },
+        (_, i) => prevPrices[i] ?? fillPrice
+      );
       const inputs: DealInputs = {
         ...entry.inputs,
         units: nextUnits,
         hard: { ...entry.inputs.hard, buildableSqft, hardCostOverride: undefined },
+        exit: { ...entry.inputs.exit, unitSalePrices },
       };
       return { deals: { ...s.deals, [dealId]: { ...entry, inputs } } };
     }),

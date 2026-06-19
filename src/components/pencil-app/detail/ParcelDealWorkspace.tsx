@@ -69,7 +69,11 @@ export default function ParcelDealWorkspace({ parcel }: { parcel: Parcel }) {
           ...inputs,
           hard: { ...inputs.hard, buildableSqft: d.units * c.unitSqft, hardCostOverride: undefined },
           soft: { ...inputs.soft, permitsAndFees: c.permitsPerUnit * d.units },
-          exit: { ...inputs.exit, salePricePerUnit: c.salePricePerUnit },
+          exit: {
+            ...inputs.exit,
+            salePricePerUnit: c.salePricePerUnit,
+            unitSalePrices: Array.from({ length: d.units }, () => c.salePricePerUnit),
+          },
           units: d.units,
         };
         const r = computeFeasibility(si);
