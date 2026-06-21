@@ -5,7 +5,7 @@ import FeasibilityPencil from "@/components/feasibility-pencil/FeasibilityPencil
 export const metadata: Metadata = {
   title: "Check a property — Pencil",
   description:
-    "See what a Seattle lot can become. Get an early read on middle-housing potential, with a clear score and verdict. Preliminary insights from Seattle City GIS.",
+    "Free feasibility check for Seattle properties. See what's allowed, the build options, and a complete guide for each scenario.",
 };
 
 export default function FeasibilityPage() {

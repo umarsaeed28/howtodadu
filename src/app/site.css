@@ -330,6 +330,9 @@
 .site-nav-link[data-active="true"] {
   color: var(--green);
 }
+.site-nav-link[data-primary="true"] {
+  font-weight: 600;
+}
 .site-actions {
   display: none;
   align-items: center;

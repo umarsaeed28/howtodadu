@@ -5,8 +5,7 @@ const GROUPS = [
   {
     title: "Product",
     links: [
-      { href: "/product", label: "What Pencil does" },
-      { href: "/app", label: "Explore deals" },
+      { href: "/product", label: "How it works" },
       { href: "/feasibility", label: "Check a property" },
     ],
   },
@@ -53,8 +52,8 @@ export default function Footer() {
             <span className="site-brand-name">Pencil</span>
           </Link>
           <p className="s-body" style={{ marginTop: 14, maxWidth: "22rem", fontSize: "0.95rem" }}>
-            Find, plan, and build middle housing in Seattle. We read the parcel, the zoning, and real
-            costs, then tell you whether it pencils.
+            See what a property can become. Pencil reads the parcel, the zoning, and the build
+            options, then opens a complete guide for each realistic scenario.
           </p>
           <div style={{ marginTop: 20, maxWidth: "22rem" }}>
             <p className="site-footer-coltitle">Stay in the loop</p>
@@ -85,9 +84,7 @@ export default function Footer() {
       <div className="site-footer-base">
         <div className="site-footer-base-inner">
           <span>© {new Date().getFullYear()} Pencil. All rights reserved.</span>
-          <span>
-            Estimates are preliminary and not a guarantee of permit outcomes or returns.
-          </span>
+          <span>Estimates are preliminary and not a guarantee of permit outcomes.</span>
         </div>
       </div>
     </footer>

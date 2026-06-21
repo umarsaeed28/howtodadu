@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 
 const NAV = [
-  { href: "/product", label: "Product" },
-  { href: "/feasibility", label: "Feasibility" },
+  { href: "/product", label: "How it works" },
+  { href: "/feasibility", label: "Check a property", primary: true },
   { href: "/insights", label: "Insights" },
   { href: "/company", label: "Company" },
 ];
@@ -46,7 +46,6 @@ export default function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Only the home hero is light enough to host a transparent header.
   const solid = scrolled || pathname !== "/";
 
   return (
@@ -61,6 +60,7 @@ export default function Header() {
               href={l.href}
               className="site-nav-link"
               data-active={isActive(pathname, l.href)}
+              data-primary={l.primary ? true : undefined}
             >
               {l.label}
             </Link>
@@ -68,10 +68,10 @@ export default function Header() {
         </nav>
 
         <div className="site-actions">
-          <Link href="/app" className="s-btn s-btn--ghost">
-            Explore deals
+          <Link href="/feasibility" className="s-btn s-btn--primary">
+            Check a property
           </Link>
-          <Link href="/contact" className="s-btn s-btn--primary">
+          <Link href="/contact" className="s-btn s-btn--ghost">
             Talk to us
           </Link>
         </div>
@@ -89,7 +89,14 @@ export default function Header() {
 
       {open && (
         <div className="site-sheet" role="dialog" aria-modal="true" aria-label="Menu">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: "var(--nav-h)" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              height: "var(--nav-h)",
+            }}
+          >
             <Brand onClick={() => setOpen(false)} />
             <button
               type="button"
@@ -101,19 +108,24 @@ export default function Header() {
             </button>
           </div>
           <nav style={{ display: "flex", flexDirection: "column", marginTop: 8 }} aria-label="Mobile">
-            <Link href="/app" className="site-sheet-link" onClick={() => setOpen(false)}>
-              Explore deals
-            </Link>
             {NAV.map((l) => (
               <Link key={l.href} href={l.href} className="site-sheet-link" onClick={() => setOpen(false)}>
                 {l.label}
               </Link>
             ))}
           </nav>
-          <div style={{ marginTop: "auto", paddingTop: 24 }}>
+          <div style={{ marginTop: "auto", paddingTop: 24, display: "flex", flexDirection: "column", gap: 10 }}>
+            <Link
+              href="/feasibility"
+              className="s-btn s-btn--primary s-btn--lg"
+              style={{ width: "100%" }}
+              onClick={() => setOpen(false)}
+            >
+              Check a property
+            </Link>
             <Link
               href="/contact"
-              className="s-btn s-btn--primary s-btn--lg"
+              className="s-btn s-btn--ghost s-btn--lg"
               style={{ width: "100%" }}
               onClick={() => setOpen(false)}
             >

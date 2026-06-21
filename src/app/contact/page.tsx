@@ -6,7 +6,7 @@ import ContactForm from "@/components/site/ContactForm";
 export const metadata: Metadata = {
   title: "Talk to us — Pencil",
   description:
-    "Tell us what you're looking for. We'll show you what's possible, and whether it pencils.",
+    "Tell us about a property or project. We will walk through what it allows and the realistic build paths.",
 };
 
 export default function ContactPage() {
@@ -18,11 +18,11 @@ export default function ContactPage() {
             <div>
               <Eyebrow>Talk to us</Eyebrow>
               <Heading level={1} style={{ marginTop: 18 }}>
-                Let&apos;s look at a deal together.
+                Planning a project?
               </Heading>
               <Lede style={{ marginTop: 22, maxWidth: "34rem" }}>
-                Tell us your market, your budget, and your timeline. We&apos;ll come back with what is
-                possible and whether the numbers work.
+                Tell us about the property. We will walk through what it allows, the build options, and
+                what to verify before you commit.
               </Lede>
               <div style={{ marginTop: 28, display: "flex", flexWrap: "wrap", gap: 12 }}>
                 <Button href="mailto:hello@pencil.studio?subject=Talk%20to%20us" variant="outline">

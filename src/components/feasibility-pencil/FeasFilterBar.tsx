@@ -3,17 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Upload, Star } from "lucide-react";
 import FilterPopover from "@/components/pencil-app/FilterPopover";
-import type { Verdict } from "@/lib/parcels";
 import type { FeasSortKey } from "./types";
 
-const VERDICTS: { key: Verdict; label: string }[] = [
-  { key: "PENCILS", label: "Pencils" },
-  { key: "TIGHT", label: "Tight" },
-  { key: "NO", label: "No" },
-];
-
 const SORTS: { key: FeasSortKey; label: string }[] = [
-  { key: "score", label: "Highest score" },
+  { key: "score", label: "Strongest potential" },
   { key: "lot", label: "Largest lot" },
   { key: "az", label: "Address A–Z" },
   { key: "newest", label: "Newest" },
@@ -108,10 +101,6 @@ function CheckRow({
 
 export default function FeasFilterBar({
   count,
-  pencilsOnly,
-  onTogglePencils,
-  verdicts,
-  onToggleVerdict,
   zoningOptions,
   zonings,
   onToggleZoning,
@@ -124,10 +113,6 @@ export default function FeasFilterBar({
   busy,
 }: {
   count: number;
-  pencilsOnly: boolean;
-  onTogglePencils: () => void;
-  verdicts: Set<Verdict>;
-  onToggleVerdict: (v: Verdict) => void;
   zoningOptions: string[];
   zonings: Set<string>;
   onToggleZoning: (z: string) => void;
@@ -147,37 +132,6 @@ export default function FeasFilterBar({
       style={{ background: "var(--card)", borderColor: "var(--hairline)" }}
     >
       <div className="mx-auto flex max-w-[1500px] items-center gap-2 overflow-x-auto px-4 py-2.5 md:px-6">
-        <button
-          type="button"
-          className={`pa-chip ${pencilsOnly ? "pa-chip-active" : ""}`}
-          aria-pressed={pencilsOnly}
-          onClick={onTogglePencils}
-        >
-          Pencils only
-        </button>
-
-        <FilterPopover
-          label="Verdict"
-          active={verdicts.size > 0}
-          summary={verdicts.size > 0 ? `Verdict · ${verdicts.size}` : null}
-        >
-          {() => (
-            <div>
-              <p className="pa-eyebrow mb-2" style={{ color: "var(--slate)" }}>
-                Verdict
-              </p>
-              {VERDICTS.map((v) => (
-                <CheckRow
-                  key={v.key}
-                  label={v.label}
-                  checked={verdicts.has(v.key)}
-                  onChange={() => onToggleVerdict(v.key)}
-                />
-              ))}
-            </div>
-          )}
-        </FilterPopover>
-
         <FilterPopover
           label="Zoning"
           active={zonings.size > 0}

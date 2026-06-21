@@ -33,8 +33,8 @@ export default function CompanyPage() {
             We are Pencil.
           </Heading>
           <Lede style={{ marginTop: 22, maxWidth: "42rem" }}>
-            We help people find, plan, and build middle housing in Seattle. We bring architecture,
-            development, and software together so the answer you get is one you can act on.
+            We help people plan and build middle housing in Seattle. Architecture, development, and
+            software in one place so the answer you get is one you can act on.
           </Lede>
         </Container>
       </Section>
