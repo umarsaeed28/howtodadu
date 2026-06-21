@@ -8,6 +8,8 @@ import type { FeasibilityTableRow } from "@/lib/feasibility-table-model";
 import FeasPropertyDetails from "./FeasPropertyDetails";
 import FeasWhatsAllowed from "./FeasWhatsAllowed";
 import FeasBuildGuides from "./FeasBuildGuides";
+import SitePlanGenerator from "./SitePlanGenerator";
+import FeasCodeRulesPanel from "./FeasCodeRulesPanel";
 import { feasPhoto, zillowUrl } from "@/lib/feasibility-verdict";
 import AssumptionsPanel from "@/components/inputs/AssumptionsPanel";
 import { slimToDealInputs } from "@/lib/feasibility/defaults";
@@ -162,6 +164,12 @@ export default function FeasDetailPanel({
 
         {detailRow && !loading && !error && (
           <>
+            <SitePlanGenerator
+              result={detailRow.result}
+              report={detailRow.report}
+              address={slim.address}
+            />
+            <FeasCodeRulesPanel result={detailRow.result} report={detailRow.report} />
             <FeasWhatsAllowed detailRow={detailRow} />
             <FeasBuildGuides detailRow={detailRow} />
           </>
