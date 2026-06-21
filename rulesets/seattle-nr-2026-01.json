@@ -1,0 +1,32 @@
+{
+  "rulesetId": "seattle-nr",
+  "version": "2026.01",
+  "effectiveDate": "2026-01-21",
+  "jurisdiction": "Seattle, WA",
+  "sourceLegislation": "Permanent Phase 1 NR zoning (Ord. 127376 / CB 120993) implementing WA HB 1110; ADUs per HB 1337 / Ord. 127211",
+  "disclaimer": "Preliminary feasibility ruleset. Constants marked verified:false are drawn from City summaries and architect zoning guides, NOT a line-by-line read of the live code, and MUST be confirmed against SMC 23.44.011 / 23.42.022 before use.",
+  "far": {
+    "citation": "SMC 23.44.011; ADU floor area per SMC 23.42.022",
+    "appliesTo": "total chargeable floor area of all structures on the lot",
+    "previousRule": "Flat 0.5 FAR regardless of density (pre-June 2025); ADUs were previously FAR-exempt. Both changed.",
+    "minFloorAreaSf": { "value": 2500, "verified": false, "source": "josharch.com NR guide (Apr 2026); confirm SMC 23.44.011", "note": "Budget is the GREATER of (tier FAR x net lot area) or this floor." },
+    "tiers": [
+      { "id": "far-0.6", "minSfPerUnit": 4000, "far": 0.6, "verified": false, "source": "Workshop315; josharch (2026)", "note": ">= 4000 sf lot area per unit" },
+      { "id": "far-0.8", "minSfPerUnit": 2201, "far": 0.8, "verified": false, "source": "Workshop315; srsarchitecture (Jan 2026)", "note": "2201-4000 sf lot area per unit" },
+      { "id": "far-1.0", "minSfPerUnit": 1601, "far": 1.0, "verified": false, "source": "Workshop315; srsarchitecture (Jan 2026)", "note": "1601-2200 sf lot area per unit" },
+      { "id": "far-1.6", "minSfPerUnit": 0, "far": 1.6, "verified": false, "source": "Workshop315; srsarchitecture (Jan 2026)", "note": "<= 1600 sf lot area per unit (base, before bonuses)" }
+    ],
+    "bonuses": [
+      { "id": "stacked-flats", "conditionId": "stackedFlats", "far": 1.8, "verified": false, "source": "srsarchitecture (Jan 2026)", "note": "Stacked flats; replaces base 1.6" },
+      { "id": "transit-green", "conditionId": "frequentTransitGreen", "far": 1.8, "verified": false, "source": "srsarchitecture (Jan 2026)", "note": "Frequent Transit Area with green space" },
+      { "id": "stacked-flats-green-or-school", "conditionId": "stackedFlatsGreenOrSchool", "far": 2.0, "verified": false, "source": "srsarchitecture (Jan 2026)", "note": "Qualifying stacked flats (tree/green or near school)" }
+    ],
+    "exemptFromFar": [
+      { "id": "below-grade", "verified": false, "source": "SMC 23.44.011.C.1-2", "note": "Underground stories, or portions no more than ~4 ft above grade." },
+      { "id": "common-walls", "verified": false, "source": "SMC 23.44.011.C.3", "note": "Common walls separating attached dwelling units." },
+      { "id": "accessible-type-a", "verified": false, "source": "srsarchitecture (Jan 2026)", "note": "Type A (accessible) unit floor area." },
+      { "id": "decks-balconies", "verified": false, "source": "srsarchitecture (Jan 2026)", "note": "Decks/balconies not used for common circulation (never GFA)." }
+    ]
+  },
+  "rsl": { "far": { "value": 0.75, "verified": false, "source": "josharch (2026)", "note": "RSL ~0.75; most RSL transitioning to LR1." } }
+}

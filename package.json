@@ -12,7 +12,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:far": "tsx --test tests/far.golden.test.ts",
+    "demo:far": "tsx tests/demo.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
@@ -42,6 +44,7 @@
     "eslint-config-next": "16.1.6",
     "shadcn": "^3.8.5",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "tw-animate-css": "^1.4.0",
     "typescript": "^5",
     "vitest": "^4.0.18"
