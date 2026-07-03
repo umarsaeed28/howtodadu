@@ -1,6 +1,8 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Section, Container, Heading, Lede, Button, Card, CardLink, Pill } from "@/components/ui";
+import { parcels } from "@/lib/parcels";
+import ParcelCard from "@/components/pencil-app/ParcelCard";
 import HomeAddressBar from "@/components/site/HomeAddressBar";
 import BuildGuidePreview from "@/components/site/BuildGuidePreview";
 
@@ -29,6 +31,11 @@ const INSIGHTS = [
 ];
 
 export default function Home() {
+  const featured = parcels
+    .filter((p) => p.verdict === "PENCILS")
+    .sort((a, b) => b.marginPct - a.marginPct)
+    .slice(0, 3);
+
   return (
     <main>
       <Section className="s-section">
@@ -40,10 +47,13 @@ export default function Home() {
             Enter a Seattle address. See what you can build, and a complete guide for every way to
             build it.
           </Lede>
-          <div style={{ marginTop: 32, display: "flex", justifyContent: "center" }}>
+          <div style={{ marginTop: 32, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <Button href="/feasibility" size="lg">
               Check a property
               <ArrowRight size={17} aria-hidden />
+            </Button>
+            <Button href="/app" variant="outline" size="lg">
+              Browse listings
             </Button>
           </div>
         </Container>
@@ -67,6 +77,32 @@ export default function Home() {
                 </p>
               </div>
             ))}
+          </div>
+        </Container>
+      </Section>
+
+      <Section soft>
+        <Container>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "flex-end",
+              justifyContent: "space-between",
+              gap: 16,
+            }}
+          >
+            <Heading level={2}>Listings with modeled ROI.</Heading>
+            <Link href="/app" className="s-btn s-btn--ghost">
+              Browse all listings <ArrowRight size={16} aria-hidden />
+            </Link>
+          </div>
+          <div className="pencil-app" style={{ background: "transparent", marginTop: 36 }}>
+            <div className="s-grid s-grid-3">
+              {featured.map((p) => (
+                <ParcelCard key={p.id} parcel={p} />
+              ))}
+            </div>
           </div>
         </Container>
       </Section>

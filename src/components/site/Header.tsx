@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 
 const NAV = [
   { href: "/product", label: "How it works" },
+  { href: "/app", label: "Browse listings" },
   { href: "/feasibility", label: "Check a property", primary: true },
   { href: "/insights", label: "Insights" },
   { href: "/company", label: "Company" },
@@ -68,6 +69,9 @@ export default function Header() {
         </nav>
 
         <div className="site-actions">
+          <Link href="/app" className="s-btn s-btn--ghost">
+            Browse listings
+          </Link>
           <Link href="/feasibility" className="s-btn s-btn--primary">
             Check a property
           </Link>
@@ -115,6 +119,14 @@ export default function Header() {
             ))}
           </nav>
           <div style={{ marginTop: "auto", paddingTop: 24, display: "flex", flexDirection: "column", gap: 10 }}>
+            <Link
+              href="/app"
+              className="s-btn s-btn--ghost s-btn--lg"
+              style={{ width: "100%" }}
+              onClick={() => setOpen(false)}
+            >
+              Browse listings
+            </Link>
             <Link
               href="/feasibility"
               className="s-btn s-btn--primary s-btn--lg"
