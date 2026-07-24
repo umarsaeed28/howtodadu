@@ -4,7 +4,14 @@ import { useState } from "react";
 import Image from "next/image";
 import { Heart, AlertTriangle, ExternalLink } from "lucide-react";
 import type { DashboardPropertySlim } from "@/lib/dashboard-normalize";
-import { feasPhoto, zillowUrl } from "@/lib/feasibility-verdict";
+import { verdictFromScore, feasPhoto, zillowUrl } from "@/lib/feasibility-verdict";
+import VerdictPill from "@/components/pencil-app/VerdictPill";
+
+const VERDICT_COLOR = {
+  PENCILS: "var(--green)",
+  TIGHT: "var(--amber)",
+  NO: "var(--red)",
+} as const;
 
 export default function FeasCard({
   slim,
@@ -36,6 +43,8 @@ export default function FeasCard({
     );
   }
 
+  const verdict = verdictFromScore(slim.daduScore);
+  const scoreColor = VERDICT_COLOR[verdict];
   const lot = slim.lotSizeSqft ? `${slim.lotSizeSqft.toLocaleString()} sq ft lot` : null;
   const primarySrc = feasPhoto(slim.address, slim.lat, slim.lng);
   const fallbackSrc = feasPhoto(slim.address);
@@ -64,12 +73,9 @@ export default function FeasCard({
           unoptimized
           onError={() => setImgErrored(true)}
         />
-        <span
-          className="absolute left-2 top-2 rounded-full px-2.5 py-1 text-xs font-medium"
-          style={{ background: "rgba(255,255,255,0.92)", color: "var(--ink)" }}
-        >
-          {slim.verdictLabel}
-        </span>
+        <div className="absolute left-2 top-2">
+          <VerdictPill verdict={verdict} size="md" />
+        </div>
         <button
           type="button"
           aria-label={favorite ? "Remove from saved" : "Save property"}
@@ -91,21 +97,31 @@ export default function FeasCard({
       </div>
 
       <div className="p-3">
-        <p className="pa-mono text-sm leading-snug" style={{ color: "var(--ink)" }}>
-          {slim.streetLine}
-        </p>
-        <p className="mt-1 text-xs" style={{ color: "var(--slate)" }}>
-          {slim.neighborhood}
-          {slim.zoning ? ` · ${slim.zoning}` : ""}
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="pa-mono text-2xl font-medium leading-none" style={{ color: scoreColor }}>
+            {slim.daduScore}
+            <span className="text-sm" style={{ color: "var(--slate)" }}>
+              {" "}
+              / 100
+            </span>
+          </span>
+          <span className="pa-mono text-sm" style={{ color: "var(--ink)" }}>
+            {slim.priceDisplay}
+          </span>
+        </div>
+
+        <p className="pa-mono mt-2 text-xs" style={{ color: "var(--slate)" }}>
+          {slim.zoning ?? "Zoning n/a"}
           {lot ? ` · ${lot}` : ""}
         </p>
-        <p className="mt-2 text-sm leading-snug" style={{ color: "var(--slate)" }}>
-          {slim.keyInsight}
+
+        <p className="pa-mono mt-2 text-sm leading-snug" style={{ color: "var(--ink)" }}>
+          {slim.streetLine}
         </p>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="text-xs" style={{ color: "var(--slate)" }}>
-            {slim.confidenceShort} confidence
-          </span>
+        <div className="mt-0.5 flex items-center justify-between gap-2">
+          <p className="text-xs" style={{ color: "var(--slate)" }}>
+            {slim.neighborhood} · {slim.confidenceShort} confidence
+          </p>
           <a
             href={zillowUrl(slim.address)}
             target="_blank"

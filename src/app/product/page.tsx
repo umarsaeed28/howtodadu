@@ -1,33 +1,33 @@
 import type { Metadata } from "next";
-import { ArrowRight, MapPin, BookOpen, Layers, ShieldCheck } from "lucide-react";
+import { ArrowRight, Database, Calculator, Map as MapIcon, ShieldCheck } from "lucide-react";
 import { Section, Container, Eyebrow, Heading, Lede, Body, Button, Card } from "@/components/ui";
 
 export const metadata: Metadata = {
-  title: "How it works — Pencil",
+  title: "Product — Pencil",
   description:
-    "Enter a Seattle address. See what you can build, and a complete guide for every way to build it.",
+    "Pencil reads the parcel, the zoning, and real construction costs, then tells you what you can build and whether it pencils.",
 };
 
 const PILLARS = [
   {
-    Icon: MapPin,
-    title: "Property feasibility",
-    body: "Zoning, overlays, transit proximity, and lot dimensions from county and city GIS, kept current with Seattle code.",
+    Icon: Database,
+    title: "Grounded in real data",
+    body: "Zoning, overlays, transit proximity, and lot dimensions pulled from county and city GIS, kept current with Seattle code.",
   },
   {
-    Icon: Layers,
-    title: "Build options",
-    body: "Every realistic housing type for the lot: DADU, townhomes, stacked flats, cottage housing, and more.",
+    Icon: Calculator,
+    title: "A real cost model",
+    body: "Not a per square foot guess. Quantities from the massing, priced against current local material and trade costs.",
   },
   {
-    Icon: BookOpen,
-    title: "Complete guides",
-    body: "For each option: what it is, why it fits, constraints to verify, risks to plan for, and the steps to build.",
+    Icon: MapIcon,
+    title: "A deal browser",
+    body: "Every active listing run through the full feasibility, sorted by margin, so you can see the deals that work.",
   },
   {
     Icon: ShieldCheck,
-    title: "Honest confidence",
-    body: "Rules-based reads are labeled high confidence. Site-specific items are flagged for verification before you commit.",
+    title: "A clear verdict",
+    body: "Unit yield, the best use, an early pro forma, and a plain verdict you can take to a lender.",
   },
 ];
 
@@ -36,17 +36,20 @@ export default function ProductPage() {
     <main>
       <Section>
         <Container style={{ maxWidth: 820 }}>
-          <Eyebrow>How it works</Eyebrow>
+          <Eyebrow>The product</Eyebrow>
           <Heading level={1} style={{ marginTop: 18 }}>
-            See what a property can become.
+            Pencil, the feasibility engine.
           </Heading>
           <Lede style={{ marginTop: 22, maxWidth: "40rem" }}>
-            Enter a Seattle address. Pencil reads the rules, lists every realistic build option, and
-            opens a complete guide for each one.
+            One tool that turns an address into an answer. It reads the rules, runs the real costs,
+            and tells you what a lot can become and whether the numbers work.
           </Lede>
-          <div style={{ marginTop: 30 }}>
+          <div style={{ marginTop: 30, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Button href="/feasibility" size="lg">
               Check a property <ArrowRight size={17} aria-hidden />
+            </Button>
+            <Button href="/app" variant="outline" size="lg">
+              Explore deals
             </Button>
           </div>
         </Container>
@@ -54,9 +57,9 @@ export default function ProductPage() {
 
       <Section soft>
         <Container>
-          <Eyebrow>The flow</Eyebrow>
+          <Eyebrow>How it is built</Eyebrow>
           <Heading level={2} style={{ marginTop: 14, maxWidth: "20ch" }}>
-            Address → options → guides.
+            Four parts, one answer.
           </Heading>
           <div className="s-grid s-grid-2" style={{ marginTop: 40 }}>
             {PILLARS.map(({ Icon, title, body }) => (
@@ -87,20 +90,39 @@ export default function ProductPage() {
       </Section>
 
       <Section>
-        <Container style={{ maxWidth: 720 }}>
-          <Eyebrow>Free to start</Eyebrow>
-          <Heading level={2} style={{ marginTop: 14 }}>
-            Value first, ask later.
-          </Heading>
-          <Body style={{ marginTop: 16 }}>
-            Anyone can check any Seattle property for free. You get what it allows, the build options,
-            and a guide for each scenario, with no signup. When you are ready to go deeper, we are
-            here.
-          </Body>
-          <div style={{ marginTop: 24 }}>
-            <Button href="/feasibility">
-              Try the free check <ArrowRight size={16} aria-hidden />
-            </Button>
+        <Container>
+          <div className="s-grid s-grid-2" style={{ alignItems: "center", gap: "clamp(2rem,5vw,4rem)" }}>
+            <div>
+              <Eyebrow>The feasibility check</Eyebrow>
+              <Heading level={2} style={{ marginTop: 14 }}>
+                Value first, ask later.
+              </Heading>
+              <Body style={{ marginTop: 16 }}>
+                Anyone can check any Seattle lot for free. You get what it allows, the options, and an
+                early read on the numbers, with no signup. It is the fastest way to see if a deal is
+                worth a closer look.
+              </Body>
+              <div style={{ marginTop: 24 }}>
+                <Button href="/feasibility">
+                  Try the free check <ArrowRight size={16} aria-hidden />
+                </Button>
+              </div>
+            </div>
+            <div>
+              <Eyebrow>The deal browser</Eyebrow>
+              <Heading level={2} style={{ marginTop: 14 }}>
+                The market, already underwritten.
+              </Heading>
+              <Body style={{ marginTop: 16 }}>
+                Stop hunting listings. Pencil scans new Puget Sound listings, runs each through the
+                full feasibility, and shows you only the ones that pencil, sorted by margin.
+              </Body>
+              <div style={{ marginTop: 24 }}>
+                <Button href="/app" variant="outline">
+                  Explore deals
+                </Button>
+              </div>
+            </div>
           </div>
         </Container>
       </Section>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Upload, MapPin, Layers, BookOpen } from "lucide-react";
+import { Loader2, Upload, MapPin, Calculator, BadgeCheck } from "lucide-react";
 import { fetchFeasibility } from "@/lib/feasibility";
 import FeasAddressSearch from "./FeasAddressSearch";
 import { generateADUReport } from "@/lib/adu-analysis";
@@ -13,6 +13,8 @@ import { fetchBulkFeasibilityInChunks } from "@/lib/bulk-feasibility-client";
 import { parseAddressesFromCsvText } from "@/lib/parse-csv-addresses";
 import { pushRecentAddress } from "@/lib/recent-addresses";
 import { useFavorites } from "@/hooks/useFavorites";
+import type { Verdict } from "@/lib/parcels";
+import { verdictFromScore } from "@/lib/feasibility-verdict";
 import FeasAppBar from "./FeasAppBar";
 import FeasFilterBar from "./FeasFilterBar";
 import FeasCard from "./FeasCard";
@@ -33,6 +35,8 @@ export default function FeasibilityPencil() {
   const [bulkPhase, setBulkPhase] = useState("");
   const [errorBanner, setErrorBanner] = useState("");
 
+  const [pencilsOnly, setPencilsOnly] = useState(false);
+  const [verdicts, setVerdicts] = useState<Set<Verdict>>(new Set());
   const [zonings, setZonings] = useState<Set<string>>(new Set());
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [sort, setSort] = useState<FeasSortKey>("score");
@@ -65,10 +69,13 @@ export default function FeasibilityPencil() {
   const filtered = useMemo(() => {
     return rows.filter((r) => {
       if (favoritesOnly && !favoritesSet.has(r.address.trim().toLowerCase())) return false;
+      const v = r.status === "analyzed" ? verdictFromScore(r.daduScore) : "NO";
+      if (pencilsOnly && v !== "PENCILS") return false;
+      if (!pencilsOnly && verdicts.size > 0 && !verdicts.has(v)) return false;
       if (zonings.size > 0 && !(r.zoning && zonings.has(r.zoning))) return false;
       return true;
     });
-  }, [rows, favoritesOnly, favoritesSet, zonings]);
+  }, [rows, favoritesOnly, favoritesSet, pencilsOnly, verdicts, zonings]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -90,7 +97,7 @@ export default function FeasibilityPencil() {
 
   useEffect(() => {
     setVisible(PAGE);
-  }, [zonings, favoritesOnly, sort]);
+  }, [pencilsOnly, verdicts, zonings, favoritesOnly, sort]);
 
   const pageRows = sorted.slice(0, visible);
   const selectedSlim = useMemo(
@@ -218,6 +225,15 @@ export default function FeasibilityPencil() {
     }
   }, [searchParams, runSingle]);
 
+  const toggleVerdict = useCallback((v: Verdict) => {
+    setVerdicts((prev) => {
+      const next = new Set(prev);
+      if (next.has(v)) next.delete(v);
+      else next.add(v);
+      return next;
+    });
+  }, []);
+
   const toggleZoning = useCallback((z: string) => {
     setZonings((prev) => {
       const next = new Set(prev);
@@ -242,8 +258,8 @@ export default function FeasibilityPencil() {
             Check a Seattle address.
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed" style={{ color: "var(--slate)" }}>
-            Enter an address to see what the property allows, the build options, and a complete guide
-            for each one. No signup.
+            Enter an address to see what the property allows, the ways to build it, and an early read
+            on whether it pencils. No signup.
           </p>
 
           {errorBanner && (
@@ -303,8 +319,8 @@ export default function FeasibilityPencil() {
           <div className="mx-auto mt-10 grid max-w-xl grid-cols-1 gap-3 text-left sm:grid-cols-3">
             {[
               { Icon: MapPin, title: "Reads the rules", body: "Zoning, overlays, and the transit test." },
-              { Icon: Layers, title: "Lists build options", body: "Every realistic housing type for the lot." },
-              { Icon: BookOpen, title: "Opens full guides", body: "Steps, constraints, and risks for each scenario." },
+              { Icon: Calculator, title: "Runs real costs", body: "Quantities priced against local trades." },
+              { Icon: BadgeCheck, title: "Gives a verdict", body: "A clear read, with the margin behind it." },
             ].map(({ Icon, title, body }) => (
               <div
                 key={title}
@@ -362,6 +378,10 @@ export default function FeasibilityPencil() {
           {hasResults && (
             <FeasFilterBar
               count={filtered.length}
+              pencilsOnly={pencilsOnly}
+              onTogglePencils={() => setPencilsOnly((p) => !p)}
+              verdicts={verdicts}
+              onToggleVerdict={toggleVerdict}
               zoningOptions={zoningOptions}
               zonings={zonings}
               onToggleZoning={toggleZoning}

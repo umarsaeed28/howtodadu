@@ -11,33 +11,33 @@ export default function DailyDealsPage() {
     .sort((a, b) => b.marginPct - a.marginPct);
 
   return (
-    <main className="app-content-pad space-y-6">
-      <header>
-        <p className="pa-eyebrow" style={{ color: "var(--blue)" }}>
-          Daily sourcing · <DealsDate />
-        </p>
-        <h1 className="pa-display mt-1 text-2xl">Parcels that pencil today</h1>
-        <p className="text-sm" style={{ color: "var(--slate)" }}>
-          <span className="pa-mono">{todaysDeals.length}</span> sample deals, ranked by ROI.
-        </p>
-      </header>
+      <main className="app-content-pad space-y-6">
+        <header>
+          <p className="pa-eyebrow" style={{ color: "var(--blue)" }}>
+            Daily sourcing · <DealsDate />
+          </p>
+          <h1 className="pa-display mt-1 text-2xl">Parcels that pencil today</h1>
+          <p className="text-sm" style={{ color: "var(--slate)" }}>
+            <span className="pa-mono">{todaysDeals.length}</span> new deals, ranked by margin.
+          </p>
+        </header>
 
-      <SubscribeBanner />
+        <SubscribeBanner />
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {todaysDeals.map((p, i) => (
-          <div key={p.id} className="relative">
-            <span
-              className="pa-mono absolute -left-1 -top-2 z-10 rounded-full px-2 py-0.5 text-xs"
-              style={{ background: "var(--ink)", color: "#fff" }}
-              aria-label={`Rank ${i + 1}`}
-            >
-              #{i + 1}
-            </span>
-            <ParcelCard parcel={p} />
-          </div>
-        ))}
-      </div>
-    </main>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {todaysDeals.map((p, i) => (
+            <div key={p.id} className="relative">
+              <span
+                className="pa-mono absolute -left-1 -top-2 z-10 rounded-full px-2 py-0.5 text-xs"
+                style={{ background: "var(--ink)", color: "#fff" }}
+                aria-label={`Rank ${i + 1}`}
+              >
+                #{i + 1}
+              </span>
+              <ParcelCard parcel={p} />
+            </div>
+          ))}
+        </div>
+      </main>
   );
 }

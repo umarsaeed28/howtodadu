@@ -2,15 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, Heart, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Heart, ExternalLink } from "lucide-react";
 import type { DashboardPropertySlim } from "@/lib/dashboard-normalize";
 import type { FeasibilityTableRow } from "@/lib/feasibility-table-model";
 import FeasPropertyDetails from "./FeasPropertyDetails";
-import FeasWhatsAllowed from "./FeasWhatsAllowed";
-import FeasBuildGuides from "./FeasBuildGuides";
-import SitePlanGenerator from "./SitePlanGenerator";
-import FeasCodeRulesPanel from "./FeasCodeRulesPanel";
-import { feasPhoto, zillowUrl } from "@/lib/feasibility-verdict";
+import { verdictFromScore, feasPhoto, zillowUrl } from "@/lib/feasibility-verdict";
+import VerdictPill from "@/components/pencil-app/VerdictPill";
 import AssumptionsPanel from "@/components/inputs/AssumptionsPanel";
 import { slimToDealInputs } from "@/lib/feasibility/defaults";
 import { computeFar, maxFarForZone } from "@/lib/feasibility/far";
@@ -20,7 +17,7 @@ function sqft(n: number | null | undefined): string {
   return `${Math.round(n).toLocaleString()} sq ft`;
 }
 
-function FactTile({ label, value }: { label: string; value: string }) {
+function FactTile({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div
       className="rounded-[10px] border px-3.5 py-3"
@@ -29,7 +26,10 @@ function FactTile({ label, value }: { label: string; value: string }) {
       <p className="pa-eyebrow" style={{ color: "var(--slate)" }}>
         {label}
       </p>
-      <p className="pa-mono mt-1 text-base font-medium" style={{ color: "var(--ink)" }}>
+      <p
+        className="pa-mono mt-1 text-base font-medium"
+        style={{ color: accent ? "var(--green)" : "var(--ink)" }}
+      >
         {value}
       </p>
     </div>
@@ -54,7 +54,6 @@ export default function FeasDetailPanel({
   onBack: () => void;
 }) {
   const [imgErrored, setImgErrored] = useState(false);
-  const [costsOpen, setCostsOpen] = useState(false);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -64,6 +63,7 @@ export default function FeasDetailPanel({
     return () => document.removeEventListener("keydown", onKey);
   }, [onBack]);
 
+  const verdict = slim.status === "analyzed" ? verdictFromScore(slim.daduScore) : null;
   const analyzed = slim.status === "analyzed";
   const photoSrc = imgErrored
     ? feasPhoto(slim.address)
@@ -72,8 +72,6 @@ export default function FeasDetailPanel({
   const dealInputs = analyzed ? slimToDealInputs(slim) : null;
   const existingFar = computeFar(slim.interiorSqftNum, slim.lotSizeSqft);
   const maxFar = maxFarForZone(slim.zoning);
-  const buildOptionCount =
-    detailRow?.report.housingOptions.filter((o) => o.allowed).length ?? null;
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -86,6 +84,7 @@ export default function FeasDetailPanel({
         className="overflow-hidden rounded-[14px] border"
         style={{ borderColor: "var(--hairline)", background: "var(--card)" }}
       >
+        {/* Hero photo with verdict overlay */}
         {analyzed && (
           <div className="relative aspect-[16/9] w-full" style={{ background: "var(--paper)" }}>
             <Image
@@ -97,17 +96,21 @@ export default function FeasDetailPanel({
               unoptimized
               onError={() => setImgErrored(true)}
             />
-            {buildOptionCount != null && buildOptionCount > 0 && (
-              <span
-                className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-medium"
-                style={{ background: "rgba(255,255,255,0.92)", color: "var(--ink)" }}
-              >
-                {buildOptionCount} build {buildOptionCount === 1 ? "option" : "options"}
-              </span>
+            {verdict && (
+              <div className="absolute left-3 top-3 flex items-center gap-2">
+                <VerdictPill verdict={verdict} size="md" />
+                <span
+                  className="pa-mono rounded-full px-2.5 py-1 text-xs font-medium"
+                  style={{ background: "rgba(255,255,255,0.92)", color: "var(--ink)" }}
+                >
+                  Score {slim.daduScore}/100
+                </span>
+              </div>
             )}
           </div>
         )}
 
+        {/* Address + actions */}
         <div className="flex items-start justify-between gap-3 px-4 pt-4 sm:px-5">
           <div className="min-w-0">
             <h2 className="pa-display text-xl" style={{ color: "var(--ink)" }}>
@@ -151,65 +154,38 @@ export default function FeasDetailPanel({
           </p>
         )}
 
+        {/* Key facts strip — Zillow style */}
         {analyzed && (
           <div className="grid grid-cols-2 gap-2.5 px-4 pt-4 sm:grid-cols-3 sm:px-5">
             <FactTile label="Lot size" value={sqft(slim.lotSizeSqft)} />
             <FactTile label="Building area" value={sqft(slim.interiorSqftNum)} />
-            <FactTile label="Build options" value={buildOptionCount != null ? `${buildOptionCount}` : "—"} />
+            <FactTile label="Units allowed (est.)" value={dealInputs ? `${dealInputs.units}` : "—"} />
             <FactTile label="Existing FAR" value={existingFar.display} />
-            <FactTile label="Max FAR (est.)" value={maxFar != null ? maxFar.toFixed(2) : "—"} />
+            <FactTile
+              label="Max FAR (est.)"
+              value={maxFar != null ? maxFar.toFixed(2) : "—"}
+            />
             <FactTile label="Assessed value" value={slim.priceDisplay} />
           </div>
         )}
 
-        {detailRow && !loading && !error && (
-          <>
-            <SitePlanGenerator
-              result={detailRow.result}
-              report={detailRow.report}
-              address={slim.address}
-            />
-            <FeasCodeRulesPanel result={detailRow.result} report={detailRow.report} />
-            <FeasWhatsAllowed detailRow={detailRow} />
-            <FeasBuildGuides detailRow={detailRow} />
-          </>
-        )}
-
+        {/* Model the deal */}
         {analyzed && dealInputs && (
-          <section aria-labelledby="model-costs-heading" className="px-4 pt-6 sm:px-5">
-            <button
-              type="button"
-              id="model-costs-heading"
-              className="flex w-full items-center justify-between gap-2 text-left"
-              aria-expanded={costsOpen}
-              onClick={() => setCostsOpen((o) => !o)}
-            >
-              <span className="pa-display text-base" style={{ color: "var(--ink)" }}>
-                Model costs (optional)
-              </span>
-              {costsOpen ? (
-                <ChevronUp size={18} aria-hidden style={{ color: "var(--slate)" }} />
-              ) : (
-                <ChevronDown size={18} aria-hidden style={{ color: "var(--slate)" }} />
-              )}
-            </button>
-            <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>
-              Adjust assumptions for a planning-level cost read. Not a final underwriting.
-            </p>
-            {costsOpen && (
-              <div className="mt-4">
-                <AssumptionsPanel
-                  dealId={`feas-${slim.id}`}
-                  initialInputs={dealInputs}
-                  neighborhood={slim.neighborhood}
-                  lotSqft={slim.lotSizeSqft}
-                  zoning={slim.zoning}
-                />
-              </div>
-            )}
+          <section aria-labelledby="model-deal-heading" className="px-4 pt-6 sm:px-5">
+            <h3 id="model-deal-heading" className="pa-display mb-3 text-base" style={{ color: "var(--ink)" }}>
+              Model the deal
+            </h3>
+            <AssumptionsPanel
+              dealId={`feas-${slim.id}`}
+              initialInputs={dealInputs}
+              neighborhood={slim.neighborhood}
+              lotSqft={slim.lotSizeSqft}
+              zoning={slim.zoning}
+            />
           </section>
         )}
 
+        {/* Property details */}
         <section aria-labelledby="property-details-heading" className="pt-6">
           <h3
             id="property-details-heading"

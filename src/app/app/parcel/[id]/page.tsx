@@ -65,6 +65,7 @@ export default async function ParcelDetail({
             <SimilarParcels parcel={parcel} />
           </div>
 
+          {/* Desktop right rail */}
           <aside className="hidden md:block">
             <div className="pa-card sticky top-20 p-4">
               <ActionBar parcel={parcel} />
@@ -73,6 +74,7 @@ export default async function ParcelDetail({
         </div>
       </main>
 
+      {/* Mobile sticky action bar */}
       <div
         className="fixed bottom-0 left-0 right-0 z-30 border-t bg-[var(--card)] p-3 md:hidden"
         style={{ borderColor: "var(--hairline)" }}
