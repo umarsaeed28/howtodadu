@@ -1,0 +1,14 @@
+# Secrets
+.env
+
+# Vector store (rebuildable from documents/ via `ingest`)
+storage/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/

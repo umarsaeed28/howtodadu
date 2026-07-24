@@ -1,0 +1,10 @@
+# FDE feasibility framework
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+
+# AI + RAG (shared with ../rag)
+openai>=1.30
+chromadb>=0.5.0
+python-dotenv>=1.0
+tiktoken>=0.7

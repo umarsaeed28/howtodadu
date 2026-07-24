@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pencil — Feasibility</title>
+<style>
+  :root {
+    --ink: #17181a;
+    --slate: #5b6570;
+    --line: #e7e9ec;
+    --paper: #f7f8f9;
+    --card: #ffffff;
+    --green: #1f9d57;
+    --amber: #b9770a;
+    --red: #c0392b;
+    --blue: #2f6bd6;
+    --shadow: 0 1px 2px rgba(16,18,20,.06), 0 8px 24px rgba(16,18,20,.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.5;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .mark {
+    width: 26px; height: 26px; border-radius: 7px; background: var(--ink);
+    display: grid; place-items: center;
+  }
+  .mark svg { display: block; }
+  h1 { font-size: 1.35rem; margin: 0; letter-spacing: -0.01em; }
+  .tag {
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--slate); border: 1px solid var(--line); border-radius: 999px;
+    padding: 2px 8px; margin-left: auto;
+  }
+  .lede { color: var(--slate); margin: 4px 0 24px; }
+  form {
+    display: flex; gap: 10px; background: var(--card); padding: 10px;
+    border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+  }
+  input[type=text] {
+    flex: 1; border: none; outline: none; font-size: 1rem; padding: 10px 12px;
+    background: transparent; color: var(--ink);
+  }
+  button {
+    border: none; background: var(--ink); color: #fff; font-size: .95rem;
+    font-weight: 600; padding: 10px 18px; border-radius: 8px; cursor: pointer;
+    transition: transform .05s ease, opacity .15s ease;
+  }
+  button:hover { opacity: .92; }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .5; cursor: default; }
+  .examples { margin-top: 12px; font-size: .85rem; color: var(--slate); }
+  .examples a { color: var(--blue); text-decoration: none; cursor: pointer; margin-right: 12px; }
+  .examples a:hover { text-decoration: underline; }
+
+  .status { margin-top: 22px; color: var(--slate); font-size: .92rem; }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line);
+    border-top-color: var(--slate); border-radius: 50%; animation: spin .7s linear infinite;
+    vertical-align: -2px; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .report { margin-top: 26px; display: none; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px 22px; box-shadow: var(--shadow); margin-bottom: 16px;
+  }
+  .rhead { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .rhead h2 { margin: 0; font-size: 1.15rem; }
+  .modepill {
+    font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
+    padding: 3px 9px; border-radius: 999px; font-weight: 700; margin-left: auto;
+  }
+  .mode-mock { background: #fdf3e3; color: var(--amber); }
+  .mode-live { background: #e7f6ee; color: var(--green); }
+  .summary { margin: 12px 0 0; }
+
+  .facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .fact {
+    font-size: .82rem; background: var(--paper); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 10px;
+  }
+  .fact b { color: var(--slate); font-weight: 600; }
+
+  h3.sec { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--slate); margin: 0 0 12px; }
+  .item { padding: 12px 0; border-top: 1px solid var(--line); }
+  .item:first-of-type { border-top: none; padding-top: 0; }
+  .item .label { font-weight: 600; }
+  .item .detail { color: var(--slate); font-size: .93rem; margin-top: 2px; }
+  .chips { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: .74rem; color: var(--slate); background: var(--paper);
+    border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; }
+  .conf { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em;
+    font-weight: 700; padding: 2px 7px; border-radius: 5px; margin-right: 8px; }
+  .conf.high { background: #e7f6ee; color: var(--green); }
+  .conf.medium { background: #eef2fb; color: var(--blue); }
+  .conf.low { background: #fdeceb; color: var(--red); }
+  .units { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .8rem; color: var(--ink); background: var(--paper);
+    border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; margin-left: 8px; }
+  ul.plain { margin: 0; padding-left: 18px; color: var(--slate); font-size: .93rem; }
+  ul.plain li { margin: 3px 0; }
+  .cites { margin-top: 8px; font-size: .78rem; color: var(--slate); }
+  .cite { display: inline-block; margin-right: 10px; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--slate); font-size: .85rem; }
+  pre { background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px; overflow: auto; font-size: .78rem; }
+  .error { color: var(--red); }
+  .disc { color: var(--slate); font-size: .82rem; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="mark" aria-hidden="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+        <path d="M5 19l2-6L17 3l4 4L11 17l-6 2z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+      </svg>
+    </span>
+    <h1>Pencil — Feasibility</h1>
+    <span class="tag" id="modeTag">checking…</span>
+  </header>
+  <p class="lede">Enter a Seattle property address to see what it can become.</p>
+
+  <form id="form">
+    <input id="address" type="text" placeholder="e.g. 4214 NW 62nd St, Seattle, WA" autocomplete="off" />
+    <button id="submit" type="submit">Run feasibility</button>
+  </form>
+  <div class="examples">
+    Try:
+    <a data-ex="4214 NW 62nd St, Seattle, WA">4214 NW 62nd St</a>
+    <a data-ex="312 N 102nd St, Seattle, WA">312 N 102nd St</a>
+    <a data-ex="900 Rainier Ave S, Seattle, WA">900 Rainier Ave S</a>
+  </div>
+
+  <div class="status" id="status" style="display:none"></div>
+
+  <div class="report" id="report"></div>
+</div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+const form = $("#form"), addressEl = $("#address"), submitBtn = $("#submit");
+const statusEl = $("#status"), reportEl = $("#report"), modeTag = $("#modeTag");
+
+function esc(s){ return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+async function loadHealth(){
+  try {
+    const r = await fetch("/api/health");
+    const h = await r.json();
+    modeTag.textContent = h.mode + " mode";
+    modeTag.title = "chat model: " + h.chat_model + " · tools: " + (h.tools||[]).join(", ");
+  } catch { modeTag.textContent = "offline"; }
+}
+
+document.querySelectorAll(".examples a").forEach(a =>
+  a.addEventListener("click", () => { addressEl.value = a.dataset.ex; form.requestSubmit(); })
+);
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const address = addressEl.value.trim();
+  if (!address) return;
+  submitBtn.disabled = true;
+  reportEl.style.display = "none";
+  statusEl.style.display = "block";
+  statusEl.innerHTML = '<span class="spinner"></span> Analyzing ' + esc(address) + '…';
+  try {
+    const r = await fetch("/api/feasibility", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || ("HTTP " + r.status));
+    }
+    const report = await r.json();
+    statusEl.style.display = "none";
+    render(report);
+  } catch (err) {
+    statusEl.style.display = "block";
+    statusEl.innerHTML = '<span class="error">Error: ' + esc(err.message) + '</span>';
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
+
+function confBadge(c){ c = (c||"medium").toLowerCase(); return '<span class="conf '+c+'">'+esc(c)+'</span>'; }
+
+function citeLine(cites){
+  if (!cites || !cites.length) return "";
+  return '<div class="cites">' + cites.map(c =>
+    '<span class="cite">↳ ' + esc(c.source) + (c.detail ? " — " + esc(c.detail) : "") + '</span>'
+  ).join("") + '</div>';
+}
+
+function render(rep){
+  const ctx = rep.property_context || {};
+  const facts = [];
+  if (ctx.zone) facts.push(["Zone", ctx.zone]);
+  if (ctx.lot_sqft) facts.push(["Lot", Number(ctx.lot_sqft).toLocaleString() + " sqft"]);
+  if (ctx.near_transit != null) facts.push(["Near transit", ctx.near_transit ? "Yes" : "No"]);
+  if (ctx.parcel_id) facts.push(["Parcel", ctx.parcel_id]);
+  if (ctx.overlays && ctx.overlays.length) facts.push(["Overlays", ctx.overlays.join(", ")]);
+
+  let html = "";
+  html += '<div class="card">';
+  html += '<div class="rhead"><h2>' + esc(rep.address) + '</h2>';
+  html += '<span class="modepill mode-' + (rep.mode === "live" ? "live" : "mock") + '">' + esc(rep.mode) + '</span></div>';
+  html += '<p class="summary">' + esc(rep.summary) + '</p>';
+  if (facts.length){
+    html += '<div class="facts">' + facts.map(f => '<span class="fact"><b>'+esc(f[0])+':</b> '+esc(f[1])+'</span>').join("") + '</div>';
+  }
+  html += '</div>';
+
+  if (rep.allowances && rep.allowances.length){
+    html += '<div class="card"><h3 class="sec">What\'s allowed</h3>';
+    rep.allowances.forEach(a => {
+      html += '<div class="item"><div class="label">' + confBadge(a.confidence) + esc(a.label) + '</div>';
+      html += '<div class="detail">' + esc(a.detail) + '</div>' + citeLine(a.citations) + '</div>';
+    });
+    html += '</div>';
+  }
+
+  if (rep.scenarios && rep.scenarios.length){
+    html += '<div class="card"><h3 class="sec">Build scenarios</h3>';
+    rep.scenarios.forEach(s => {
+      html += '<div class="item"><div class="label">' + esc(s.name) +
+              (s.units ? '<span class="units">' + esc(s.units) + ' units</span>' : "") + '</div>';
+      html += '<div class="detail">' + esc(s.summary) + '</div>';
+      if (s.key_constraints && s.key_constraints.length){
+        html += '<div class="chips">' + s.key_constraints.map(k => '<span class="chip">'+esc(k)+'</span>').join("") + '</div>';
+      }
+      html += citeLine(s.citations) + '</div>';
+    });
+    html += '</div>';
+  }
+
+  if (rep.constraints && rep.constraints.length){
+    html += '<div class="card"><h3 class="sec">Constraints to verify</h3><ul class="plain">' +
+            rep.constraints.map(c => '<li>'+esc(c)+'</li>').join("") + '</ul></div>';
+  }
+
+  html += '<div class="card"><h3 class="sec">Details</h3>';
+  html += '<div class="detail">Overall confidence: ' + confBadge(rep.confidence) + '</div>';
+  if (rep.disclaimers && rep.disclaimers.length){
+    rep.disclaimers.forEach(d => { html += '<p class="disc">⚠ ' + esc(d) + '</p>'; });
+  }
+  if (rep.tool_trace && rep.tool_trace.length){
+    html += '<details><summary>Tool trace (' + rep.tool_trace.length + ' calls)</summary><pre>' +
+            esc(JSON.stringify(rep.tool_trace, null, 2)) + '</pre></details>';
+  }
+  html += '</div>';
+
+  reportEl.innerHTML = html;
+  reportEl.style.display = "block";
+}
+
+loadHealth();
+</script>
+</body>
+</html>
