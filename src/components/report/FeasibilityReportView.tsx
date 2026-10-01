@@ -269,6 +269,7 @@ function ReportBody({ report, row }: { report: FeasibilityReport; row: Feasibili
           feasibility={row.result.feasibility}
           report={row.report}
           pin={row.result.parcel?.pin ?? null}
+          terrain={row.result.terrain ?? null}
         />
       </div>
     </div>

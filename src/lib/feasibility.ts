@@ -1,3 +1,4 @@
+import type { TerrainGrid } from "@/lib/terrain";
 /**
  * Prefer detailed zoning code (e.g. NR3) over legacy assessor bucket (e.g. SF 5000 from ZONELUT).
  */
@@ -200,6 +201,8 @@ export interface FeasibilityResult {
   lot: LotGeometry | null;
   contours: ContourLine[];
   sitePlan?: SitePlanData | null;
+  /** Ground elevation grid around the lot (USGS 3DEP lidar), for contours and the lot section. */
+  terrain?: TerrainGrid | null;
 }
 
 export async function fetchFeasibility(

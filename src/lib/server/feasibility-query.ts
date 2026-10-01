@@ -19,6 +19,7 @@ import { emptyFeasibilityData } from "@/lib/feasibility";
 import { factorsToFeasibilityData } from "@/lib/server/factors-map";
 import { sideClearance, type Ring } from "@/lib/side-clearance";
 import { getAlleys } from "@/lib/server/alleys";
+import { fetchTerrain } from "@/lib/server/elevation";
 import {
   applySeattleEcaLayersToFeasibility,
   querySeattleEcaIntersectingLayers,
@@ -530,7 +531,7 @@ export async function getFeasibilityForAddress(
   const bbox = lotData?.bbox;
 
   const subjectPin = p ? str(p.PIN) : null;
-  const [contours, buildings, trees, streets, driveways, adjacentParcels] =
+  const [contours, buildings, trees, streets, driveways, adjacentParcels, terrain] =
     await Promise.all([
       lotData ? queryContours(lotData.bbox) : [],
       lotData && parcelRings ? queryBuildings(lotData.bbox, parcelRings) : [],
@@ -540,6 +541,7 @@ export async function getFeasibilityForAddress(
       lotData && parcelRings
         ? queryAdjacentParcels(lotData.bbox, parcelRings, subjectPin)
         : [],
+      parcelRings ? fetchTerrain(parcelRings) : null,
     ]);
 
   const alleys = bbox ? await alleysNear(bbox) : [];
@@ -599,6 +601,7 @@ export async function getFeasibilityForAddress(
     feasibility: feasibilityMerged,
     lot: lotData,
     sitePlan: sitePlan ?? undefined,
+    terrain: terrain ?? null,
   };
 
   return { ok: true, data };

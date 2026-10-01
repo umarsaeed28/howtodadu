@@ -6,6 +6,8 @@ import { Calculator, Plus, RotateCcw } from "lucide-react";
 import type { FeasibilityData, LotGeometry, SitePlanData } from "@/lib/feasibility";
 import type { ADUReport } from "@/lib/adu-analysis";
 import { calculatorHref } from "@/lib/calculator/inputs";
+import { contourLines, profile, type TerrainGrid } from "@/lib/terrain";
+import LotSection from "./LotSection";
 
 type Pt = { x: number; y: number };
 type Side = "N" | "S" | "E" | "W";
@@ -54,6 +56,7 @@ type PlanProps = {
   feasibility: FeasibilityData | null;
   report: ADUReport | null;
   pin: string | null;
+  terrain?: TerrainGrid | null;
 };
 
 /** DADU in lot-local feet: u across the street frontage, v from the street toward the rear. */
@@ -79,13 +82,14 @@ export default function MasterPlan(props: PlanProps) {
   return <PlanSheet key={props.pin ?? "lot"} {...props} lot={props.lot} />;
 }
 
-function PlanSheet({ lot, sitePlan, feasibility, report, pin }: PlanProps & { lot: LotGeometry }) {
+function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain }: PlanProps & { lot: LotGeometry }) {
   /* ---- projection: lng/lat to feet, north up ---- */
   const lat0 = lot.rings.reduce((s, r) => s + r[1], 0) / lot.rings.length;
   const lng0 = lot.rings.reduce((s, r) => s + r[0], 0) / lot.rings.length;
   const ftLng = FT_PER_DEG_LAT * Math.cos((lat0 * Math.PI) / 180);
   const proj = (lng: number, lat: number): Pt => ({ x: (lng - lng0) * ftLng, y: -(lat - lat0) * FT_PER_DEG_LAT });
   const ring = (rs: number[][]) => rs.map((r) => proj(r[0], r[1]));
+  const unproj = (p: Pt): [number, number] => [lng0 + p.x / ftLng, lat0 - p.y / FT_PER_DEG_LAT];
 
   const lotPts = ring(lot.rings);
   const x0 = Math.min(...lotPts.map((q) => q.x));
@@ -406,6 +410,19 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin }: PlanProps & { lo
   const lotW = Math.round(feasibility?.lotWidth ?? lw);
   const lotD = Math.round(feasibility?.lotDepth ?? ld);
 
+  /* ---- terrain: 2 ft contours and the section line A-A' (through the DADU when there is one) ---- */
+  const contours = terrain ? contourLines(terrain, 2, 10) : [];
+  const SECTION_PAD = 14; // feet past each end of the lot
+  const sectionU = daduUnit ? daduUnit.u + daduUnit.w / 2 : lw / 2;
+  const secA = L(sectionU, -SECTION_PAD), secB = L(sectionU, ld + SECTION_PAD);
+  const sectionProfile = terrain ? profile(terrain, unproj(secA), unproj(secB), ld + 2 * SECTION_PAD, 1) : [];
+  const hasSection = sectionProfile.some((p) => p.z != null);
+  /** Where an existing building crosses the section line, as distances along it. */
+  // The house always shows (cut or beyond the cut); other buildings only where the line crosses them.
+  const sectionBuildings = bldgBoxes
+    .map((b, i) => ({ s0: b.v0 + SECTION_PAD, s1: b.v1 + SECTION_PAD, main: b === mainHouse, key: i, cut: sectionU > b.u0 && sectionU < b.u1 }))
+    .filter((b) => b.cut || b.main);
+
   const scaleX = vbX + vbW - margin * 0.35 - 20;
   const scaleY = vbY + vbH - margin * 0.5;
 
@@ -436,6 +453,18 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin }: PlanProps & { lo
             <path key={`s${i}-${j}`} d={path(p, false)} fill="none" stroke="#CFD9D3" strokeWidth={Math.max(9, sw * 14)} strokeLinecap="round" strokeLinejoin="round" />
           ))
         )}
+        {/* ground contours every 2 ft (index every 10 ft), from lidar elevation */}
+        {contours.map((c) => (
+          <path
+            key={`ct${c.elevation}`}
+            d={c.segments.map(([a, b]) => { const p = proj(a[0], a[1]), q = proj(b[0], b[1]); return `M${p.x.toFixed(2)} ${p.y.toFixed(2)} L${q.x.toFixed(2)} ${q.y.toFixed(2)}`; }).join(" ")}
+            fill="none"
+            stroke="#9C7A52"
+            strokeOpacity={c.index ? 0.75 : 0.4}
+            strokeWidth={sw * (c.index ? 1.1 : 0.6)}
+            pointerEvents="none"
+          />
+        ))}
         {alleys.map((a, i) => (
           <path key={`al${i}`} d={path(a)} fill="#D9CDB4" fillOpacity="0.75" stroke="#A8957A" strokeWidth={sw * 0.8} />
         ))}
@@ -625,6 +654,31 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin }: PlanProps & { lo
           );
         })()}
 
+        {/* contour labels: index lines, at the crossing nearest the lot */}
+        {contours.filter((c) => c.index).map((c) => {
+          const mids = c.segments.map(([a, b]) => { const p = proj(a[0], a[1]), q = proj(b[0], b[1]); return { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }; });
+          const inLot = mids.filter((m) => m.x > x0 && m.x < x1 && m.y > y0 && m.y < y1);
+          const pick = (inLot.length ? inLot : mids).reduce((a, m) => (Math.hypot(m.x - cx, m.y - cy) < Math.hypot(a.x - cx, a.y - cy) ? m : a));
+          return (
+            <text key={`ctl${c.elevation}`} x={pick.x} y={pick.y} dy={fs * 0.2} textAnchor="middle" stroke="#fff" strokeWidth={sw * 2.2} paintOrder="stroke" pointerEvents="none" style={{ fontSize: fs * 0.5, fontWeight: 700, fill: "#7A5A36" }}>
+              {`${c.elevation}'`}
+            </text>
+          );
+        })}
+
+        {/* section line A-A' */}
+        {hasSection && (
+          <g pointerEvents="none">
+            <line x1={secA.x} y1={secA.y} x2={secB.x} y2={secB.y} stroke="#17241D" strokeWidth={sw * 0.9} strokeDasharray={`${sw * 6} ${sw * 2} ${sw * 1} ${sw * 2}`} />
+            {([[secA, "A"], [secB, "A′"]] as [Pt, string][]).map(([p0, t]) => (
+              <g key={t}>
+                <circle cx={p0.x} cy={p0.y} r={fs * 0.62} fill="#17241D" />
+                <text x={p0.x} y={p0.y} dy={fs * 0.24} textAnchor="middle" style={{ fontSize: fs * 0.62, fontWeight: 800, fill: "#fff" }}>{t}</text>
+              </g>
+            ))}
+          </g>
+        )}
+
         {/* north arrow (north is up) */}
         <g transform={`translate(${vbX + vbW - margin * 0.7} ${vbY + margin * 0.75})`}>
           <circle r={fs * 1.3} fill="none" stroke="#17241D" strokeWidth={sw} />
@@ -640,6 +694,20 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin }: PlanProps & { lo
           <text x="20" y={-sw * 2} textAnchor="end" style={{ fontSize: fs * 0.7 }}>20 ft</text>
         </g>
       </svg>
+
+      {hasSection && (
+        <LotSection
+          profile={sectionProfile}
+          pad={SECTION_PAD}
+          lotDepth={ld}
+          rearSetback={rear}
+          onAlley={onAlley}
+          buildings={sectionBuildings}
+          units={units.map((x) => ({ kind: x.kind, s0: x.v + SECTION_PAD, s1: x.v + x.d + SECTION_PAD, stories: x.kind === "dadu" ? stories : 1, cut: sectionU >= x.u - 0.01 && sectionU <= x.u + x.w + 0.01 }))}
+          maxHeight={fp?.maxHeight ?? null}
+          source={terrain?.source ?? ""}
+        />
+      )}
 
       {units.length > 0 && (
         <div className="mt-3 flex flex-col gap-2" aria-live="polite">
