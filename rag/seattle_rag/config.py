@@ -29,8 +29,7 @@ def _resolve_dir(env_value: str | None, default: Path) -> Path:
 class Settings:
     """All tunables for the RAG pipeline."""
 
-    openai_api_key: str
-    embedding_model: str
+    anthropic_api_key: str
     chat_model: str
     collection_name: str
     chunk_max_tokens: int
@@ -40,20 +39,20 @@ class Settings:
     storage_dir: Path
 
     def require_api_key(self) -> str:
-        if not self.openai_api_key:
+        """Only answer generation needs a key. Embeddings and retrieval run locally."""
+        if not self.anthropic_api_key:
             raise RuntimeError(
-                "OPENAI_API_KEY is not set. Copy rag/.env.example to rag/.env "
-                "and add your key, or export OPENAI_API_KEY in your shell."
+                "ANTHROPIC_API_KEY is not set. Copy rag/.env.example to rag/.env "
+                "and add your key, or export ANTHROPIC_API_KEY in your shell."
             )
-        return self.openai_api_key
+        return self.anthropic_api_key
 
 
 def load_settings() -> Settings:
     return Settings(
-        openai_api_key=os.getenv("OPENAI_API_KEY", ""),
-        embedding_model=os.getenv("RAG_EMBEDDING_MODEL", "text-embedding-3-small"),
-        chat_model=os.getenv("RAG_CHAT_MODEL", "gpt-4o-mini"),
-        collection_name=os.getenv("RAG_COLLECTION", "seattle_middle_housing"),
+        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
+        chat_model=os.getenv("RAG_CHAT_MODEL", "claude-sonnet-5-5"),
+        collection_name=os.getenv("RAG_COLLECTION", "seattle_middle_housing_local"),
         chunk_max_tokens=int(os.getenv("RAG_CHUNK_MAX_TOKENS", "500")),
         chunk_overlap_tokens=int(os.getenv("RAG_CHUNK_OVERLAP_TOKENS", "75")),
         top_k=int(os.getenv("RAG_TOP_K", "5")),

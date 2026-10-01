@@ -78,6 +78,11 @@ export interface FeasibilityData {
    * Populated server-side; scoring merges these into hazard flags on {@link FeasibilityData}.
    */
   ecaSeattleGisLayers?: string[] | null;
+  /**
+   * Room the house leaves on its wider side, feet, measured from the city's 2023 building outlines.
+   * Null when not measured. A car can reach the back of a lot with no alley only if this is at least 10 ft.
+   */
+  sideClearanceFt?: number | null;
 }
 
 /** Defaults for merging GIS-only ECA hits when the feasibility factors layer is missing. */
@@ -184,6 +189,8 @@ export interface SitePlanData {
   streets: SitePlanStreet[];
   driveways: SitePlanDriveway[];
   adjacentParcels: SitePlanAdjacentParcel[];
+  /** Public alley right-of-way polygons near the lot (lng/lat outer rings). */
+  alleys?: number[][][];
 }
 
 export interface FeasibilityResult {

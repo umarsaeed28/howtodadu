@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "redfin": {
+      "type": "http",
+      "url": "https://mcp.hasdata.com/mcp?apis=redfin",
+      "headers": {
+        "x-api-key": "${HASDATA_API_KEY}"
+      }
+    }
+  }
+}

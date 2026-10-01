@@ -10,45 +10,27 @@
  * verified-code architect engine (see the plan). Until then, lot size and footprint come from it.
  */
 import { generateADUReport } from "@/lib/adu-analysis";
-import { buildFeasibilityTableRow } from "@/lib/feasibility-table-model";
+import { siteScoreFor } from "@/lib/feasibility-table-model";
+import { MIN_DADU_SQFT, gradeOf, type Tier } from "@/lib/dadu-score";
 import type { FeasibilityResult, ParcelData } from "@/lib/feasibility";
 import { str, num } from "@/lib/geo-helpers";
 import { factorsToFeasibilityData } from "./factors-map";
+import { sideClearance, type Ring } from "@/lib/side-clearance";
 
 const ARCGIS = "https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services";
 const FACTORS_URL = `${ARCGIS}/ADUniverse_feasibility_factors/FeatureServer/0/query`;
 const PARCEL_GEO_URL = `${ARCGIS}/PARCEL_GEO/FeatureServer/0/query`;
+const BUILDINGS_URL = `${ARCGIS}/Building_Outlines_2023/FeatureServer/0/query`;
 
 /** ArcGIS caps a page at 2000 records. */
 export const PAGE_LIMIT = 2000;
 /** A DADU smaller than this is not worth building, so the lot is not a candidate. */
-export const MIN_DADU_SQFT = 300;
-/**
- * Top pick: a corner or alley lot with a clean site. Scores here run 64 to 89 across the city,
- * so the bar is high, and the lot must also have no steep slope, light canopy and room for a full 1,000 sf DADU.
- */
-export const TOP_PICK_SCORE = 85;
-/** The map shows only lots scoring 80 or more. Below that is not worth showing. */
-export const GOOD_SCORE = 80;
-export const MAP_MIN_SCORE = GOOD_SCORE;
-export const FAIR_SCORE = 74;
+export { MIN_DADU_SQFT };
+export type { Tier };
 
-export type Tier = 3 | 2 | 1 | 0; // 3 top pick, 2 good, 1 fair, 0 hard
-
-const pct100 = (v: number | null) => (v == null ? 0 : v <= 1 ? v * 100 : v);
-
-export function isTopPick(o: { score: number; corner: boolean; alley: boolean; steepPct: number | null; canopyPct: number | null; daduSqft: number | null }): boolean {
-  return (
-    (o.corner || o.alley) &&
-    o.score >= TOP_PICK_SCORE &&
-    pct100(o.steepPct) === 0 &&
-    pct100(o.canopyPct) <= 25 &&
-    (o.daduSqft ?? 0) >= 1000
-  );
-}
-
-export function tierOf(score: number, topPick: boolean): Tier {
-  return topPick ? 3 : score >= GOOD_SCORE ? 2 : score >= FAIR_SCORE ? 1 : 0;
+/** Grade from the site score (rag/documents/36): 3 top pick 93+, 2 good 82+, 1 fair 70+, 0 marginal. */
+export function tierOf(score: number): Tier {
+  return gradeOf(score).tier;
 }
 export type Bbox = [number, number, number, number]; // west, south, east, north
 
@@ -68,12 +50,18 @@ export interface Candidate {
   adusNearby: number;
   zip: string | null;
   corner: boolean;
-  /** Corner or alley lot with a clean site and a high score. The lots to look at first. */
+  /** Tier 3: score 93 and up. The lots to look at first. */
   topPick: boolean;
-  /** 3 top pick, 2 good, 1 fair, 0 hard. Drives the map colors. */
+  /** 3 top pick, 2 good, 1 fair, 0 marginal. Drives the map colors. */
   tier: Tier;
   /** Maximum DADU size the lot can carry, from the same rules the report uses. */
   daduSqft: number | null;
+  /** Lot shape from the city's minimum bounding rectangle, feet. */
+  lotWidth: number | null;
+  lotDepth: number | null;
+  existingAdus: number | null;
+  /** Room the house leaves on its wider side, feet (2023 building outlines). Null when not measured. */
+  sideClearanceFt: number | null;
 }
 
 export interface CandidatePage {
@@ -117,14 +105,17 @@ const OUT_FIELDS = "*";
 interface RawFeature {
   attributes: Record<string, unknown>;
   centroid?: { x: number; y: number };
+  geometry?: { rings?: number[][][] };
 }
 
-export function toCandidate(f: RawFeature, parcelRow: EligibleParcel): Candidate | null {
+/** `sideClearanceFt`: room the house leaves on its wider side, measured from building outlines (null if unmeasured). */
+export function toCandidate(f: RawFeature, parcelRow: EligibleParcel, sideClearanceFt: number | null = null): Candidate | null {
   const a = f.attributes;
   const c = f.centroid;
   const { pin, address, zoning, lotSqft } = parcelRow;
   if (!c) return null;
   const feasibility = factorsToFeasibilityData(a);
+  feasibility.sideClearanceFt = sideClearanceFt;
   if ((feasibility.totalADU ?? 0) >= MAX_ADUS_PER_LOT) return null; // already at the ADU cap
   const parcel: ParcelData = {
     address: address || null,
@@ -157,27 +148,20 @@ export function toCandidate(f: RawFeature, parcelRow: EligibleParcel): Candidate
   };
   const report = generateADUReport(parcel, feasibility);
   if (!report?.daduFootprint || report.daduFootprint.buildableSqft < MIN_DADU_SQFT) return null; // the rules leave no room for a DADU
-  const row = buildFeasibilityTableRow(result, report);
+  const site = siteScoreFor(result, report);
+  if (!site.eligible) return null; // fails a gate: lot under 3,200 sf, ADU cap, or no room
 
-  const corner = feasibility.lotType?.toLowerCase() === "corner";
-  const topPick = isTopPick({
-    score: row.daduScore,
-    corner,
-    alley: feasibility.hasAlley,
-    steepPct: feasibility.steepSlopePercent,
-    canopyPct: feasibility.treeCanopyPercent,
-    daduSqft: report.daduFootprint.buildableSqft,
-  });
+  const corner = (feasibility.lotType ?? "").toLowerCase().includes("corner");
   return {
     pin,
     address,
     zip: parcelRow.zip,
     corner,
-    topPick,
-    tier: tierOf(row.daduScore, topPick),
+    topPick: site.tier === 3,
+    tier: site.tier,
     lat: c.y,
     lng: c.x,
-    score: row.daduScore,
+    score: site.score,
     zoning,
     lotSqft,
     lotType: feasibility.lotType,
@@ -186,6 +170,10 @@ export function toCandidate(f: RawFeature, parcelRow: EligibleParcel): Candidate
     steepPct: feasibility.steepSlopePercent,
     adusNearby: (feasibility.nearbyDADU ?? 0) + (feasibility.nearbyAADU ?? 0),
     daduSqft: report.daduFootprint.buildableSqft,
+    lotWidth: feasibility.lotWidth,
+    lotDepth: feasibility.lotDepth,
+    existingAdus: feasibility.totalADU,
+    sideClearanceFt,
   };
 }
 
@@ -253,8 +241,43 @@ export async function fetchEligibleParcels(onPage?: (done: number, total: number
  * Page through the 2021 site-factors layer and keep lots that are eligible TODAY.
  * Used by the library build script, not by request handlers.
  */
+/** Building outlines (2023) for the eligible lots, grouped by PIN, as lng/lat rings. */
+export async function fetchBuildingsByPin(pins: Set<string>, onPage?: (done: number, total: number) => void): Promise<Map<string, Ring[]>> {
+  const total = await pagedCount(BUILDINGS_URL, "1=1");
+  const offsets: number[] = [];
+  for (let o = 0; o < total; o += PAGE_LIMIT) offsets.push(o);
+  const out = new Map<string, Ring[]>();
+  let done = 0;
+  await runPool(offsets, async (o) => {
+    const r = await arcgisPage(BUILDINGS_URL, {
+      where: "1=1",
+      outFields: "PIN",
+      returnGeometry: "true",
+      outSR: "4326",
+      geometryPrecision: "7",
+      orderByFields: "OBJECTID",
+      resultOffset: String(o),
+      resultRecordCount: String(PAGE_LIMIT),
+      f: "json",
+    });
+    if (r.error) throw new Error(`Buildings page ${o}: ${r.error}`);
+    for (const f of r.features) {
+      const pin = str(f.attributes.PIN);
+      const ring = f.geometry?.rings?.[0];
+      if (!pin || !pins.has(pin) || !ring) continue;
+      const list = out.get(pin) ?? [];
+      list.push(ring as Ring);
+      out.set(pin, list);
+    }
+    done += 1;
+    onPage?.(done, offsets.length);
+  });
+  return out;
+}
+
 export async function fetchAllCandidates(onPage?: (stage: string, done: number, total: number) => void): Promise<Candidate[]> {
   const eligible = await fetchEligibleParcels((d, t) => onPage?.("parcels", d, t));
+  const buildings = await fetchBuildingsByPin(new Set(eligible.keys()), (d, t) => onPage?.("buildings", d, t));
   const total = await pagedCount(FACTORS_URL, "1=1");
   const offsets: number[] = [];
   for (let o = 0; o < total; o += PAGE_LIMIT) offsets.push(o);
@@ -266,7 +289,8 @@ export async function fetchAllCandidates(onPage?: (stage: string, done: number, 
       where: "1=1",
       outFields: OUT_FIELDS,
       returnCentroid: "true",
-      returnGeometry: "false",
+      returnGeometry: "true",
+      geometryPrecision: "7",
       outSR: "4326",
       orderByFields: "OBJECTID",
       resultOffset: String(o),
@@ -278,7 +302,9 @@ export async function fetchAllCandidates(onPage?: (stage: string, done: number, 
       const pin = str(f.attributes.KCGIS_CGDB_PARCEL_SV_PIN);
       const row = pin ? eligible.get(pin) : undefined;
       if (!pin || !row || seen.has(pin)) continue;
-      const c = toCandidate(f, row);
+      const ring = f.geometry?.rings?.[0] as Ring | undefined;
+      const clear = ring ? sideClearance(ring, buildings.get(pin) ?? []) : null;
+      const c = toCandidate(f, row, clear?.maxFt ?? null);
       if (c) {
         seen.add(pin);
         out.push(c);

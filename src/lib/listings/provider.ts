@@ -39,7 +39,29 @@ export interface RawListing {
   daysOnMarket?: number;
   photos: string[];
   listingUrl?: string;
+  propertyType?: string;
+  /** Monthly HOA dues. Undefined means unknown, not zero. */
+  hoaMonthly?: number;
+  /** Rich fields supplied up front (the dataset fixture). The Redfin provider loads these on demand instead. */
+  detail?: ListingDetail;
   updatedAt: string;
+}
+
+/** Rich fields from the property page. Loaded on demand, cached for 12 hours. */
+export interface ListingDetail {
+  description?: string;
+  photos: string[];
+  propertyType?: string;
+  hoaMonthly?: number;
+  estimate?: number;
+  pricePerSqft?: number;
+  garage?: string;
+  priceHistory: { date: string; event: string; price?: number }[];
+  taxHistory: { year: number; tax?: number; assessed?: number }[];
+  schools: { name: string; rating?: number; level?: string; distance?: string }[];
+  scores: { walk?: number; transit?: number; bike?: number };
+  agent?: string;
+  brokerage?: string;
 }
 
 export interface ListingsProvider {

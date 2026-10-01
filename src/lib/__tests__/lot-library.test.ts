@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { decodeLibrary, encodeLibrary, makeLotFinder, zipCounts } from "../lot-library";
-import { MAP_MIN_SCORE, parcelWhere, toEligibleParcel, isTopPick, tierOf, TOP_PICK_SCORE, MAX_ADUS_PER_LOT } from "../server/candidates";
+import { parcelWhere, toEligibleParcel, tierOf, MAX_ADUS_PER_LOT } from "../server/candidates";
 import type { Candidate } from "../server/candidates";
 import { fromSpark, toSparkFilter } from "../listings/spark";
 
@@ -13,6 +13,10 @@ const lot = (o: Partial<Candidate> = {}): Candidate => ({
   tier: 3,
   lat: 47.66,
   lng: -122.35,
+  lotWidth: 50,
+  lotDepth: 120,
+  existingAdus: 0,
+  sideClearanceFt: 14,
   score: 88,
   zoning: "SF 5000",
   lotSqft: 5000,
@@ -52,27 +56,14 @@ describe("lot library", () => {
 });
 
 describe("tiers", () => {
-  const base = { score: 88, corner: true, alley: false, steepPct: null, canopyPct: 0.1, daduSqft: 1000 };
-  it("needs a corner or alley", () => {
-    expect(isTopPick(base)).toBe(true);
-    expect(isTopPick({ ...base, corner: false })).toBe(false);
-    expect(isTopPick({ ...base, corner: false, alley: true })).toBe(true);
-  });
-  it("rejects steep, shaded or small lots", () => {
-    expect(isTopPick({ ...base, steepPct: 0.2 })).toBe(false);
-    expect(isTopPick({ ...base, canopyPct: 0.4 })).toBe(false);
-    expect(isTopPick({ ...base, daduSqft: 800 })).toBe(false);
-    expect(isTopPick({ ...base, score: TOP_PICK_SCORE - 1 })).toBe(false);
-  });
-  it("orders tiers by score", () => {
-    expect(tierOf(90, true)).toBe(3);
-    expect(tierOf(80, false)).toBe(2);
-    expect(tierOf(79, false)).toBe(1);
-    expect(tierOf(74, false)).toBe(1);
-    expect(tierOf(60, false)).toBe(0);
-  });
-  it("shows only lots scoring 80 or more", () => {
-    expect(MAP_MIN_SCORE).toBe(80);
+  it("follow the guide's grade bands", () => {
+    expect(tierOf(100)).toBe(3);
+    expect(tierOf(93)).toBe(3);
+    expect(tierOf(92)).toBe(2);
+    expect(tierOf(82)).toBe(2);
+    expect(tierOf(81)).toBe(1);
+    expect(tierOf(70)).toBe(1);
+    expect(tierOf(69)).toBe(0);
   });
   it("asks only for private single-family homes in the NR base zone", () => {
     const w = parcelWhere();

@@ -5,12 +5,12 @@ markdown documents about Seattle middle-housing rules, zoning, and development
 guidance. You add markdown, it indexes it, and you can ask grounded, cited
 questions.
 
-**Stack:** Python · OpenAI (embeddings + chat) · ChromaDB (persistent vector store)
+**Stack:** Python · Claude (answers) · local embeddings · ChromaDB (persistent vector store)
 
 ```
-markdown files ─▶ heading-aware chunking ─▶ OpenAI embeddings ─▶ ChromaDB
+markdown files ─▶ heading-aware chunking ─▶ local embeddings (Chroma) ─▶ ChromaDB
                                                                      │
-                        cited answer ◀─ OpenAI chat ◀─ top-k retrieval
+                        cited answer ◀─ Claude ◀─ top-k retrieval
 ```
 
 ## Layout
@@ -22,7 +22,7 @@ rag/
 ├── seattle_rag/          # the package
 │   ├── config.py         # settings from env / .env
 │   ├── chunking.py       # heading-aware markdown chunker (+ tokenizer)
-│   ├── embeddings.py     # OpenAI embedding calls (batched)
+│   ├── embeddings.py     # (removed: Chroma embeds locally)
 │   ├── store.py          # ChromaDB collection
 │   ├── ingest.py         # documents -> chunks -> vectors
 │   ├── query.py          # retrieval + grounded answer generation
@@ -42,7 +42,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# edit .env and set OPENAI_API_KEY=sk-...
+# edit .env and set ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ## Usage
@@ -85,9 +85,8 @@ All optional, via environment or `.env` (defaults shown):
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | — | **Required.** OpenAI key. |
-| `RAG_EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model. |
-| `RAG_CHAT_MODEL` | `gpt-4o-mini` | Answer-generation model. |
+| `ANTHROPIC_API_KEY` | — | Needed only for `ask` and `chat`. |
+| `RAG_CHAT_MODEL` | `claude-sonnet-5-5` | Answer-generation model. |
 | `RAG_COLLECTION` | `seattle_middle_housing` | Chroma collection name. |
 | `RAG_CHUNK_MAX_TOKENS` | `500` | Max tokens per chunk. |
 | `RAG_CHUNK_OVERLAP_TOKENS` | `75` | Overlap between chunks. |

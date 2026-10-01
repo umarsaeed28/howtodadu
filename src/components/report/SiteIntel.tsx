@@ -1,6 +1,4 @@
 import type { FeasibilityTableRow } from "@/lib/feasibility-table-model";
-import { buildSiteSignalsForDealScore } from "@/lib/feasibility-table-model";
-import { calculateDealScore } from "@/lib/deal-scoring";
 import { toPercent } from "@/lib/report/to-report";
 
 const fmt = (n: number) => Math.round(n).toLocaleString();
@@ -32,32 +30,48 @@ function Bar({ value, max = 100, color = "var(--flag)", marker }: { value: numbe
 
 /* ── Score ring + weighted factors ── */
 export function ScoreFactors({ row }: { row: FeasibilityTableRow }) {
-  const dealScore = calculateDealScore(buildSiteSignalsForDealScore(row.result, row.signals), { includeBreakdown: true });
-  const items = dealScore.factorBreakdown ?? [];
-  const score = row.daduScore;
+  const ss = row.siteScore;
+  const score = ss.score;
   const r = 44;
   const c = 2 * Math.PI * r;
-  const tone = score >= 70 ? "var(--green)" : score >= 40 ? "var(--amber)" : "var(--red)";
+  const tone = score >= 70 ? "var(--green)" : score >= 55 ? "var(--amber)" : "var(--red)";
+  const failed = ss.gates.filter((g) => g.status === "fail");
+  const unknown = ss.gates.filter((g) => g.status === "unknown");
   return (
-    <Card title="What drives the score" source="Weighted from zoning, lot, terrain, rear yard, access and context" className="sm:col-span-2">
-      <div className="flex flex-col items-center gap-5 sm:flex-row">
-        <svg viewBox="0 0 110 110" className="h-32 w-32 shrink-0" role="img" aria-label={`Score ${score} out of 100`}>
-          <circle cx="55" cy="55" r={r} fill="none" stroke="rgba(23, 36, 29,0.1)" strokeWidth="9" />
-          <circle cx="55" cy="55" r={r} fill="none" stroke={tone} strokeWidth="9" strokeLinecap="round" strokeDasharray={`${(score / 100) * c} ${c}`} transform="rotate(-90 55 55)" />
-          <text x="55" y="58" textAnchor="middle" style={{ fontSize: 26, fontWeight: 800, fill: "var(--ink)", fontFamily: "var(--font-display)" }}>{score}</text>
-          <text x="55" y="74" textAnchor="middle" style={{ fontSize: 9, fill: "var(--slate)" }}>out of 100</text>
-        </svg>
-        <ul className="grid w-full gap-2.5">
-          {items.map((f) => (
-            <li key={f.name}>
-              <div className="mb-1 flex justify-between text-xs" style={{ color: "var(--ink)" }}>
-                <span>{f.name} <span style={{ color: "var(--slate)" }}>({f.weight}%)</span></span>
-                <span className="tabular-nums">{Math.round(f.score)}</span>
-              </div>
-              <Bar value={f.score} color={f.score >= 70 ? "var(--green)" : f.score >= 40 ? "var(--amber)" : "var(--red)"} />
-            </li>
-          ))}
-        </ul>
+    <Card title="What drives the score" source="Rules baseline from the Seattle DADU guide: access, layout, size, site, trees" className="sm:col-span-2">
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+        <div className="flex shrink-0 flex-col items-center">
+          <svg viewBox="0 0 110 110" className="h-32 w-32" role="img" aria-label={ss.eligible ? `Score ${score} out of 100, ${ss.grade}` : "Not eligible for a DADU"}>
+            <circle cx="55" cy="55" r={r} fill="none" stroke="rgba(23, 36, 29,0.1)" strokeWidth="9" />
+            <circle cx="55" cy="55" r={r} fill="none" stroke={tone} strokeWidth="9" strokeLinecap="round" strokeDasharray={`${(score / 100) * c} ${c}`} transform="rotate(-90 55 55)" />
+            <text x="55" y="58" textAnchor="middle" style={{ fontSize: 26, fontWeight: 800, fill: "var(--ink)", fontFamily: "var(--font-display)" }}>{ss.eligible ? score : "—"}</text>
+            <text x="55" y="74" textAnchor="middle" style={{ fontSize: 9, fill: "var(--slate)" }}>out of 100</text>
+          </svg>
+          <p className="text-sm font-semibold" style={{ color: tone }}>{ss.grade}</p>
+        </div>
+        <div className="w-full">
+          {failed.length > 0 ? (
+            <ul className="flex flex-col gap-1.5 text-sm" style={{ color: "var(--red)" }}>
+              {failed.map((g) => <li key={g.key}><strong>{g.label}:</strong> {g.note}</li>)}
+            </ul>
+          ) : (
+            <ul className="grid w-full gap-3">
+              {ss.factors.map((f) => (
+                <li key={f.key}>
+                  <div className="mb-1 flex justify-between text-xs" style={{ color: "var(--ink)" }}>
+                    <span>{f.name} <span style={{ color: "var(--slate)" }}>({f.weight}%)</span></span>
+                    <span className="tabular-nums">{Math.round(f.score)}</span>
+                  </div>
+                  <Bar value={f.score} color={f.score >= 70 ? "var(--green)" : f.score >= 40 ? "var(--amber)" : "var(--red)"} />
+                  <p className="mt-1 text-[11px]" style={{ color: "var(--slate)" }}>{f.note}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {unknown.length > 0 && (
+            <p className="mt-3 text-xs" style={{ color: "var(--slate)" }}>To confirm: {unknown.map((g) => g.note).join(" ")}</p>
+          )}
+        </div>
       </div>
     </Card>
   );

@@ -19,6 +19,7 @@ from .config import load_settings
 from .ingest import ingest as run_ingest
 from .query import answer as run_answer
 from .query import retrieve as run_retrieve
+from .query import retrieve_hierarchical
 from .store import get_collection, reset_collection
 
 
@@ -57,6 +58,14 @@ def cmd_query(args) -> int:
     if not question:
         print("Provide a search query.")
         return 2
+    if args.json:
+        import json
+
+        # Hierarchical retrieval; --hyde adds a hypothetical answer as a second query (HyDE).
+        queries = [question] + ([args.hyde] if args.hyde else [])
+        chunks = retrieve_hierarchical(settings, queries, top_docs=args.docs, k=args.k or settings.top_k, scope=args.scope)
+        print(json.dumps([{"id": c.chunk_id, "source": c.source, "breadcrumb": c.breadcrumb, "text": c.text, "distance": c.distance} for c in chunks]))
+        return 0
     chunks = run_retrieve(settings, question, top_k=args.k)
     if not chunks:
         print("No results. Is the store empty? Run `ingest` first.")
@@ -129,6 +138,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_query = sub.add_parser("query", help="Semantic search (show raw passages)")
     p_query.add_argument("question", nargs="+")
     p_query.add_argument("-k", type=int, default=None, help="Number of passages to retrieve")
+    p_query.add_argument("--hyde", default=None, help="Hypothetical answer text to embed as an extra query")
+    p_query.add_argument("--scope", choices=["rules", "test", "all"], default="rules", help="Which records to search (test = the sample listings)")
+    p_query.add_argument("--docs", type=int, default=3, help="Documents to keep at level 1")
+    p_query.add_argument("--json", action="store_true", help="Print passages as JSON (used by the web app)")
     p_query.set_defaults(func=cmd_query)
 
     p_chat = sub.add_parser("chat", help="Interactive Q&A loop")

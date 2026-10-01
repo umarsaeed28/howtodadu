@@ -14,8 +14,7 @@ from typing import List
 
 from .chunking import Chunk, Tokenizer, chunk_markdown
 from .config import Settings
-from .embeddings import embed_texts, get_client
-from .store import get_collection
+from .store import get_collection, get_doc_collection
 
 
 @dataclass
@@ -38,10 +37,9 @@ def _discover(documents_dir: Path) -> List[Path]:
 
 
 def ingest(settings: Settings, verbose: bool = True) -> IngestReport:
-    api_key = settings.require_api_key()
     tokenizer = Tokenizer()
     collection = get_collection(settings)
-    client = get_client(api_key)
+    docs_collection = get_doc_collection(settings)
 
     files = _discover(settings.documents_dir)
     skipped: List[str] = []
@@ -70,20 +68,26 @@ def ingest(settings: Settings, verbose: bool = True) -> IngestReport:
 
         # Keep the store in sync: drop old chunks for this file first.
         collection.delete(where={"source": rel})
+        docs_collection.delete(where={"source": rel})
+
+        # Level 1 of the hierarchy: one document-level record (title, every heading, opening text).
+        headings = [ln.lstrip("# ").strip() for ln in raw.splitlines() if ln.startswith("#")]
+        doc_text = (" | ".join(headings) + "\n" + raw.strip()[:1200]).strip()
+        docs_collection.upsert(ids=[f"doc::{rel}"], documents=[doc_text], metadatas=[{"source": rel, "kind": "test_listing" if rel.startswith("test-listings") else "rules", "title": headings[0] if headings else rel}])
 
         texts = [c.text for c in chunks]
-        embeddings = embed_texts(client, settings.embedding_model, texts)
         ids = [_chunk_id(rel, c.index, c.text) for c in chunks]
         metadatas = [
             {
                 "source": rel,
+                "kind": "test_listing" if rel.startswith("test-listings") else "rules",
                 "index": c.index,
                 "heading": c.heading_path[-1] if c.heading_path else "",
                 "breadcrumb": c.breadcrumb,
             }
             for c in chunks
         ]
-        collection.upsert(ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas)
+        collection.upsert(ids=ids, documents=texts, metadatas=metadatas)  # Chroma embeds locally
         total_chunks += len(chunks)
         if verbose:
             print(f"  - {rel}: {len(chunks)} chunks")

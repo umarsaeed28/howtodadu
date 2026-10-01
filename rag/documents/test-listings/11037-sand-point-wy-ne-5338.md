@@ -1,0 +1,17 @@
+# 11037 Sand Point Wy NE, Seattle 98125
+
+> **TEST DATA, not a live listing.** Listing dataset record, retrieved 2026-10-01 (NWMLS export, MLS 2585338). Screening label: **unverified**.
+
+## Listing facts
+- Price: $875,000. Status: For sale. 7 days on market.
+- 3 beds, 1.75 baths, 2,780 sf. Single-family.
+- HOA: not reported.
+
+
+## City GIS facts
+- Lot per city: 9,835 sf, interior lot, 68 ft wide by 140 ft deep. Alley: no. Zoning: SF 7200.
+- Tree canopy: 59%. Steep slope: none. Existing ADUs on the lot: 0. ADUs nearby: 13.
+- Largest DADU the lot allows: 1000 sf (code allows up to 1000 sf). Site score: 87 out of 100.
+
+## DADU screening outcome
+Unverified. A DADU of up to 1000 sf fits (site score 87 out of 100), but the HOA is not reported. Confirm there is none.

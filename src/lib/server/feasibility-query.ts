@@ -17,6 +17,8 @@ import type {
 } from "@/lib/feasibility";
 import { emptyFeasibilityData } from "@/lib/feasibility";
 import { factorsToFeasibilityData } from "@/lib/server/factors-map";
+import { sideClearance, type Ring } from "@/lib/side-clearance";
+import { getAlleys } from "@/lib/server/alleys";
 import {
   applySeattleEcaLayersToFeasibility,
   querySeattleEcaIntersectingLayers,
@@ -212,6 +214,25 @@ async function queryContours(bbox: [number, number, number, number]) {
   }
 }
 
+/** Alley polygons whose outline comes within about 30 m of the lot's box. Fail-soft. */
+async function alleysNear(bbox: [number, number, number, number]): Promise<number[][][]> {
+  try {
+    const [w, s, e, n] = bbox;
+    const pad = 0.0004;
+    const out: number[][][] = [];
+    for (const f of (await getAlleys()).features) {
+      const g = f.geometry as { type?: string; coordinates?: unknown } | null;
+      const rings = g?.type === "Polygon" ? [(g.coordinates as number[][][])[0]] : g?.type === "MultiPolygon" ? (g.coordinates as number[][][][]).map((p) => p[0]) : [];
+      for (const r of rings) if (r?.some(([x, y]) => x > w - pad && x < e + pad && y > s - pad && y < n + pad)) out.push(r);
+    }
+    const cx = (w + e) / 2, cy = (s + n) / 2;
+    const dist = (r: number[][]) => Math.min(...r.map(([x, y]) => Math.hypot(x - cx, y - cy)));
+    return out.sort((a, b) => dist(a) - dist(b)).slice(0, 6);
+  } catch {
+    return [];
+  }
+}
+
 async function queryBuildings(
   bbox: [number, number, number, number],
   parcelRings: number[][]
@@ -335,7 +356,7 @@ async function queryStreets(
       "ORD_STNAME_CONCAT,ORD_PRE_DIR,ORD_STREET_NAME,ORD_STREET_TYPE,ORD_SUF_DIR",
     outSR: "4326",
     returnGeometry: "true",
-    resultRecordCount: "30",
+    resultRecordCount: "60",
     f: "json",
   });
   try {
@@ -345,8 +366,8 @@ async function queryStreets(
     if (!res.ok) return [];
     const data = await res.json();
     if (data.error || !data.features?.length) return [];
-    const seen = new Set<string>();
-    const streets: SitePlanStreet[] = [];
+    // Keep every segment, grouped by street name. (Keeping only the first segment per name dropped the one beside the lot.)
+    const byName = new Map<string, number[][][]>();
     for (const f of data.features) {
       const concat = str(f.attributes?.ORD_STNAME_CONCAT);
       const parts = [
@@ -358,13 +379,11 @@ async function queryStreets(
         .filter(Boolean)
         .join(" ");
       const name = concat ?? (parts || "Street");
-      if (seen.has(name)) continue;
-      seen.add(name);
       const paths = f.geometry?.paths as number[][][] | undefined;
       if (!paths?.length) continue;
-      streets.push({ name, paths });
+      byName.set(name, [...(byName.get(name) ?? []), ...paths]);
     }
-    return streets;
+    return [...byName.entries()].map(([name, paths]) => ({ name, paths }));
   } catch {
     return [];
   }
@@ -523,17 +542,21 @@ export async function getFeasibilityForAddress(
         : [],
     ]);
 
+  const alleys = bbox ? await alleysNear(bbox) : [];
   const sitePlan: SitePlanData | null =
     lotData &&
     (buildings.length > 0 ||
+      alleys.length > 0 ||
       trees.length > 0 ||
       streets.length > 0 ||
       driveways.length > 0 ||
       adjacentParcels.length > 0)
-      ? { buildings, trees, streets, driveways, adjacentParcels }
+      ? { buildings, trees, streets, driveways, adjacentParcels, alleys }
       : null;
 
   const f = factors;
+  // Side clearance from the house outline to the lot lines: can a car reach the back?
+  const clearance = parcelRings && buildings.length ? sideClearance(parcelRings as Ring, buildings.map((b) => b.rings as Ring)) : null;
 
   const feasibilityMerged =
     f || ecaLayerHits.length > 0
@@ -544,6 +567,8 @@ export async function getFeasibilityForAddress(
           ecaLayerHits
         )
       : null;
+
+  if (feasibilityMerged) feasibilityMerged.sideClearanceFt = clearance?.maxFt ?? null;
 
   const data: FeasibilityResult = {
     coordinates: coords,

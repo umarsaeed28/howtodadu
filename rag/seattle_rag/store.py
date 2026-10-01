@@ -24,6 +24,16 @@ def get_collection(settings: "Settings"):
     )
 
 
+def get_doc_collection(settings: "Settings"):
+    """Document-level index: one record per file (title, headings, opening text). Level 1 of the hierarchy."""
+    settings.storage_dir.mkdir(parents=True, exist_ok=True)
+    client = chromadb.PersistentClient(
+        path=str(settings.storage_dir),
+        settings=ChromaSettings(anonymized_telemetry=False, allow_reset=True),
+    )
+    return client.get_or_create_collection(name=f"{settings.collection_name}_docs", metadata={"hnsw:space": "cosine"})
+
+
 def reset_collection(settings: "Settings") -> None:
     """Delete and recreate the collection (drops all vectors)."""
     settings.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -31,10 +41,11 @@ def reset_collection(settings: "Settings") -> None:
         path=str(settings.storage_dir),
         settings=ChromaSettings(anonymized_telemetry=False, allow_reset=True),
     )
-    try:
-        client.delete_collection(settings.collection_name)
-    except Exception:
-        pass
+    for name in (settings.collection_name, f"{settings.collection_name}_docs"):
+        try:
+            client.delete_collection(name)
+        except Exception:
+            pass
     client.get_or_create_collection(
         name=settings.collection_name,
         metadata={"hnsw:space": "cosine"},
