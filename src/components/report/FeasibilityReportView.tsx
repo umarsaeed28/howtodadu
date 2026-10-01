@@ -228,20 +228,6 @@ function ReportBody({ report, row, snapshotRef }: { report: FeasibilityReport; r
           </ul>
         </Section>
 
-        <Section id="rep-plans" title="Plans that fit">
-          {report.plans.length === 0 ? (
-            <p className="text-sm" style={{ color: "var(--slate)" }}>
-              Plan matching is not connected yet. Once it is, pre-approved plans that fit the buildable footprint will list here.
-            </p>
-          ) : (
-            <ul className="text-sm">
-              {report.plans.map((p) => (
-                <li key={p.plan_id}>{p.name} ({sf(p.footprint_sf)})</li>
-              ))}
-            </ul>
-          )}
-        </Section>
-
         <Section id="rep-survey" title="Survey required" hint="Nothing in public data can settle these.">
           <ul className="list-disc pl-5 text-sm" style={{ color: "var(--slate)" }}>
             {report.survey_required.map((g) => (
