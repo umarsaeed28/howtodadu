@@ -8,6 +8,8 @@ import type { ADUReport } from "@/lib/adu-analysis";
 import { calculatorHref } from "@/lib/calculator/inputs";
 import { contourLines, profile, type TerrainGrid } from "@/lib/terrain";
 import LotSection from "./LotSection";
+import { PlanPicker, PlacedPlanCard, type PlanFit } from "./PlanPicker";
+import { PREAPPROVED_PLANS, type PreApprovedPlan } from "@/lib/preapproved-dadus";
 
 type Pt = { x: number; y: number };
 type Side = "N" | "S" | "E" | "W";
@@ -56,7 +58,7 @@ export type PlanSnapshot = {
   section: SVGSVGElement | null;
   stories: 1 | 2;
   totalLiving: number;
-  units: { name: string; long: string; w: number; d: number; footprint: number; living: number; maxLiving: number; ok: boolean; checks: { ok: boolean; text: string }[] }[];
+  units: { name: string; long: string; plan: { designer: string; name: string; sqft: number; beds: string; baths: string; widthFt: number; depthFt: number; approx: boolean; detailUrl: string } | null; w: number; d: number; footprint: number; living: number; maxLiving: number; ok: boolean; checks: { ok: boolean; text: string }[] }[];
   warnings: string[];
   notes: string;
   setbacks: { side: number; rear: number; onAlley: boolean };
@@ -76,7 +78,7 @@ type PlanProps = {
 /** DADU in lot-local feet: u across the street frontage, v from the street toward the rear. */
 type Box = { u: number; v: number; w: number; d: number };
 type Grab = "move" | "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
-type Unit = Box & { kind: "dadu" | "aadu" };
+type Unit = Box & { kind: "dadu" | "aadu"; /** A pre-approved design: its size is fixed, only its position and turn change. */ plan?: PreApprovedPlan };
 const MIN_SIDE_FT = 10;
 /** A detached ADU keeps 5 ft from the house (team rule). An attached ADU joins the house, so it does not. */
 const HOUSE_SEPARATION_FT = 5;
@@ -209,6 +211,12 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   /** Keep a unit inside the lot behind the setbacks, at least 10 ft a side, snapped to whole feet. */
   const clampBox = useCallback(
     (b: Unit): Unit => {
+      if (b.plan) {
+        // A pre-approved design keeps its drawn size; only where it sits can change.
+        const u = Math.round(Math.min(lw - side - b.w, Math.max(side, b.u)) * 2) / 2;
+        const v = Math.round(Math.min(ld - rear - b.d, Math.max(0, b.v)) * 2) / 2;
+        return { ...b, u, v };
+      }
       const maxW = Math.max(MIN_SIDE_FT, lw - 2 * side);
       const maxD = Math.max(MIN_SIDE_FT, ld - rear);
       const w = Math.round(Math.min(maxW, Math.max(MIN_SIDE_FT, b.w)));
@@ -256,14 +264,56 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   };
   const removeAadu = () => setUnits((us) => us.filter((x) => x.kind !== "aadu"));
 
+  /* ---- pre-approved designs: a fixed footprint in place of the resizable DADU box ---- */
+  const envW = Math.max(MIN_SIDE_FT, lw - 2 * side);
+  const envD = Math.max(MIN_SIDE_FT, ld - rear);
+  /** Whether a design fits behind the setbacks (turned either way) and inside the living-area limit. */
+  const planFit = (p: PreApprovedPlan): PlanFit => {
+    const straight = p.widthFt <= envW + 0.01 && p.depthFt <= envD + 0.01;
+    const turned = p.depthFt <= envW + 0.01 && p.widthFt <= envD + 0.01;
+    if (p.sqft > maxLiving) return { fits: false, reason: `Over the ${maxLiving.toLocaleString("en-US")} sf limit` };
+    if (!straight && !turned) return { fits: false, reason: "Too big for this lot" };
+    return { fits: true, reason: null };
+  };
+  const placePlan = (p: PreApprovedPlan | null) => {
+    if (!p) return removePlan();
+    // Use the orientation that fits; start where the DADU box was so the swap reads as the same spot.
+    const turned = !(p.widthFt <= envW + 0.01 && p.depthFt <= envD + 0.01) && p.depthFt <= envW + 0.01 && p.widthFt <= envD + 0.01;
+    const w = turned ? p.depthFt : p.widthFt, d = turned ? p.widthFt : p.depthFt;
+    setUnits((us) => {
+      const old = us.find((x) => x.kind === "dadu");
+      const cu = old ? old.u + old.w / 2 : lw / 2, cv = old ? old.v + old.d / 2 : ld - rear - d / 2;
+      const next = clampBox({ kind: "dadu", plan: p, u: cu - w / 2, v: cv - d / 2, w, d });
+      return [next, ...us.filter((x) => x.kind !== "dadu")];
+    });
+    setActive(0);
+  };
+  const rotatePlan = () =>
+    setUnits((us) =>
+      us.map((x) => {
+        if (!x.plan) return x;
+        const cu = x.u + x.w / 2, cv = x.v + x.d / 2;
+        return clampBox({ ...x, w: x.d, d: x.w, u: cu - x.d / 2, v: cv - x.w / 2 });
+      })
+    );
+  function removePlan() {
+    setUnits((us) => (initialDadu ? [initialDadu, ...us.filter((x) => x.kind !== "dadu")] : us.filter((x) => x.kind !== "dadu")));
+    setStories(canTwoStory ? 2 : 1);
+    setActive(null);
+  }
+
 
   /** Rule checks per unit. A DADU keeps 5 ft from the house; an attached ADU must join it. */
   const checks = units.map((x) => {
     const footprint = Math.round(x.w * x.d);
-    const living = x.kind === "dadu" ? footprint * stories : footprint;
+    const living = x.plan ? x.plan.sqft : x.kind === "dadu" ? footprint * stories : footprint;
     const hitsBuilding = bldgBoxes.some((b) => overlaps(x, b));
     const houseGap = mainHouse ? gap(x, mainHouse) : null;
-    const list: { ok: boolean; text: string }[] = [{ ok: true, text: "Inside the lot setbacks" }];
+    const list: { ok: boolean; text: string }[] = [];
+    if (x.plan && (x.w > lw - 2 * side + 0.01 || x.d > ld - rear + 0.01))
+      list.push({ ok: false, text: "Too large for the buildable area behind the setbacks. Try rotating it" });
+    else list.push({ ok: true, text: "Inside the lot setbacks" });
+    if (x.plan) list.push({ ok: true, text: `Pre-approved design by ${x.plan.designer}` });
     if (hitsBuilding) list.push({ ok: false, text: "Overlaps an existing building" });
     if (x.kind === "dadu" && !hitsBuilding && houseGap != null)
       list.push(houseGap < HOUSE_SEPARATION_FT ? { ok: false, text: `${houseGap.toFixed(1)} ft from the house; a DADU needs ${HOUSE_SEPARATION_FT} ft` } : { ok: true, text: `${houseGap.toFixed(0)} ft from the house (${HOUSE_SEPARATION_FT} ft needed)` });
@@ -278,6 +328,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   const existingAdus = feasibility?.totalADU ?? 0;
   const overAduCap = existingAdus + units.length > 2;
   const daduIdx = units.findIndex((x) => x.kind === "dadu");
+  const planUnit = units.find((x) => x.plan) ?? null;
   const daduUnit = daduIdx >= 0 ? units[daduIdx] : null;
   const dadu: Pt[] | null = daduUnit ? rect(daduUnit.u, daduUnit.v, daduUnit.w, daduUnit.d) : null;
   const daduV0 = daduUnit?.v ?? 0;
@@ -328,6 +379,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     if (!at || !units[idx]) return;
     e.stopPropagation();
     e.preventDefault();
+    // Focus the unit so the keyboard (arrows, R to rotate) works right after a drag.
+    (e.currentTarget as Element).closest<SVGGElement>("g[role=group]")?.focus();
     svgRef.current?.setPointerCapture(e.pointerId);
     grab.current = { idx, mode, start: at, box: units[idx] };
     setDragging(mode);
@@ -340,7 +393,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     if (!at) return;
     const du = at.u - g.start.u, dv = at.v - g.start.v;
     const b = { ...g.box };
-    if (g.mode === "move") {
+    if (g.mode === "move" || b.plan) {
       b.u += du;
       b.v += dv;
     } else {
@@ -364,10 +417,15 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     if (!box) return;
     const step = e.altKey ? 0.5 : 1;
     const k: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+    if (box.plan && e.key.toLowerCase() === "r") {
+      e.preventDefault();
+      rotatePlan();
+      return;
+    }
     const mv = k[e.key];
     if (!mv) return;
     e.preventDefault();
-    if (e.shiftKey) {
+    if (e.shiftKey && !box.plan) {
       // Shift + arrows resize: right/down grow, left/up shrink, along that screen direction.
       const grow = (mv[0] || mv[1]) > 0 ? step : -step;
       const alongU = (mv[0] !== 0) !== swap;
@@ -460,9 +518,9 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     snapshotRef.current = () => ({
       plan: svgRef.current,
       section: (figRef.current?.querySelector("svg[data-pdf-section]") as SVGSVGElement | null) ?? null,
-      stories,
+      stories: planUnit?.plan ? planUnit.plan.stories : stories,
       totalLiving,
-      units: units.map((x, i) => ({ name: UNIT_STYLE[x.kind].name, long: UNIT_STYLE[x.kind].long, w: Math.round(x.w), d: Math.round(x.d), footprint: checks[i].footprint, living: checks[i].living, maxLiving, ok: checks[i].ok, checks: checks[i].list })),
+      units: units.map((x, i) => ({ name: x.plan ? x.plan.name : UNIT_STYLE[x.kind].name, long: x.plan ? `${x.plan.name} by ${x.plan.designer} (pre-approved design)` : UNIT_STYLE[x.kind].long, plan: x.plan ? { designer: x.plan.designer, name: x.plan.name, sqft: x.plan.sqft, beds: x.plan.beds, baths: x.plan.baths, widthFt: x.plan.widthFt, depthFt: x.plan.depthFt, approx: x.plan.approx, detailUrl: x.plan.detailUrl } : null, w: Math.round(x.w), d: Math.round(x.d), footprint: checks[i].footprint, living: checks[i].living, maxLiving, ok: checks[i].ok, checks: checks[i].list })),
       warnings,
       notes,
       setbacks: { side, rear, onAlley },
@@ -595,7 +653,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
               key={x.kind}
               tabIndex={0}
               role="group"
-              aria-label={`${st.long}, ${Math.round(x.w)} by ${Math.round(x.d)} feet, ${c.footprint} square feet. Drag to move, drag a handle to resize. Arrow keys move it, Shift with arrows resizes.`}
+              aria-label={x.plan ? `${x.plan.name} by ${x.plan.designer}, a pre-approved design, ${Math.round(x.w)} by ${Math.round(x.d)} feet. Drag to move. Arrow keys move it, R rotates it.` : `${st.long}, ${Math.round(x.w)} by ${Math.round(x.d)} feet, ${c.footprint} square feet. Drag to move, drag a handle to resize. Arrow keys move it, Shift with arrows resizes.`}
               onKeyDown={onKey(idx)}
               onFocus={() => setActive(idx)}
               style={{ outline: "none" }}
@@ -608,11 +666,23 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
                 strokeWidth={sw * (on ? 2.4 : 1.6)}
                 style={{ cursor: dragging === "move" && on ? "grabbing" : "grab" }}
                 onPointerDown={startGrab(idx, "move")}
+                onDoubleClick={x.plan ? rotatePlan : undefined}
               />
-              <text x={cxu} y={cyu - fs * 0.55} textAnchor="middle" pointerEvents="none" style={{ fontSize: fs * 0.5, fontWeight: 800, fill: "#17241D", letterSpacing: "0.06em" }}>{st.name}</text>
+              <text x={cxu} y={cyu - fs * 0.55} textAnchor="middle" pointerEvents="none" style={{ fontSize: fs * 0.5, fontWeight: 800, fill: "#17241D", letterSpacing: x.plan ? "0.02em" : "0.06em" }}>{x.plan ? x.plan.name.slice(0, 18).toUpperCase() : st.name}</text>
               <text x={cxu} y={cyu + fs * 0.2} textAnchor="middle" pointerEvents="none" style={{ fontSize: fs * 0.66, fontWeight: 800, fill: "#17241D" }}>{`${Math.round(x.w)}' × ${Math.round(x.d)}'`}</text>
               <text x={cxu} y={cyu + fs * 0.92} textAnchor="middle" pointerEvents="none" style={{ fontSize: fs * 0.56, fontWeight: 600, fill: "#17241D" }}>{`${c.footprint.toLocaleString("en-US")} sf`}</text>
-              {on && ([
+              {on && x.plan && (
+                <g data-pdf-skip role="button" aria-label="Rotate 90 degrees" style={{ cursor: "pointer" }} onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); rotatePlan(); }}>
+                  <line x1={cxu} y1={sb.y0} x2={cxu} y2={sb.y0 - fs * 1.5} stroke="#17241D" strokeWidth={sw * 1.2} />
+                  <circle cx={cxu} cy={sb.y0 - fs * 2.2} r={fs * 1.1} fill="#fff" stroke="#17241D" strokeWidth={sw * 1.4} />
+                  <path
+                    d={`M ${cxu - fs * 0.5} ${sb.y0 - fs * 2.2} A ${fs * 0.5} ${fs * 0.5} 0 1 1 ${cxu} ${sb.y0 - fs * 1.7}`}
+                    fill="none" stroke="#17241D" strokeWidth={sw * 1.6} strokeLinecap="round"
+                  />
+                  <path d={`M ${cxu - fs * 0.85} ${sb.y0 - fs * 2.35} L ${cxu - fs * 0.5} ${sb.y0 - fs * 2.2} L ${cxu - fs * 0.2} ${sb.y0 - fs * 2.55}`} fill="none" stroke="#17241D" strokeWidth={sw * 1.6} strokeLinecap="round" strokeLinejoin="round" />
+                </g>
+              )}
+              {on && !x.plan && ([
                 ["nw", sb.x0, sb.y0, "nwse-resize"],
                 ["ne", sb.x1, sb.y0, "nesw-resize"],
                 ["sw", sb.x0, sb.y1, "nesw-resize"],
@@ -750,7 +820,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
           rearSetback={rear}
           onAlley={onAlley}
           buildings={sectionBuildings}
-          units={units.map((x) => ({ kind: x.kind, s0: x.v + SECTION_PAD, s1: x.v + x.d + SECTION_PAD, stories: x.kind === "dadu" ? stories : 1, cut: sectionU >= x.u - 0.01 && sectionU <= x.u + x.w + 0.01 }))}
+          units={units.map((x) => ({ kind: x.kind, s0: x.v + SECTION_PAD, s1: x.v + x.d + SECTION_PAD, stories: x.plan ? x.plan.stories : x.kind === "dadu" ? stories : 1, cut: sectionU >= x.u - 0.01 && sectionU <= x.u + x.w + 0.01 }))}
           maxHeight={fp?.maxHeight ?? null}
           source={terrain?.source ?? ""}
         />
@@ -768,6 +838,10 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
                 style={{ background: "var(--card, #fff)", boxShadow: active === idx ? "0 0 0 2px #145A40, 0 4px 14px -6px rgba(23,36,29,.25)" : "0 1px 2px rgba(23,36,29,.08), 0 4px 14px -6px rgba(23,36,29,.18)" }}
                 onClick={() => setActive(idx)}
               >
+                {x.plan ? (
+                  <PlacedPlanCard plan={x.plan} rotated={x.w !== x.plan.widthFt} living={c.living} maxLiving={maxLiving} checks={c.list} onRotate={rotatePlan} onRemove={removePlan} />
+                ) : (
+                  <>
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <p className="text-sm" style={{ color: "var(--ink)" }}>
                     <span aria-hidden className="mr-2 inline-block h-2.5 w-2.5 rounded-[3px] align-middle" style={{ background: st.fill, border: "1px solid #17241D" }} />
@@ -796,6 +870,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
                 <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
                   {c.list.map((k) => <li key={k.text} style={{ color: k.ok ? "var(--green)" : "var(--red)" }}>{k.text}</li>)}
                 </ul>
+                  </>
+                )}
               </div>
             );
           })}
@@ -805,6 +881,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
               {overAduCap && <li>A lot can have 2 ADUs. This one already has {existingAdus}, so you can add {Math.max(0, 2 - existingAdus)} more.</li>}
             </ul>
           )}
+          <PlanPicker plans={PREAPPROVED_PLANS} fit={planFit} activeId={planUnit?.plan?.id ?? null} onPick={placePlan} />
           <div className="flex flex-wrap gap-2">
             {!units.some((x) => x.kind === "aadu") && (
               <button type="button" className="pa-btn pa-btn-sm" onClick={addAadu}><Plus size={14} aria-hidden /> Add an attached ADU</button>

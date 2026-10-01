@@ -204,6 +204,10 @@ export async function buildReportPdf({ slim, report, plan }: ReportPdfInput) {
       room(24);
       text(`${u.long}: ${u.w}' x ${u.d}'`, { bold: true, size: 10.5, gap: 0 });
       text(`${u.footprint.toLocaleString("en-US")} sf footprint. Living area ${u.living.toLocaleString("en-US")} sf of ${u.maxLiving.toLocaleString("en-US")} sf allowed${u.name === "DADU" ? ` (${plan.stories} ${plan.stories === 1 ? "story" : "stories"})` : ""}.`, { size: 9, c: SLATE, gap: 0.5 });
+      if (u.plan) {
+        text(`Pre-approved design: ${u.plan.name} by ${u.plan.designer}. ${u.plan.sqft.toLocaleString("en-US")} sf, ${u.plan.beds === "Studio" ? "studio" : `${u.plan.beds} bed`}, ${u.plan.baths} bath. Footprint ${u.plan.widthFt} x ${u.plan.depthFt} ft${u.plan.approx ? " (approximate)" : ""}. Plans: ${u.plan.detailUrl}`, { size: 8.5, c: SLATE, gap: 0.5 });
+        text("The City makes no warranty about a pre-approved design or its suitability for a property; rely on the designer for that.", { size: 8, c: SLATE, gap: 0.5 });
+      }
       for (const c of u.checks) bullet(c.text, c.ok ? GREEN : RED, c.ok ? "+" : "!");
       y += 1;
     }

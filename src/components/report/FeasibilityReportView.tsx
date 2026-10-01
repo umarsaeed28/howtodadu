@@ -136,7 +136,7 @@ function Hero({ report, slim }: { report: FeasibilityReport; slim: DashboardProp
 
 function ReportBody({ report, row, snapshotRef }: { report: FeasibilityReport; row: FeasibilityTableRow; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null> }) {
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start">
       {/* Left column scrolls */}
       <div className="order-2 flex flex-col gap-6 lg:order-1">
         <Section id="rep-facts" title="Property facts">
@@ -262,7 +262,7 @@ function ReportBody({ report, row, snapshotRef }: { report: FeasibilityReport; r
       </div>
 
       {/* Right column: summary, then the pinned master plan */}
-      <div className="order-1 flex flex-col gap-6 lg:sticky lg:top-24 lg:order-2">
+      <div className="order-1 flex flex-col gap-6 lg:sticky lg:top-24 lg:order-2 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
         <MasterPlan
           lot={row.result.lot}
           sitePlan={row.result.sitePlan}
