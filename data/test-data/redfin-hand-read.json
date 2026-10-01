@@ -1,0 +1,356 @@
+{
+ "_note": "Facts read from each Redfin listing page by hand on 2026-10-01 (MLS data via NWMLS). Descriptions are short paraphrases, not the listing text. Price, beds, baths and sqft cross-checked against the user's list screenshot.",
+ "retrievedAt": "2026-10-01",
+ "properties": [
+  {
+   "address": "4743 5th Ave NE",
+   "neighborhood": "Wallingford",
+   "mls": "2588957",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/4743-5th-Ave-NE-98105/home/118529",
+   "price": 630000,
+   "beds": 2,
+   "baths": 1,
+   "sqft": 2030,
+   "lotSqft": 4540,
+   "yearBuilt": 1912,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "summary": "Raised, fully fenced lot above the street. Main level has two bedrooms, a bath and a flex room. Unfinished basement and attic.",
+   "notes": [
+    "Unfinished basement and attic add space."
+   ],
+   "schools": [
+    {
+     "name": "Green Lake Elementary School",
+     "rating": 7,
+     "level": "PreK-5"
+    },
+    {
+     "name": "Hamilton International Middle School",
+     "rating": 8,
+     "level": "6-8"
+    },
+    {
+     "name": "Lincoln High School",
+     "rating": 10,
+     "level": "9-12"
+    }
+   ]
+  },
+  {
+   "address": "332 NE 50th St",
+   "neighborhood": "Wallingford",
+   "mls": "2567331",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/332-NE-50th-St-98105/home/304490",
+   "price": 669000,
+   "beds": 3,
+   "baths": 1,
+   "sqft": 1190,
+   "lotSqft": 3120,
+   "yearBuilt": 1909,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "summary": "Updated three-bedroom with a wood-burning fireplace, an oversized driveway and a fenced backyard.",
+   "notes": [
+    "Seller offers owner financing."
+   ]
+  },
+  {
+   "address": "5621 Brooklyn Ave NE",
+   "neighborhood": "University District",
+   "mls": "2551590",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/5621-Brooklyn-Ave-NE-98105/home/311844",
+   "price": 729500,
+   "beds": 2,
+   "baths": 1,
+   "sqft": 700,
+   "lotSqft": 3192,
+   "yearBuilt": 1907,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "summary": "Updated bungalow with a large backyard and several outbuildings, near the University District farmers market.",
+   "notes": [
+    "Several outbuildings in the backyard."
+   ],
+   "schools": [
+    {
+     "name": "Green Lake Elementary School",
+     "rating": 7,
+     "level": "PreK-5"
+    },
+    {
+     "name": "Hamilton International Middle School",
+     "rating": 8,
+     "level": "6-8"
+    },
+    {
+     "name": "Lincoln High School",
+     "rating": 10,
+     "level": "9-12"
+    }
+   ],
+   "scores": {
+    "walk": 97,
+    "bike": 95,
+    "transit": 76
+   }
+  },
+  {
+   "address": "4329 5th Ave NE",
+   "neighborhood": "Wallingford",
+   "mls": "2585171",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/4329-5th-Ave-NE-98105/home/117576",
+   "price": 795000,
+   "beds": 4,
+   "baths": 1.5,
+   "sqft": 1690,
+   "lotSqft": 3690,
+   "yearBuilt": 1912,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "summary": "Studs-out remodeled Craftsman with a front porch view, box-beam dining room and a private backyard.",
+   "notes": []
+  },
+  {
+   "address": "5755 25th Ave NE",
+   "neighborhood": "Ravenna",
+   "mls": "2519931",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/5755-25th-Ave-NE-98105/home/308753",
+   "price": 799000,
+   "beds": 4,
+   "baths": 2,
+   "sqft": 2120,
+   "lotSqft": 3735,
+   "yearBuilt": 1926,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "summary": "Mediterranean-style home. Upper level has two bedrooms and a bath. The lower level has two bedrooms, a bath, its own living space and a kitchen, so it could work as a separate unit.",
+   "notes": [
+    "Lower level has its own kitchen and could be a separate unit."
+   ],
+   "conflicts": [
+    "City GIS counts 0 existing ADUs, but the listing describes a lower level with its own kitchen. Confirm whether it is a permitted unit."
+   ]
+  },
+  {
+   "address": "2722 NE Blakeley St",
+   "neighborhood": "Ravenna",
+   "mls": "2540113",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/2722-NE-Blakeley-St-98105/home/313174",
+   "price": 799000,
+   "beds": 2,
+   "baths": 1,
+   "sqft": 900,
+   "lotSqft": 4480,
+   "cityLotSqft": 5090,
+   "yearBuilt": 1950,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "summary": "Ravenna rambler on its own lot near University Village. The listing says there is no HOA and mentions potential to add a backyard cottage or DADU.",
+   "notes": [
+    "Listing agent mentions DADU potential.",
+    "Listing says no HOA."
+   ],
+   "conflicts": [
+    "Listing lot is 4,480 sf but the listing says the city measures 5,090 sf."
+   ]
+  },
+  {
+   "address": "5817 56th Ave NE",
+   "neighborhood": "Belvedere Terrace",
+   "mls": "2579503",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/5817-56th-Ave-NE-98105/home/121326",
+   "price": 875000,
+   "beds": 3,
+   "baths": 3,
+   "sqft": 1360,
+   "lotSqft": 3107,
+   "yearBuilt": 1943,
+   "hoaMonthly": 20,
+   "type": "Single-family",
+   "summary": "Fully renovated three-bedroom with a chef's kitchen, deck and large fenced yard.",
+   "notes": [
+    "Redfin shows HOA dues of $20."
+   ],
+   "conflicts": [
+    "Redfin shows a 3,107 sf lot but the city lot library shows 6,800 sf.",
+    "Redfin shows HOA dues of $20; the billing period was not confirmed."
+   ]
+  },
+  {
+   "address": "4545 5th Ave NE",
+   "neighborhood": "Wallingford",
+   "mls": "2580066",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/4545-5th-Ave-NE-98105/home/118645",
+   "price": 878000,
+   "beds": 6,
+   "baths": 3,
+   "sqft": 1460,
+   "lotSqft": 4192,
+   "yearBuilt": 1919,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "summary": "Multi-level 1919 home with a covered porch, several living spaces, a kitchenette on the lower level and a detached storage structure.",
+   "notes": [
+    "Kitchenette on the lower level.",
+    "Detached storage structure in the rear yard."
+   ]
+  },
+  {
+   "address": "5247 Brooklyn Ave NE",
+   "neighborhood": "University District",
+   "mls": "2577521",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/5247-Brooklyn-Ave-NE-98105/home/311567",
+   "price": 899000,
+   "beds": 4,
+   "baths": 2,
+   "sqft": 2220,
+   "lotSqft": 4240,
+   "yearBuilt": 1906,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "status": "For sale",
+   "summary": "Pitched as an investor property: the listing says it is zoned Low Rise (LR2) and suggests redevelopment or a multi-unit rental building.",
+   "notes": [
+    "Listing says the lot is zoned LR2, not Neighborhood Residential."
+   ],
+   "conflicts": [
+    "Listing says LR2 zoning; confirm against city GIS."
+   ]
+  },
+  {
+   "address": "5016 7th Ave NE",
+   "neighborhood": "University District",
+   "mls": "2353618",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/5016-7th-Ave-NE-98105/home/311753",
+   "price": 915000,
+   "beds": 7,
+   "baths": 2,
+   "sqft": 3000,
+   "lotSqft": 4280,
+   "yearBuilt": 1927,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "status": "For sale",
+   "summary": "Furnished craftsman rented for 20+ years near the University of Washington, with a separate entrance and a downstairs kitchenette.",
+   "notes": [
+    "Rental history of 20+ years.",
+    "Separate entrance and downstairs kitchenette."
+   ]
+  },
+  {
+   "address": "811 NE 57th St",
+   "neighborhood": "Green Lake",
+   "mls": "2583245",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/811-NE-57th-St-98105/home/311744",
+   "price": 925000,
+   "beds": 2,
+   "baths": 1.5,
+   "sqft": 1240,
+   "lotSqft": 4392,
+   "yearBuilt": 1979,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "status": "For sale",
+   "summary": "Updated two-bedroom between Ravenna and Green Lake with new engineered wood floors on the main level.",
+   "notes": []
+  },
+  {
+   "address": "5522 12th Ave NE",
+   "neighborhood": "University District",
+   "mls": "2575287",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/5522-12th-Ave-NE-98105/home/311949",
+   "price": 949000,
+   "beds": 7,
+   "baths": 2,
+   "sqft": 2430,
+   "lotSqft": 4980,
+   "yearBuilt": 1908,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "status": "For sale",
+   "summary": "1908 house with 7 bedrooms, pitched for restoration or rental use, with possible room to expand to the south.",
+   "notes": [
+    "Seven bedrooms; listing suggests rental potential and possible expansion."
+   ]
+  },
+  {
+   "address": "5242 11th Ave NE",
+   "neighborhood": "University District",
+   "mls": "2525586",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/5242-11th-Ave-NE-98105/home/311967",
+   "price": 980000,
+   "beds": 5,
+   "baths": 2,
+   "sqft": 1880,
+   "lotSqft": 3000,
+   "yearBuilt": 1908,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "status": "For sale",
+   "summary": "Sold as a turnkey rental with a lease at $4,750 per month through August 2027, a few blocks from the UW campus.",
+   "notes": [
+    "Active lease at $4,750 per month through August 2027."
+   ]
+  },
+  {
+   "address": "2732 NE 54th St",
+   "neighborhood": "Bryant",
+   "mls": "2584723",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/2732-NE-54th-St-98105/home/312939",
+   "price": 980000,
+   "beds": 4,
+   "baths": 3,
+   "sqft": 1830,
+   "lotSqft": 5500,
+   "yearBuilt": 1921,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "status": "Sold",
+   "summary": "Farmhouse-style home set toward the back of a 5,500 sf lot. The listing mentions expansion, DADU or redevelopment, buyer to verify.",
+   "notes": [
+    "Listing mentions DADU or redevelopment possibility, buyer to verify.",
+    "Redfin shows this listing as sold (closed)."
+   ]
+  },
+  {
+   "address": "5510 43rd Ave NE",
+   "neighborhood": "Hawthorne Hills",
+   "mls": "2579600",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/5510-43rd-Ave-NE-98105/home/313978",
+   "price": 995000,
+   "beds": 2,
+   "baths": 1,
+   "sqft": 1720,
+   "lotSqft": 6000,
+   "yearBuilt": 1937,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "status": "For sale",
+   "summary": "Well-kept Hawthorne Hills home, owned by one family for two generations, with a remodeled kitchen and a fireplace.",
+   "notes": []
+  },
+  {
+   "address": "5521 Brooklyn Ave NE",
+   "neighborhood": "University District",
+   "mls": "redfin311573",
+   "redfinUrl": "https://www.redfin.com/WA/Seattle/5521-Brooklyn-Ave-NE-98105/home/311573",
+   "price": 999500,
+   "beds": 5,
+   "baths": 3,
+   "sqft": 2300,
+   "lotSqft": 3315,
+   "yearBuilt": 1906,
+   "hoaMonthly": 0,
+   "type": "Single-family",
+   "status": "Coming soon",
+   "summary": "Four-bedroom main house plus a one-bedroom townhome-style ADU behind it, rented at $1,695 per month, with its own entry from the back patio.",
+   "notes": [
+    "Existing one-bedroom ADU behind the main house, rented at $1,695 per month."
+   ],
+   "conflicts": [
+    "Redfin lists this as coming soon with no MLS number yet; it is not in the NWMLS export."
+   ]
+  }
+ ]
+}

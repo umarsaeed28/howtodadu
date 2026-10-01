@@ -26,6 +26,11 @@ export interface LotLibraryFile {
     steepPct: (number | null)[];
     adusNearby: number[];
     daduSqft: (number | null)[];
+    /** Added with the guide-based score. Older files lack them. */
+    lotWidth?: (number | null)[];
+    lotDepth?: (number | null)[];
+    existingAdus?: (number | null)[];
+    sideClearanceFt?: (number | null)[];
   };
 }
 
@@ -55,6 +60,10 @@ export function encodeLibrary(rows: Candidate[], source: string, now = new Date(
       steepPct: rows.map((r) => r2(r.steepPct)),
       adusNearby: rows.map((r) => r.adusNearby),
       daduSqft: rows.map((r) => r.daduSqft),
+      lotWidth: rows.map((r) => r.lotWidth),
+      lotDepth: rows.map((r) => r.lotDepth),
+      existingAdus: rows.map((r) => r.existingAdus),
+      sideClearanceFt: rows.map((r) => r.sideClearanceFt),
     },
   };
 }
@@ -83,6 +92,10 @@ export function decodeLibrary(f: LotLibraryFile, zips?: string[] | null): Candid
       steepPct: c.steepPct[i],
       adusNearby: c.adusNearby[i],
       daduSqft: c.daduSqft[i],
+      lotWidth: c.lotWidth?.[i] ?? null,
+      lotDepth: c.lotDepth?.[i] ?? null,
+      existingAdus: c.existingAdus?.[i] ?? null,
+      sideClearanceFt: c.sideClearanceFt?.[i] ?? null,
     });
   }
   return out;

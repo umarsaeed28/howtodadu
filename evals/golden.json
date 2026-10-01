@@ -1,0 +1,50 @@
+{
+  "retrieval": [
+    {
+      "query": "can a property with an HOA be a DADU candidate",
+      "expectDoc": "30-dadu-screening-rules"
+    },
+    {
+      "query": "what if the listing does not say whether there is an HOA",
+      "expectDoc": "30-dadu-screening-rules"
+    },
+    {
+      "query": "how many homes are allowed on a lot near frequent transit",
+      "expectDoc": "01-sample-middle-housing-overview"
+    },
+    {
+      "query": "minimum lot size to build a DADU in Seattle",
+      "expectDoc": "31-lot-size-and-dimensions"
+    },
+    {
+      "query": "no alley, 40 foot wide lot, can a car get to the back unit",
+      "expectDoc": "32-access-and-driveways"
+    },
+    {
+      "query": "which layout works on a 50 foot wide lot",
+      "expectDoc": "33-layout-archetypes"
+    },
+    {
+      "query": "how many stories can a backyard cottage be",
+      "expectDoc": "34-height-and-bulk"
+    }
+  ],
+  "gate": [
+    {
+      "name": "HOA of $1 excludes",
+      "hoaMonthly": 1,
+      "expect": "excluded"
+    },
+    {
+      "name": "HOA of $350 excludes",
+      "hoaMonthly": 350,
+      "expect": "excluded"
+    }
+  ],
+  "rubric": [
+    "Every claim cites a source label (F# or P#).",
+    "No number appears that is not in the facts or passages.",
+    "If the HOA is unknown, the verdict is not 'candidate' and the reader is told to confirm.",
+    "The tone is plain and addressed to the reader, with no code jargon."
+  ]
+}

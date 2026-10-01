@@ -1,11 +1,8 @@
 import { parcelZoningLabel, type FeasibilityResult } from "./feasibility";
 import type { ADUReport } from "./adu-analysis";
-import type { DealSignals, SiteSignals } from "./deal-scoring";
-import {
-  calculateDealScore,
-  daduZoningScoreForDeal,
-  getSeattleDealSignals,
-} from "./deal-scoring";
+import type { DealSignals } from "./deal-scoring";
+import { getSeattleDealSignals } from "./deal-scoring";
+import { ecaFlagsOf, scoreSite, type SiteScore } from "./dadu-score";
 
 export type DaduVerdict = "strong" | "medium" | "low";
 
@@ -20,6 +17,8 @@ export interface FeasibilityTableRow {
   lotSizeSqft: number | null;
   zoning: string | null;
   daduScore: number;
+  /** The rules baseline behind daduScore: gates and the five weighted factors. */
+  siteScore: SiteScore;
   confidenceShort: string;
   uwProximity: string;
   keyInsight: string;
@@ -73,22 +72,24 @@ function assessedTotalDisplay(result: FeasibilityResult): string {
   }).format(total);
 }
 
-export function buildSiteSignalsForDealScore(
-  result: FeasibilityResult,
-  signals: DealSignals
-): SiteSignals {
-  const parcel = result.parcel;
-  const lotSqft = parcel?.lotSqft ?? 0;
-  const zoneLabel = parcelZoningLabel(parcel) ?? "";
-  const zoningScore = daduZoningScoreForDeal(zoneLabel, lotSqft);
-  return {
-    zoningScore,
-    lotSizeScore: signals.lotSize.score,
-    terrainScore: signals.terrainSignal.score,
-    backyardScore: signals.backyardSignal.score,
-    accessScore: signals.accessSignal.score,
-    contextScore: signals.contextSignal.score,
-  };
+/** The site score for a city-data result. Listings pass their HOA; the report has none, so it is unknown. */
+export function siteScoreFor(result: FeasibilityResult, report: ADUReport, hoaMonthly: number | null = null): SiteScore {
+  const f = result.feasibility;
+  return scoreSite({
+    lotSqft: result.parcel?.lotSqft ?? 0,
+    widthFt: f?.lotWidth ?? null,
+    depthFt: f?.lotDepth ?? null,
+    alley: f ? !!f.hasAlley : null,
+    corner: (f?.lotType ?? "").toLowerCase().includes("corner"),
+    daduSqft: report.daduFootprint?.buildableSqft ?? null,
+    steepPct: f?.steepSlopePercent ?? null,
+    canopyPct: f?.treeCanopyPercent ?? null,
+    ecaFlags: ecaFlagsOf(f),
+    existingAdus: f?.totalADU ?? null,
+    sideClearanceFt: f?.sideClearanceFt ?? null,
+    zoning: parcelZoningLabel(result.parcel),
+    hoaMonthly,
+  });
 }
 
 function keyInsightFrom(report: ADUReport, signals: DealSignals): string {
@@ -195,14 +196,9 @@ export function buildFeasibilityTableRow(
   report: ADUReport
 ): FeasibilityTableRow {
   const signals = getSeattleDealSignals(result, report);
-  const siteSignals = buildSiteSignalsForDealScore(result, signals);
-  const deal = calculateDealScore(siteSignals);
-  const availCov = report.coverage?.availableSqft;
-  // The score is the six weighted site factors only. No model confidence is blended in.
-  let daduScore = deal.score;
-  if (availCov != null && Number.isFinite(availCov) && availCov < 700) {
-    daduScore = Math.min(daduScore, 74);
-  }
+  // The rules baseline from the team guide (rag/documents/36). Claude may adjust it per listing.
+  const siteScore = siteScoreFor(result, report);
+  const daduScore = siteScore.score;
   const address = result.parcel?.address?.trim() || "Unknown address";
   const { verdict, label: verdictLabel } = verdictFromCombined(daduScore);
 
@@ -216,6 +212,7 @@ export function buildFeasibilityTableRow(
     lotSizeSqft: result.parcel?.lotSqft ?? null,
     zoning: parcelZoningLabel(result.parcel),
     daduScore,
+    siteScore,
     confidenceShort: confidenceShort(report.confidenceLabel),
     uwProximity: uwProximityFromParcel(result),
     keyInsight: keyInsightFrom(report, signals),

@@ -5,8 +5,28 @@ const MAX_SPAN = 0.022;
 const PAGE = 2000;
 const PAGES = 3;
 
+/** GET /api/lot-shapes?pins=a,b,c  Outlines for specific lots. Properties: pin. Used for the lots that have a listing. */
+async function byPins(pins: string[]) {
+  const where = `KCGIS_CGDB_PARCEL_SV_PIN IN (${pins.map((p) => `'${p}'`).join(",")})`;
+  const res = await fetch(`${URL_}?${new URLSearchParams({ where, outFields: "KCGIS_CGDB_PARCEL_SV_PIN", outSR: "4326", returnGeometry: "true", maxAllowableOffset: "0.000004", f: "geojson" })}`, { signal: AbortSignal.timeout(15000) });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message ?? "ArcGIS error");
+  const features = ((data.features ?? []) as { geometry: unknown; properties?: Record<string, unknown> }[]).map((f) => ({ type: "Feature", geometry: f.geometry, properties: { pin: String(f.properties?.KCGIS_CGDB_PARCEL_SV_PIN ?? "") } }));
+  return NextResponse.json({ type: "FeatureCollection", features }, { headers: { "Cache-Control": "public, max-age=3600" } });
+}
+
 /** GET /api/lot-shapes?bbox=w,s,e,n  Lot outlines (GeoJSON) for street-level zoom. Properties: pin. */
 export async function GET(req: Request) {
+  const pinsParam = new URL(req.url).searchParams.get("pins");
+  if (pinsParam) {
+    const pins = pinsParam.split(",").filter((p) => /^\d{10}$/.test(p)).slice(0, 300);
+    if (!pins.length) return NextResponse.json({ type: "FeatureCollection", features: [] });
+    try {
+      return await byPins(pins);
+    } catch (err) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : "Lot outlines unavailable" }, { status: 502 });
+    }
+  }
   const parts = (new URL(req.url).searchParams.get("bbox") ?? "").split(",").map(Number);
   if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) return NextResponse.json({ error: "bad bbox" }, { status: 400 });
   const [w, s, e, n] = parts;

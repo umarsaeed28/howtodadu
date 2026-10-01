@@ -50,7 +50,7 @@ export function getSlimLots(zips: string[] | null): { generatedAt: string; zips:
   const want = zips && zips.length ? new Set(zips) : null;
   const out: SlimLots = { count: 0, pin: [], lat: [], lng: [], score: [], tier: [], flags: [], zip: [] };
   for (let i = 0; i < l.file.count; i++) {
-    if (c.tier[i] < 2) continue; // the map shows only greens: top picks and good lots, score 80 and up
+    if (c.tier[i] < 1) continue; // top picks, good and fair lots (score 74 and up); anything lower has no DADU room
     if (want && !(c.zip[i] && want.has(c.zip[i]!))) continue;
     out.pin.push(c.pin[i]);
     out.lat.push(c.lat[i]);
@@ -81,4 +81,17 @@ export function findNearestLot(lat: number, lng: number, maxMeters = 40): Candid
     l.find = makeLotFinder(l.all);
   }
   return l.find!(lat, lng, maxMeters);
+}
+
+const streetKey = (a: string) => a.split(",")[0].toUpperCase().replace(/\s+\d{5}$/, "").replace(/[^A-Z0-9]+/g, " ").trim();
+
+/**
+ * The library lot that is this listing's own parcel. The nearest lot is not enough: a neighbour can be closer
+ * to the geocoded point than the listing's own lot, which would give a listing someone else's score. The street
+ * address must match. Returns null when the listing's lot is not in the library (not an eligible single-family
+ * lot, or the DADU engine found no room), which is the honest answer.
+ */
+export function findLotForListing(address: string, lat: number, lng: number): Candidate | null {
+  const near = findNearestLot(lat, lng, 60);
+  return near && streetKey(near.address) === streetKey(address) ? near : null;
 }

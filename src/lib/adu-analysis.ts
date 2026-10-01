@@ -728,6 +728,8 @@ export function generateADUReport(
   const daduFootprint = zoningOk
     ? computeDADUFootprint(lot, availCov, w, hl)
     : null;
+  // A rear lot line on an alley needs no setback (team rule; SMC 23.44.041 measures the DADU setback from the alley).
+  if (daduFootprint && factors?.hasAlley) daduFootprint.rearSetback = 0;
 
   const housingOptions = computeHousingOptions(family, zone, lot, totalADU);
 
