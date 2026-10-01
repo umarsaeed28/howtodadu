@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ExternalLink, RotateCw, X } from "lucide-react";
-import { planFootprintSf, type PreApprovedPlan } from "@/lib/preapproved-dadus";
+import { planFamilies, planFootprintSf, type PreApprovedPlan } from "@/lib/preapproved-dadus";
 
 export type PlanFit = { fits: boolean; reason: string | null };
 
@@ -24,25 +24,32 @@ const fmt = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.rou
 
 /** The list of designs. Selecting one swaps the resizable box for that design's real footprint. */
 export function PlanPicker({ plans, fit, activeId, onPick }: { plans: PreApprovedPlan[]; fit: (p: PreApprovedPlan) => PlanFit; activeId: string | null; onPick: (p: PreApprovedPlan | null) => void }) {
-  // Designs that fit this lot come first; catalogue order is kept inside each group.
-  const ordered = [...plans].sort((a, b) => Number(fit(b).fits) - Number(fit(a).fits));
+  // One card per design. Designs with a size that fits this lot come first; catalogue order is kept inside each group.
+  const families = planFamilies(plans);
+  const bestOf = (vs: PreApprovedPlan[]) => vs.find((v) => fit(v).fits) ?? vs[0];
+  const ordered = [...families].sort((a, b) => Number(fit(bestOf(b)).fits) - Number(fit(bestOf(a)).fits));
+  const activeFamily = plans.find((p) => p.id === activeId)?.family ?? null;
   return (
     <section aria-labelledby="pp-h" className="mt-4">
       <h4 id="pp-h" className="pa-display text-base" style={{ color: "var(--ink)" }}>Start from a pre-approved design</h4>
       <p className="mt-0.5 text-xs" style={{ color: "var(--slate)" }}>
-        Designs the City of Seattle has already approved. Pick one to drop its real footprint on the lot, then drag it where you want it.
+        The {families.length} designs the City of Seattle has pre-approved. Pick one to drop its real footprint on the lot, then drag it where you want it.
       </p>
       <div role="radiogroup" aria-labelledby="pp-h" className="pp-row -mx-1 mt-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-2">
-        {ordered.map((p) => {
-          const f = fit(p);
-          const on = activeId === p.id;
+        {ordered.map((vs) => {
+          const lead = vs.find((v) => v.id === activeId) ?? bestOf(vs);
+          const f = fit(lead);
+          const on = activeFamily === lead.family;
+          const multi = vs.length > 1;
+          const lo = Math.min(...vs.map((v) => v.sqft)), hi = Math.max(...vs.map((v) => v.sqft));
+          const title = multi ? lead.name.replace(/\s+(Studio|\d Bed|Two Story)$/, "").replace(/, \d bed$/, "") : lead.name;
           return (
             <button
-              key={p.id}
+              key={lead.family}
               type="button"
               role="radio"
               aria-checked={on}
-              onClick={() => onPick(on ? null : p)}
+              onClick={() => onPick(on ? null : lead)}
               className="pp-card relative flex w-[184px] shrink-0 snap-start flex-col rounded-xl p-2.5 text-left"
               data-on={on || undefined}
               style={{ background: "var(--card, #fff)", boxShadow: on ? "0 0 0 2px #145A40, 0 6px 16px -8px rgba(23,36,29,.35)" : "0 1px 2px rgba(23,36,29,.08), 0 4px 14px -6px rgba(23,36,29,.18)", opacity: f.fits || on ? 1 : 0.82 }}
@@ -52,14 +59,14 @@ export function PlanPicker({ plans, fit, activeId, onPick }: { plans: PreApprove
                   <Check size={12} strokeWidth={3} />
                 </span>
               )}
-              <span className="pa-inset block rounded-lg px-2 py-1.5"><Silhouette plan={p} on={on} /></span>
-              <span className="mt-2 block text-sm font-semibold leading-tight" style={{ color: "var(--ink)" }}>{p.name}</span>
-              <span className="block text-[11px]" style={{ color: "var(--slate)" }}>{p.designer}</span>
+              <span className="pa-inset block rounded-lg px-2 py-1.5"><Silhouette plan={lead} on={on} /></span>
+              <span className="mt-2 block text-sm font-semibold leading-tight" style={{ color: "var(--ink)" }}>{title}</span>
+              <span className="block text-[11px]" style={{ color: "var(--slate)" }}>{lead.designer}</span>
               <span className="mt-1.5 block text-xs tabular-nums" style={{ color: "var(--ink)" }}>
-                <strong>{p.sqft.toLocaleString("en-US")} sf</strong> · {p.beds === "Studio" ? "Studio" : `${p.beds} bed`}
+                <strong>{multi && lo !== hi ? `${lo.toLocaleString("en-US")}-${hi.toLocaleString("en-US")}` : lead.sqft.toLocaleString("en-US")} sf</strong> · {multi ? `${vs.length} sizes` : lead.beds === "Studio" ? "Studio" : `${lead.beds} bed`}
               </span>
               <span className="block text-xs tabular-nums" style={{ color: "var(--slate)" }}>
-                {p.approx ? "about " : ""}{dims(p)}{p.stories === 2 ? " · 2 floors" : ""}
+                {multi ? "Pick a size after placing" : `${lead.approx ? "about " : ""}${dims(lead)}${lead.stories === 2 ? " · 2 floors" : ""}`}
               </span>
               <span
                 className="mt-2 inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
@@ -78,7 +85,10 @@ export function PlanPicker({ plans, fit, activeId, onPick }: { plans: PreApprove
 /** The card shown in place of the resizable-box card while a design is placed. */
 export function PlacedPlanCard({
   plan,
-  rotated,
+  variants,
+  onVariant,
+  fit,
+  angle,
   living,
   maxLiving,
   checks,
@@ -86,7 +96,10 @@ export function PlacedPlanCard({
   onRemove,
 }: {
   plan: PreApprovedPlan;
-  rotated: boolean;
+  variants: PreApprovedPlan[];
+  onVariant: (p: PreApprovedPlan) => void;
+  fit: (p: PreApprovedPlan) => PlanFit;
+  angle: number;
   living: number;
   maxLiving: number;
   checks: { ok: boolean; text: string }[];
@@ -105,10 +118,22 @@ export function PlacedPlanCard({
           Plans on ADUniverse <ExternalLink size={12} aria-hidden />
         </a>
       </div>
+      {variants.length > 1 && (
+        <div className="flex flex-wrap items-center gap-1" role="radiogroup" aria-label="Size">
+          {variants.map((v) => {
+            const f = fit(v);
+            return (
+              <button key={v.id} type="button" role="radio" aria-checked={v.id === plan.id} disabled={!f.fits && v.id !== plan.id} title={f.fits ? undefined : f.reason ?? undefined} onClick={(e) => { e.stopPropagation(); onVariant(v); }} className={`pa-chip ${v.id === plan.id ? "pa-chip-active" : ""}`} style={{ minHeight: 30, opacity: f.fits || v.id === plan.id ? 1 : 0.5 }}>
+                {v.option}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <p style={{ color: "var(--ink)" }}>
-        <span className="pa-display text-2xl tabular-nums">{rotated ? `${fmt(plan.depthFt)}′ × ${fmt(plan.widthFt)}′` : dims(plan)}</span>
+        <span className="pa-display text-2xl tabular-nums">{dims(plan)}</span>
         <span className="ml-2 text-sm tabular-nums" style={{ color: "var(--slate)" }}>
-          {planFootprintSf(plan).toLocaleString("en-US")} sf footprint{plan.approx ? ", approximate" : ""}
+          {planFootprintSf(plan).toLocaleString("en-US")} sf footprint{plan.approx ? ", approximate" : ""}{angle % 360 !== 0 ? `, turned ${Math.round(angle)}°` : ""}
         </span>
       </p>
       <p className="text-sm tabular-nums" style={{ color: living > maxLiving ? "var(--red)" : "var(--ink)" }}>
@@ -119,11 +144,11 @@ export function PlacedPlanCard({
         {checks.map((k) => <li key={k.text} style={{ color: k.ok ? "var(--green)" : "var(--red)" }}>{k.text}</li>)}
       </ul>
       <div className="mt-1 flex flex-wrap items-center gap-2">
-        <button type="button" className="pa-btn pa-btn-sm" onClick={(e) => { e.stopPropagation(); onRotate(); }}><RotateCw size={14} aria-hidden /> Rotate 90°</button>
+        <button type="button" className="pa-btn pa-btn-sm" onClick={(e) => { e.stopPropagation(); onRotate(); }}><RotateCw size={14} aria-hidden /> Turn 90°</button>
         <button type="button" className="pa-btn pa-btn-sm" onClick={(e) => { e.stopPropagation(); onRemove(); }}><X size={14} aria-hidden /> Remove design</button>
       </div>
       <p className="text-[11px]" style={{ color: "var(--slate)" }}>
-        Drag the footprint on the plan to place it. Turn it with the handle above it, double-click, or press R. Its size is fixed because the City approved this design as drawn. Removing it brings back the resizable box.
+        Drag the footprint on the plan to place it. Turn it freely with the small handle above it (hold Shift to turn in 15° steps), or use Turn 90°. Its size is fixed because the City approved this design as drawn. Removing it brings back the resizable box.
       </p>
     </div>
   );

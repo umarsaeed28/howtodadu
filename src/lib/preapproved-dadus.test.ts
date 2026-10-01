@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PREAPPROVED_PLANS, planFootprintSf } from "./preapproved-dadus";
+import { PREAPPROVED_PLANS, planFamilies, planFootprintSf } from "./preapproved-dadus";
 
 describe("PREAPPROVED_PLANS", () => {
   it("has unique ids and sane numbers", () => {
@@ -17,5 +17,8 @@ describe("PREAPPROVED_PLANS", () => {
       // Interior area cannot exceed footprint x floors by more than walls and porches allow.
       expect(p.sqft).toBeLessThanOrEqual(planFootprintSf(p) * p.stories * 1.1);
     }
+  });
+  it("groups into the seven pre-approved designs", () => {
+    expect(planFamilies()).toHaveLength(7);
   });
 });

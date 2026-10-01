@@ -217,9 +217,9 @@ export async function buildReportPdf({ slim, report, plan }: ReportPdfInput) {
     text("A sketch to get a feel for the lot, not a design.", { size: 8, c: SLATE, gap: 1 });
   }
 
-  /* ---- section A-A' ---- */
+  /* ---- section ---- */
   if (sectionImg) {
-    heading("Section A-A'", "Ground profile from the front lot line to the rear, through the cottage.");
+    heading("Section through the lot", "Ground profile from the front lot line to the rear, through the cottage.");
     image(sectionImg, 80);
   }
 

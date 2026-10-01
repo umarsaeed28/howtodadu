@@ -5,7 +5,7 @@ import { useState } from "react";
 type Span = { s0: number; s1: number };
 
 /**
- * Section A-A' through the lot, street to rear: the ground from lidar elevation, the lot lines, the rear setback,
+ * Section through the lot, street to rear: the ground from lidar elevation, the lot lines, the rear setback,
  * existing buildings where the cut crosses them, and the proposed units at their current size and place.
  * Distances run along the cut in feet; heights are elevations in feet.
  */
@@ -81,7 +81,7 @@ export default function LotSection({
   return (
     <div className="mt-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h4 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>Section A–A′</h4>
+        <h4 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>Section through the lot</h4>
         <div className="flex items-center gap-1 text-xs" role="group" aria-label="Vertical scale">
           {([false, true] as const).map((v) => (
             <button key={String(v)} type="button" aria-pressed={exaggerate === v} onClick={() => setExaggerate(v)} className={`pa-chip ${exaggerate === v ? "pa-chip-active" : ""}`} style={{ minHeight: 28 }}>
@@ -171,7 +171,7 @@ export default function LotSection({
         )}
       </ul>
       <p className="mt-1 text-[11px]" style={{ color: "var(--slate)" }}>
-        Ground from {source || "lidar elevation"}, sampled along A–A′. Contours on the plan are every 2 ft, labelled every 10 ft. Building heights are not in the city data: the house is drawn at an assumed {HOUSE_HEIGHT_FT} ft, other buildings only where they sit, and unit heights are illustrative ({STORY_FT} ft a story) under the code height limit. Solid outlines are cut by A–A′; dashed ones sit beyond it, projected onto the section. Moves with the DADU.
+        Ground from {source || "lidar elevation"}, sampled along the section. Contours on the plan are every 2 ft, labelled every 10 ft. Building heights are not in the city data: the house is drawn at an assumed {HOUSE_HEIGHT_FT} ft, other buildings only where they sit, and unit heights are illustrative ({STORY_FT} ft a story) under the code height limit. Solid outlines are cut by the section; dashed ones sit beyond it, projected onto the section. Moves with the DADU.
       </p>
     </div>
   );
