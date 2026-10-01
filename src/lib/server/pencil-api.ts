@@ -1,5 +1,5 @@
 /**
- * Client for the Pencil API (services/api, FastAPI + LangGraph on AWS). Server-side only: it carries the shared
+ * Client for the Pencil API (services/api, FastAPI + LangGraph, a Vercel service reached over an internal binding). Server-side only: it carries the shared
  * secret. When PENCIL_API_URL is not set, callers fall back to the in-app chain (local development).
  */
 import type { Assessment, Fact } from "@/lib/ai/types";

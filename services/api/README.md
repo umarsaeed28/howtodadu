@@ -25,3 +25,11 @@ uv run python -m app.ingest  # load ../../rag/documents (set DOCUMENTS_DIR) with
 - `POST /v1/assess` — body: facts + rules baseline from the website; returns the checked assessment
 - `POST /v1/search` — knowledge-base search (evals, debugging)
 - `POST /v1/feedback` — thumbs up/down with an optional comment
+
+## Deploy on Vercel (Services)
+
+`vercel.json` at the repo root defines two services: `web` (Next.js) and `pencil_api` (this app, entrypoint `app.main:app`).
+`pencil_api` has no public route. `web` declares a binding that injects its URL as `PENCIL_API_URL`, so the Next.js server
+calls it internally (no public hostname). Set these in the Vercel project env: `DATABASE_URL` (hosted Postgres with pgvector,
+e.g. Neon or Supabase), `PENCIL_API_KEY` (same value for both services), `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, `JINA_API_KEY`.
+Run `uv run python -m app.db migrate` and `python -m app.ingest` once against that database. Local: `vercel dev -L`.
