@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Section, Container, Eyebrow, Heading, Lede, Body, CardLink, Pill } from "@/components/ui";
+import { Section, Container, Heading, Lede, Body, CardLink, Pill } from "@/components/ui";
 import NewsletterField from "@/components/site/NewsletterField";
 
 export const metadata: Metadata = {
@@ -46,7 +46,6 @@ export default function InsightsPage() {
     <main>
       <Section>
         <Container style={{ maxWidth: 820 }}>
-          <Eyebrow>Insights</Eyebrow>
           <Heading level={1} style={{ marginTop: 18 }}>
             Understand the new rules.
           </Heading>

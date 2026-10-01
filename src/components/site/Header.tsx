@@ -1,18 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 
 const NAV = [
-  { href: "/product", label: "Product" },
+  { href: "/", label: "Map" },
   { href: "/feasibility", label: "Feasibility" },
+  { href: "/calculator", label: "Calculator" },
   { href: "/insights", label: "Insights" },
   { href: "/company", label: "Company" },
 ];
 
 function isActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(href + "/");
 }
 
@@ -23,7 +25,7 @@ function Brand({ onClick }: { onClick?: () => void }) {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path
             d="M5 19l2-6L17 3l4 4L11 17l-6 2z"
-            stroke="#fff"
+            stroke="#ffffff"
             strokeWidth="1.8"
             strokeLinejoin="round"
           />
@@ -36,18 +38,9 @@ function Brand({ onClick }: { onClick?: () => void }) {
 
 export default function Header() {
   const pathname = usePathname();
-  const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // Only the home hero is light enough to host a transparent header.
-  const solid = scrolled || pathname !== "/";
+  const solid = true;
 
   return (
     <header className="site-header" data-solid={solid}>
@@ -68,9 +61,6 @@ export default function Header() {
         </nav>
 
         <div className="site-actions">
-          <Link href="/app" className="s-btn s-btn--ghost">
-            Explore deals
-          </Link>
           <Link href="/contact" className="s-btn s-btn--primary">
             Talk to us
           </Link>
@@ -101,9 +91,6 @@ export default function Header() {
             </button>
           </div>
           <nav style={{ display: "flex", flexDirection: "column", marginTop: 8 }} aria-label="Mobile">
-            <Link href="/app" className="site-sheet-link" onClick={() => setOpen(false)}>
-              Explore deals
-            </Link>
             {NAV.map((l) => (
               <Link key={l.href} href={l.href} className="site-sheet-link" onClick={() => setOpen(false)}>
                 {l.label}

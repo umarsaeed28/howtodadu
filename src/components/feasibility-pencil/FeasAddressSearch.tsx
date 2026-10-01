@@ -159,8 +159,8 @@ export default function FeasAddressSearch({
   return (
     <div ref={rootRef} className="relative flex-1">
       <div
-        className="flex items-center gap-2 rounded-[8px] border px-3"
-        style={{ background: "var(--paper)", borderColor: "var(--hairline)", minHeight: 44 }}
+        className="pa-inset flex items-center gap-2 px-3"
+        style={{ minHeight: 44 }}
       >
         <Search size={17} aria-hidden style={{ color: "var(--slate)" }} />
         <label htmlFor="feas-search" className="sr-only">

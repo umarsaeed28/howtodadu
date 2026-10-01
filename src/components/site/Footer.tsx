@@ -3,11 +3,11 @@ import NewsletterField from "./NewsletterField";
 
 const GROUPS = [
   {
-    title: "Product",
+    title: "Tools",
     links: [
-      { href: "/product", label: "What Pencil does" },
-      { href: "/app", label: "Explore deals" },
+      { href: "/", label: "Map of DADU lots" },
       { href: "/feasibility", label: "Check a property" },
+      { href: "/calculator", label: "Estimate your return" },
     ],
   },
   {
@@ -44,7 +44,7 @@ export default function Footer() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M5 19l2-6L17 3l4 4L11 17l-6 2z"
-                  stroke="#fff"
+                  stroke="#ffffff"
                   strokeWidth="1.8"
                   strokeLinejoin="round"
                 />

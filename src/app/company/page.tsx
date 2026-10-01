@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
-import { Section, Container, Eyebrow, Heading, Lede, Body, Button, Card } from "@/components/ui";
+import { Section, Container, Heading, Lede, Body, Button, Card } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Company — Pencil",
@@ -28,7 +28,6 @@ export default function CompanyPage() {
     <main>
       <Section>
         <Container style={{ maxWidth: 820 }}>
-          <Eyebrow>The company</Eyebrow>
           <Heading level={1} style={{ marginTop: 18 }}>
             We are Pencil.
           </Heading>
@@ -41,7 +40,6 @@ export default function CompanyPage() {
 
       <Section soft>
         <Container>
-          <Eyebrow>What we bring</Eyebrow>
           <Heading level={2} style={{ marginTop: 14, maxWidth: "20ch" }}>
             Three disciplines, one answer.
           </Heading>
@@ -58,7 +56,6 @@ export default function CompanyPage() {
 
       <Section>
         <Container style={{ maxWidth: 720 }}>
-          <Eyebrow>Why we built it</Eyebrow>
           <Heading level={2} style={{ marginTop: 14 }}>
             The rules changed. The knowledge did not keep up.
           </Heading>

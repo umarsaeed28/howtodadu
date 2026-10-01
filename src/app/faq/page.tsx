@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Section, Container, Eyebrow, Heading, Lede } from "@/components/ui";
+import { Section, Container, Heading, Lede } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "FAQ — Pencil",
@@ -80,7 +80,6 @@ export default function FAQPage() {
     <main>
       <Section>
         <Container style={{ maxWidth: 820 }}>
-          <Eyebrow>FAQ</Eyebrow>
           <Heading level={1} style={{ marginTop: 18 }}>
             Frequently asked questions.
           </Heading>
@@ -92,7 +91,7 @@ export default function FAQPage() {
           <div style={{ marginTop: 48, display: "grid", gap: 48 }}>
             {faqs.map((group) => (
               <div key={group.category}>
-                <Eyebrow style={{ color: "var(--slate)", marginBottom: 12 }}>{group.category}</Eyebrow>
+                <h2 className="s-h3" style={{ marginBottom: 12 }}>{group.category}</h2>
                 <div>
                   {group.items.map((faq, i) => (
                     <details

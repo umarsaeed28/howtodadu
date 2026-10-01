@@ -7,8 +7,8 @@ import Footer from "./Footer";
 export default function SiteShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // The deal browser fills the viewport below the header; it gets no footer.
-  const showFooter = pathname !== "/app";
+  // The map views fill the viewport below the header; they get no footer.
+  const showFooter = pathname !== "/";
 
   return (
     <div className="site">

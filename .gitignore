@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated lot library (npm run build:lots)
+/data/lot-library.json
+/data/alleys.geojson

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, ArrowRight, MapPin, Loader2 } from "lucide-react";
+import { Search, MapPin, Loader2 } from "lucide-react";
 
 interface AddressSuggestion {
   formatted: string;
@@ -133,9 +133,9 @@ export default function HomeAddressBar() {
     <form
       ref={rootRef}
       onSubmit={submit}
-      style={{ display: "flex", gap: 10, maxWidth: "32rem", width: "100%", position: "relative" }}
+      style={{ display: "flex", gap: 10, maxWidth: "36rem", width: "100%", flexWrap: "wrap", position: "relative" }}
     >
-      <div style={{ position: "relative", flex: 1 }}>
+      <div style={{ position: "relative", flex: "1 1 14rem" }}>
         <Search
           size={18}
           aria-hidden
@@ -189,10 +189,10 @@ export default function HomeAddressBar() {
               listStyle: "none",
               maxHeight: 300,
               overflowY: "auto",
-              background: "var(--bg)",
-              border: "1px solid var(--line)",
+              background: "var(--surface)",
+              border: 0,
               borderRadius: "var(--radius-ctl)",
-              boxShadow: "0 12px 32px rgba(20, 22, 26, 0.12)",
+              boxShadow: "var(--nm-out)",
               textAlign: "left",
             }}
           >
@@ -211,13 +211,13 @@ export default function HomeAddressBar() {
                   gap: 10,
                   cursor: "pointer",
                   padding: "10px 12px",
-                  borderRadius: 6,
+                  borderRadius: 10,
                   fontSize: "0.95rem",
                   lineHeight: 1.4,
-                  background: i === active ? "var(--bg-soft)" : "transparent",
+                  background: i === active ? "var(--flag-tint)" : "transparent",
                 }}
               >
-                <MapPin size={15} aria-hidden style={{ marginTop: 3, flexShrink: 0, color: "var(--green)" }} />
+                <MapPin size={15} aria-hidden style={{ marginTop: 3, flexShrink: 0, color: "var(--flag-deep)" }} />
                 <span>
                   <span style={{ color: "var(--ink)", fontWeight: 500 }}>{s.street}</span>
                   {(s.city || s.state || s.zip) && (
@@ -233,8 +233,7 @@ export default function HomeAddressBar() {
         )}
       </div>
       <button type="submit" className="s-btn s-btn--primary s-btn--lg">
-        Check it
-        <ArrowRight size={17} aria-hidden />
+        Check this address
       </button>
     </form>
   );

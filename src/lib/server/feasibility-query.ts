@@ -5,7 +5,6 @@ import {
   pointInPolygon,
   num,
   str,
-  bool,
 } from "@/lib/geo-helpers";
 import type {
   FeasibilityResult,
@@ -17,6 +16,7 @@ import type {
   SitePlanAdjacentParcel,
 } from "@/lib/feasibility";
 import { emptyFeasibilityData } from "@/lib/feasibility";
+import { factorsToFeasibilityData } from "@/lib/server/factors-map";
 import {
   applySeattleEcaLayersToFeasibility,
   querySeattleEcaIntersectingLayers,
@@ -135,7 +135,7 @@ async function queryFactors(lat: number, lng: number) {
     f: "json",
   });
 
-  let pointRes = await fetch(`${FACTORS_URL}?${pointParams}`, {
+  const pointRes = await fetch(`${FACTORS_URL}?${pointParams}`, {
     signal: AbortSignal.timeout(8000),
   });
 
@@ -535,53 +535,11 @@ export async function getFeasibilityForAddress(
 
   const f = factors;
 
-  let feasibilityMerged =
+  const feasibilityMerged =
     f || ecaLayerHits.length > 0
       ? applySeattleEcaLayersToFeasibility(
           f
-            ? {
-                lotType: str(f.LOT_TYPE),
-                hasAlley: bool(f.ALLEY),
-                totalBuildingSqft: num(f.TOT_SQFT),
-                lotCoveragePercent: num(f.COVERAGE_PC),
-                lotCoverageOver: bool(f.LOTCOV_OVER),
-                lotWidth: f.MBG_Width ? Math.round(f.MBG_Width) : null,
-                lotDepth: f.MBG_Length ? Math.round(f.MBG_Length) : null,
-                boundRatio: num(f.bound_ratio),
-                steepSlopePercent: num(f.STEEPSLOPE_PC),
-                steepSlopeArea: num(f.STEEPSLOPE_AREA),
-                wetlandPercent: num(f.WETLAND_PC),
-                wetlandArea: num(f.WETLAND_AREA),
-                wildlifePercent: num(f.WILDLIFE_PC),
-                wildlifeArea: num(f.WILDLIFE_AREA),
-                riparianPercent: num(f.RIPARIAN_PC),
-                riparianArea: num(f.RIPARIAN_AREA),
-                floodProne: bool(f.FLOODPRONE),
-                liquefaction: bool(f.LIQUEFACTION),
-                knownSlide: bool(f.KNOWNSLIDE),
-                potentialSlide: bool(f.POTENTIALSLIDE),
-                peat: bool(f.PEAT),
-                landfill: bool(f.LANDFILL),
-                shoreline: str(f.SHORELINE),
-                treeCanopyPercent: num(f.TREE_CANOPY_PC),
-                existingAADU: num(f.AADU_COUNT),
-                existingDADU: num(f.DADU_COUNT),
-                totalADU: num(f.ADU_TOTAL),
-                nearbyDADU: num(f.DADU_NEAR_1320),
-                nearbyAADU: num(f.AADU_NEAR_1320),
-                nearestAADUDist: num(f.NEAREST1AADU_DIST),
-                nearestDADUDist: num(f.NEAREST1DADU_DIST),
-                detachedGarageCount: num(f.COUNT_DETGAR),
-                detachedGarageSqft: num(f.SIZE_DETGAR),
-                basementSqft: num(f.SUM_SQFTTOTBASEMENT),
-                daylightBasement: str(f.DAYLIGHTBASEMENT),
-                minYearBuilt: num(f.MIN_YRBUILT),
-                maxYearRenovated: num(f.MAX_YRRENOVATED),
-                parcelLineCount: num(f.line_count),
-                shapeArea: num(f.Shape__Area),
-                shapeLength: num(f.Shape__Length),
-                ecaSeattleGisLayers: null,
-              }
+            ? factorsToFeasibilityData(f)
             : emptyFeasibilityData(),
           ecaLayerHits
         )
