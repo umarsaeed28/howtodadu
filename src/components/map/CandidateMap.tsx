@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Map, Source, Layer, Marker, NavigationControl, type MapRef, type MapLayerMouseEvent } from "react-map-gl/maplibre";
-import { ArrowLeft, ArrowRight, BedDouble, Calculator, FlaskConical, Loader2, Search, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, BedDouble, Calculator, Download, FlaskConical, Loader2, Search, Star } from "lucide-react";
 import type { Candidate } from "@/lib/server/candidates";
 import type { MapListing } from "@/app/api/map-listings/route";
 import { COST_LABEL, COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
 import { calculatorHref } from "@/lib/calculator/inputs";
+import { downloadListingsCsv } from "@/lib/listings-csv";
 
 const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE ?? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const SEATTLE = { longitude: -122.335, latitude: 47.62, zoom: 10.6 };
@@ -395,6 +396,9 @@ export default function CandidateMap() {
                   <Chip on={cornerOnly} onClick={() => setCornerOnly((v) => !v)}>Corner lot</Chip>
                   <Chip on={alleyOnly} onClick={() => setAlleyOnly((v) => !v)}>Alley access</Chip>
                 </div>
+                <button type="button" className="pa-btn pa-btn-sm mt-3 inline-flex items-center gap-1.5" onClick={() => downloadListingsCsv(shown, zipSel)} disabled={!shown.length}>
+                  <Download size={14} aria-hidden /> Export {shown.length.toLocaleString()} to CSV
+                </button>
                 {error && <p role="alert" className="mt-3 text-xs" style={{ color: "var(--red)" }}>{error}</p>}
               </div>
 

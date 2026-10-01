@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { ArrowLeft, Heart, ExternalLink, ShieldAlert, ShieldCheck, CircleHelp } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { ArrowLeft, Download, Heart, Loader2, ExternalLink, ShieldAlert, ShieldCheck, CircleHelp } from "lucide-react";
 import type { DashboardPropertySlim } from "@/lib/dashboard-normalize";
 import type { FeasibilityTableRow } from "@/lib/feasibility-table-model";
 import type { FeasibilityReport } from "../../../packages/schema/src";
 import { toReport } from "@/lib/report/to-report";
 import { zillowUrl } from "@/lib/feasibility-verdict";
 import FeasPropertyDetails from "@/components/feasibility-pencil/FeasPropertyDetails";
-import MasterPlan from "./MasterPlan";
+import MasterPlan, { type PlanSnapshot } from "./MasterPlan";
 import SiteIntel from "./SiteIntel";
 import { COST_PER_SF, COST_LABEL } from "@/lib/config/costs";
 import { calculatorHref } from "@/lib/calculator/inputs";
@@ -134,7 +134,7 @@ function Hero({ report, slim }: { report: FeasibilityReport; slim: DashboardProp
   );
 }
 
-function ReportBody({ report, row }: { report: FeasibilityReport; row: FeasibilityTableRow }) {
+function ReportBody({ report, row, snapshotRef }: { report: FeasibilityReport; row: FeasibilityTableRow; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null> }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start">
       {/* Left column scrolls */}
@@ -270,6 +270,7 @@ function ReportBody({ report, row }: { report: FeasibilityReport; row: Feasibili
           report={row.report}
           pin={row.result.parcel?.pin ?? null}
           terrain={row.result.terrain ?? null}
+          snapshotRef={snapshotRef}
         />
       </div>
     </div>
@@ -301,6 +302,26 @@ export default function FeasibilityReportView({
     return () => document.removeEventListener("keydown", onKey);
   }, [onBack]);
 
+  const snapshotRef = useRef<(() => PlanSnapshot) | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  async function downloadPdf() {
+    if (!report || pdfBusy) return;
+    setPdfBusy(true);
+    setPdfError(null);
+    try {
+      // Read the plan at click time so the PDF shows the units exactly where the user dragged them.
+      const plan = snapshotRef.current?.() ?? null;
+      const { buildReportPdf, reportPdfName } = await import("@/lib/report-pdf/build-report-pdf");
+      const pdf = await buildReportPdf({ slim, report, plan });
+      pdf.save(reportPdfName(slim.streetLine || slim.address));
+    } catch (e) {
+      setPdfError(e instanceof Error ? e.message : "Could not make the PDF.");
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
   const { report, adapterError } = useMemo(() => {
     if (!detailRow) return { report: null, adapterError: null };
     try {
@@ -331,6 +352,10 @@ export default function FeasibilityReportView({
             Zillow
             <ExternalLink size={14} aria-hidden />
           </a>
+          <button type="button" className="pa-btn pa-btn-sm" onClick={downloadPdf} disabled={!report || pdfBusy} aria-busy={pdfBusy}>
+            {pdfBusy ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Download size={15} aria-hidden />}
+            {pdfBusy ? "Making PDF…" : "Download PDF"}
+          </button>
           <button type="button" className="pa-btn pa-btn-sm" aria-pressed={favorite} onClick={onToggleFavorite}>
             <Heart size={15} aria-hidden fill={favorite ? "var(--flag)" : "none"} color={favorite ? "var(--flag)" : "var(--ink)"} />
             {favorite ? "Saved" : "Save"}
@@ -338,9 +363,9 @@ export default function FeasibilityReportView({
         </div>
       </div>
 
-      {(error || adapterError) && (
+      {(error || adapterError || pdfError) && (
         <div role="alert" className="pa-inset mb-5 p-4 text-sm" style={{ color: "var(--red)" }}>
-          {error ?? adapterError}
+          {error ?? adapterError ?? pdfError}
         </div>
       )}
 
@@ -352,7 +377,7 @@ export default function FeasibilityReportView({
       )}
 
       {report && <Hero report={report} slim={slim} />}
-      {report && detailRow && <ReportBody report={report} row={detailRow} />}
+      {report && detailRow && <ReportBody report={report} row={detailRow} snapshotRef={snapshotRef} />}
 
       <div className="mt-6">
         <Section id="rep-all" title="All property data">

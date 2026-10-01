@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 import Link from "next/link";
 import { Calculator, Plus, RotateCcw } from "lucide-react";
 import type { FeasibilityData, LotGeometry, SitePlanData } from "@/lib/feasibility";
@@ -50,6 +50,18 @@ function pointInPoly(p: Pt, poly: Pt[]): boolean {
 const path = (pts: Pt[], close = true) =>
   pts.map((q, i) => `${i ? "L" : "M"}${q.x.toFixed(2)} ${q.y.toFixed(2)}`).join(" ") + (close ? " Z" : "");
 
+/** What the PDF export needs from the plan as the user has left it: the live drawings plus the unit numbers and rule checks. */
+export type PlanSnapshot = {
+  plan: SVGSVGElement | null;
+  section: SVGSVGElement | null;
+  stories: 1 | 2;
+  totalLiving: number;
+  units: { name: string; long: string; w: number; d: number; footprint: number; living: number; maxLiving: number; ok: boolean; checks: { ok: boolean; text: string }[] }[];
+  warnings: string[];
+  notes: string;
+  setbacks: { side: number; rear: number; onAlley: boolean };
+};
+
 type PlanProps = {
   lot: LotGeometry | null;
   sitePlan: SitePlanData | null | undefined;
@@ -57,6 +69,8 @@ type PlanProps = {
   report: ADUReport | null;
   pin: string | null;
   terrain?: TerrainGrid | null;
+  /** Filled with a function that reads the plan as it stands now (units where the user dragged them). */
+  snapshotRef?: MutableRefObject<(() => PlanSnapshot) | null>;
 };
 
 /** DADU in lot-local feet: u across the street frontage, v from the street toward the rear. */
@@ -82,7 +96,7 @@ export default function MasterPlan(props: PlanProps) {
   return <PlanSheet key={props.pin ?? "lot"} {...props} lot={props.lot} />;
 }
 
-function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain }: PlanProps & { lot: LotGeometry }) {
+function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotRef }: PlanProps & { lot: LotGeometry }) {
   /* ---- projection: lng/lat to feet, north up ---- */
   const lat0 = lot.rings.reduce((s, r) => s + r[1], 0) / lot.rings.length;
   const lng0 = lot.rings.reduce((s, r) => s + r[0], 0) / lot.rings.length;
@@ -189,6 +203,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain }: PlanPro
   const [active, setActive] = useState<number | null>(null);
   const [dragging, setDragging] = useState<Grab | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const figRef = useRef<HTMLElement | null>(null);
   const grab = useRef<{ idx: number; mode: Grab; start: { u: number; v: number }; box: Unit } | null>(null);
 
   /** Keep a unit inside the lot behind the setbacks, at least 10 ft a side, snapped to whole feet. */
@@ -423,11 +438,43 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain }: PlanPro
     .map((b, i) => ({ s0: b.v0 + SECTION_PAD, s1: b.v1 + SECTION_PAD, main: b === mainHouse, key: i, cut: sectionU > b.u0 && sectionU < b.u1 }))
     .filter((b) => b.cut || b.main);
 
+  /* ---- the sentence under the plan, also printed in the PDF ---- */
+  const notes = [
+    "Front setback and ECA outlines are not drawn: this data has no geometry for them.",
+    daduConflict && " The DADU breaks a rule where it sits now (see the checks below). Drag it clear.",
+    access?.kind === "alley" && " Cars and construction reach the back from the alley.",
+    access?.kind === "side" && access.width != null && access.width < MIN_ACCESS_FT && ` The side yard fits a ${DRIVEWAY_FT} ft driveway but is under the ${MIN_ACCESS_FT} ft construction heuristic.`,
+    access?.kind === "tight" && ` The roofline leaves about ${access.width?.toFixed(1)} ft beside the house. Below the eaves it may fit a ${DRIVEWAY_FT} ft driveway; confirm on site.`,
+    access?.kind === "blocked" && ` No vehicle access to the rear: the house leaves only ${access.width?.toFixed(1)} ft beside it and there is no alley. A driveway needs ${DRIVEWAY_FT} ft.`,
+    access?.kind === "corner" && " The side yards are too narrow, but the corner lot's second street can serve the back.",
+    noSideYard && " The house leaves no usable side yard for an access path, so none is drawn.",
+    !streets.length && " No street geometry returned, so the street side is assumed south.",
+  ].filter(Boolean).join("");
+  const warnings = [
+    overCoverage && `Together the new footprints (${totalFootprint.toLocaleString("en-US")} sf) are over the ${Math.round(coverageLeft ?? 0).toLocaleString("en-US")} sf of lot coverage left.`,
+    overAduCap && `A lot can have 2 ADUs. This one already has ${existingAdus}, so you can add ${Math.max(0, 2 - existingAdus)} more.`,
+  ].filter((w): w is string => !!w);
+  // Re-assigned every render so the PDF always reads the units where the user left them.
+  useEffect(() => {
+    if (!snapshotRef) return;
+    snapshotRef.current = () => ({
+      plan: svgRef.current,
+      section: (figRef.current?.querySelector("svg[data-pdf-section]") as SVGSVGElement | null) ?? null,
+      stories,
+      totalLiving,
+      units: units.map((x, i) => ({ name: UNIT_STYLE[x.kind].name, long: UNIT_STYLE[x.kind].long, w: Math.round(x.w), d: Math.round(x.d), footprint: checks[i].footprint, living: checks[i].living, maxLiving, ok: checks[i].ok, checks: checks[i].list })),
+      warnings,
+      notes,
+      setbacks: { side, rear, onAlley },
+    });
+  });
+  useEffect(() => () => { if (snapshotRef) snapshotRef.current = null; }, [snapshotRef]);
+
   const scaleX = vbX + vbW - margin * 0.35 - 20;
   const scaleY = vbY + vbH - margin * 0.5;
 
   return (
-    <figure className="plat-sheet" style={{ margin: 0, padding: "clamp(12px, 2vw, 20px)" }}>
+    <figure ref={figRef} className="plat-sheet" style={{ margin: 0, padding: "clamp(12px, 2vw, 20px)" }}>
       <svg
         ref={svgRef}
         className="plat"
@@ -575,7 +622,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain }: PlanPro
                 ["w", sb.x0, cyu, "ew-resize"],
                 ["e", sb.x1, cyu, "ew-resize"],
               ] as [Grab, number, number, string][]).map(([h, hx, hy, cur]) => (
-                <g key={h} onPointerDown={startGrab(idx, h)} style={{ cursor: cur }}>
+                <g key={h} data-pdf-skip onPointerDown={startGrab(idx, h)} style={{ cursor: cur }}>
                   <circle cx={hx} cy={hy} r={fs * 0.9} fill="transparent" />
                   <rect x={hx - fs * 0.32} y={hy - fs * 0.32} width={fs * 0.64} height={fs * 0.64} rx={fs * 0.12} fill="#fff" stroke={c.ok ? "#17241D" : "#B9573F"} strokeWidth={sw * 1.2} />
                 </g>
@@ -782,15 +829,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain }: PlanPro
         <Key swatch={<i style={{ borderTop: "2px solid #145A40", height: 0, marginTop: 5 }} />}>Vehicle access route</Key>
       </figcaption>
       <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>
-        Front setback and ECA outlines are not drawn: this data has no geometry for them.
-        {daduConflict && " The DADU breaks a rule where it sits now (see the checks below). Drag it clear."}
-        {access?.kind === "alley" && " Cars and construction reach the back from the alley."}
-        {access?.kind === "side" && access.width != null && access.width < MIN_ACCESS_FT && ` The side yard fits a ${DRIVEWAY_FT} ft driveway but is under the ${MIN_ACCESS_FT} ft construction heuristic.`}
-        {access?.kind === "tight" && ` The roofline leaves about ${access.width?.toFixed(1)} ft beside the house. Below the eaves it may fit a ${DRIVEWAY_FT} ft driveway; confirm on site.`}
-        {access?.kind === "blocked" && ` No vehicle access to the rear: the house leaves only ${access.width?.toFixed(1)} ft beside it and there is no alley. A driveway needs ${DRIVEWAY_FT} ft.`}
-        {access?.kind === "corner" && " The side yards are too narrow, but the corner lot's second street can serve the back."}
-        {noSideYard && " The house leaves no usable side yard for an access path, so none is drawn."}
-        {!streets.length && " No street geometry returned, so the street side is assumed south."}
+        {notes}
       </p>
     </figure>
   );

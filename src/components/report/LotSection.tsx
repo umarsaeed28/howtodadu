@@ -90,7 +90,7 @@ export default function LotSection({
           ))}
         </div>
       </div>
-      <svg viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="mt-2 w-full" role="img" aria-label={`Section through the lot. The ground ${fall >= 0 ? "falls" : "rises"} ${Math.abs(fall).toFixed(1)} feet from the front lot line to the rear lot line.`} style={{ fontSize: fs, maxHeight: 260 }}>
+      <svg data-pdf-section viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="mt-2 w-full" role="img" aria-label={`Section through the lot. The ground ${fall >= 0 ? "falls" : "rises"} ${Math.abs(fall).toFixed(1)} feet from the front lot line to the rear lot line.`} style={{ fontSize: fs, maxHeight: 260 }}>
         <defs>
           <pattern id="ls-earth" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
             <line x1="0" y1="0" x2="0" y2="3" stroke="#9C7A52" strokeOpacity="0.35" strokeWidth={sw * 1.2} />
