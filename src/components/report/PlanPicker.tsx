@@ -44,18 +44,18 @@ export function PlanPicker({ plans, fit, activeId, onPick }: { plans: PreApprove
           const lo = Math.min(...vs.map((v) => v.sqft)), hi = Math.max(...vs.map((v) => v.sqft));
           const title = multi ? lead.name.replace(/\s+(Studio|\d Bed|Two Story)$/, "").replace(/, \d bed$/, "") : lead.name;
           return (
+            <div key={lead.family} className="relative w-[184px] shrink-0 snap-start">
             <button
-              key={lead.family}
               type="button"
               role="radio"
               aria-checked={on}
               onClick={() => onPick(on ? null : lead)}
-              className="pp-card relative flex w-[184px] shrink-0 snap-start flex-col rounded-xl p-2.5 text-left"
+              className="pp-card relative flex h-full w-full flex-col rounded-xl p-2.5 text-left"
               data-on={on || undefined}
               style={{ background: "var(--card, #fff)", boxShadow: on ? "0 0 0 2px #145A40, 0 6px 16px -8px rgba(23,36,29,.35)" : "0 1px 2px rgba(23,36,29,.08), 0 4px 14px -6px rgba(23,36,29,.18)", opacity: f.fits || on ? 1 : 0.82 }}
             >
               {on && (
-                <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full" style={{ background: "#145A40", color: "#fff" }} aria-hidden>
+                <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-full" style={{ background: "#145A40", color: "#fff" }} aria-hidden>
                   <Check size={12} strokeWidth={3} />
                 </span>
               )}
@@ -75,6 +75,18 @@ export function PlanPicker({ plans, fit, activeId, onPick }: { plans: PreApprove
                 {f.fits ? "Fits this lot" : f.reason ?? "Does not fit"}
               </span>
             </button>
+              <a
+                href={lead.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`Open the ${lead.designer} plan set (PDF)`}
+                aria-label={`Open the plan set for ${title} (PDF, new tab)`}
+                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full"
+                style={{ background: "var(--card, #fff)", color: "var(--green)", boxShadow: "0 1px 3px rgba(23,36,29,.25)" }}
+              >
+                <ExternalLink size={12} aria-hidden />
+              </a>
+            </div>
           );
         })}
       </div>
@@ -114,9 +126,14 @@ export function PlacedPlanCard({
           <span className="font-semibold">{plan.name}</span>
           <span style={{ color: "var(--slate)" }}> by {plan.designer}</span>
         </p>
-        <a href={plan.detailUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold underline-offset-2 hover:underline" style={{ color: "var(--green)" }}>
-          Plans on ADUniverse <ExternalLink size={12} aria-hidden />
-        </a>
+        <span className="inline-flex items-center gap-3 text-xs font-semibold">
+          <a href={plan.pdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline-offset-2 hover:underline" style={{ color: "var(--green)" }}>
+            Plan set (PDF) <ExternalLink size={12} aria-hidden />
+          </a>
+          <a href={plan.detailUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline-offset-2 hover:underline" style={{ color: "var(--green)" }}>
+            ADUniverse <ExternalLink size={12} aria-hidden />
+          </a>
+        </span>
       </div>
       {variants.length > 1 && (
         <div className="flex flex-wrap items-center gap-1" role="radiogroup" aria-label="Size">
