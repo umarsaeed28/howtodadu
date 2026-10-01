@@ -94,7 +94,7 @@ describe("score adjustments (deterministic)", () => {
 describe("assessment chain", () => {
   it("runs gate, facts, hyde, retrieve, analyze, validate in order and cites real sources", async () => {
     const a = await runAssessment(listing, lot, { llm: stub(analysis({})), search });
-    expect(a.trace.map((t) => t.node)).toEqual(["gate", "facts", "hyde", "retrieve", "analyze", "validate", "decide score"]);
+    expect(a.trace.map((t) => t.node)).toEqual(["gate", "facts", "extract", "hyde", "retrieve", "analyze", "validate", "decide score"]);
     expect(a.verdict).toBe("candidate");
     expect(a.findings).toHaveLength(2);
     expect(a.citations.map((c) => c.label).sort()).toEqual(["F4", "F6", "P1"]);

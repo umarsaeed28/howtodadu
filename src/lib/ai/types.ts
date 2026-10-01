@@ -85,6 +85,8 @@ export interface Assessment {
   trace: TraceStep[];
   /** Null when the listing has no lot in the library or failed a gate. */
   score: ScoreDecision | null;
+  /** Input + output tokens this run used (0 when no model ran). */
+  tokens?: number;
   cached?: boolean;
 }
 
@@ -95,10 +97,11 @@ export interface LlmJsonRequest {
   toolName: string;
   schema: Record<string, unknown>;
   maxTokens: number;
+  temperature?: number;
 }
 
 /** The only door to a model. Tests pass a stub; production passes the Anthropic client. */
 export interface Llm {
   json<T>(req: LlmJsonRequest): Promise<T>;
-  text(req: { model: string; system: string; user: string; maxTokens: number }): Promise<string>;
+  text(req: { model: string; system: string; user: string; maxTokens: number; temperature?: number }): Promise<string>;
 }

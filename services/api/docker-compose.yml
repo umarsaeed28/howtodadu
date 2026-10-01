@@ -1,0 +1,27 @@
+# Local stack: Postgres with pgvector + the API.  docker compose -f services/api/docker-compose.yml up --build
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: pencil
+      POSTGRES_PASSWORD: pencil
+      POSTGRES_DB: pencil
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pencil"]
+      interval: 5s
+      retries: 10
+  api:
+    build:
+      context: ../..
+      dockerfile: services/api/Dockerfile
+    env_file: [../../.env.credentials]
+    environment:
+      DATABASE_URL: postgresql://pencil:pencil@db:5432/pencil
+      ENVIRONMENT: development
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+volumes:
+  pgdata:
