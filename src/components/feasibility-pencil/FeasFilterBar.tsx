@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Upload, Star } from "lucide-react";
-import FilterPopover from "@/components/pencil-app/FilterPopover";
-import type { Verdict } from "@/lib/parcels";
+import FilterPopover from "@/components/shared/FilterPopover";
+import type { Verdict } from "@/lib/verdict";
 import type { FeasSortKey } from "./types";
 
 const VERDICTS: { key: Verdict; label: string }[] = [

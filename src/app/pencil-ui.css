@@ -1,0 +1,312 @@
+/* Pencil app — scoped design system. Everything lives under .pencil-app so the
+   tokens never leak into the existing howtodadu theme or the /pencil landing. */
+
+.pencil-app {
+  --paper: #EEF2EF;
+  --card: #F6F8F6;
+  --ink: #17241D;
+  --slate: #4A5A51;
+  --green: #237A55;
+  --green-bright: #2E8F64;
+  --green-tint: #DDEFE4;
+  --amber: #8a6a1f;
+  --amber-tint: #f1e8d2;
+  --red: #A9473A;
+  --red-tint: #F5E1DB;
+  --blue: #2E5C6E;
+  --hairline: rgba(23, 36, 29, 0.2);
+  --shadow-raised: 4px 4px 11px rgba(150, 168, 158, 0.24), -4px -4px 11px rgba(255, 255, 255, 0.8);
+  --shadow-pop: 2px 2px 7px rgba(150, 168, 158, 0.24), -2px -2px 7px rgba(255, 255, 255, 0.8);
+
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Content pad used by simple product pages (saved, daily deals). */
+.app-content-pad {
+  max-width: 1140px;
+  margin-inline: auto;
+  padding: 40px 24px 80px;
+}
+
+.pencil-app *,
+.pencil-app *::before,
+.pencil-app *::after {
+  border-color: var(--hairline);
+}
+
+/* Type roles --------------------------------------------------------------- */
+.pa-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 700;
+  font-stretch: 100%;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+.pa-mono {
+  font-family: var(--font-data), ui-monospace, monospace;
+  font-feature-settings: "tnum" 1;
+}
+.pa-eyebrow {
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* Focus floor: visible green ring, 2px offset ------------------------------ */
+.pencil-app :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #145A40;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* Buttons ------------------------------------------------------------------ */
+.pa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 10px;
+  border: 0;
+  box-shadow: 2px 2px 7px rgba(150, 168, 158, 0.24), -2px -2px 7px rgba(255, 255, 255, 0.8);
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.85rem;
+  min-height: 40px;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.06s ease;
+}
+.pa-btn:hover {
+  color: #145A40;
+}
+.pa-btn:active {
+  box-shadow: inset 2px 2px 6px rgba(150, 168, 158, 0.3), inset -2px -2px 6px rgba(255, 255, 255, 0.9);
+}
+.pa-btn-primary {
+  background: #1E6E50;
+  color: #fff;
+}
+.pa-btn-primary:hover {
+  background: #175C43;
+  color: #fff;
+}
+.pa-btn-sm {
+  min-height: 32px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+/* Filter chips ------------------------------------------------------------- */
+.pa-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 10px;
+  border: 0;
+  box-shadow: 2px 2px 6px rgba(150, 168, 158, 0.24), -2px -2px 6px rgba(255, 255, 255, 0.8);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.4rem 0.8rem;
+  min-height: 40px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+.pa-chip:hover {
+  color: #145A40;
+}
+.pa-chip-active {
+  background: var(--card);
+  box-shadow: inset 2px 2px 6px rgba(150, 168, 158, 0.3), inset -2px -2px 6px rgba(255, 255, 255, 0.9);
+  color: var(--green);
+}
+
+/* Cards -------------------------------------------------------------------- */
+.pa-card {
+  background: var(--card);
+  border: 0;
+  border-radius: 14px;
+  box-shadow: 4px 4px 11px rgba(150, 168, 158, 0.24), -4px -4px 11px rgba(255, 255, 255, 0.8);
+}
+
+/* Verdict pills ------------------------------------------------------------ */
+.pa-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 6px;
+  font-family: var(--font-data), ui-monospace, monospace;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.pa-verdict-pencils {
+  background: var(--green-tint);
+  color: var(--green);
+}
+.pa-verdict-tight {
+  background: var(--amber-tint);
+  color: var(--amber);
+}
+.pa-verdict-no {
+  background: var(--red-tint);
+  color: var(--red);
+}
+
+/* Skeleton shimmer --------------------------------------------------------- */
+.pa-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #e9eae6;
+}
+.pa-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  animation: pa-shimmer 1.4s infinite;
+}
+@keyframes pa-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Map pins ----------------------------------------------------------------- */
+.pa-pin {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-family: var(--font-data), ui-monospace, monospace;
+  font-weight: 500;
+  font-size: 0.78rem;
+  color: #fff;
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  box-shadow: var(--shadow-raised);
+  border: 1.5px solid #fff;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+  white-space: nowrap;
+}
+.pa-pin::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid currentColor;
+}
+.pa-pin-pencils {
+  background: var(--green);
+  color: var(--green);
+}
+.pa-pin-tight {
+  background: var(--amber);
+  color: var(--amber);
+}
+.pa-pin-no {
+  background: var(--red);
+  color: var(--red);
+}
+.pa-pin span {
+  color: #fff;
+}
+.pa-pin-active,
+.pa-pin:hover {
+  transform: scale(1.12);
+  box-shadow: var(--shadow-pop);
+  z-index: 5;
+  filter: saturate(1.2);
+}
+.pa-pin-active.pa-pin-pencils,
+.pa-pin-pencils:hover {
+  background: var(--green-bright);
+  color: var(--green-bright);
+}
+
+.pa-cluster {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-data), ui-monospace, monospace;
+  font-weight: 500;
+  color: #fff;
+  background: var(--green);
+  border: 2px solid #fff;
+  border-radius: 999px;
+  box-shadow: var(--shadow-raised);
+  cursor: pointer;
+}
+
+/* Thin scrollbars for the results pane ------------------------------------- */
+.pa-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(29, 31, 34, 0.22) transparent;
+}
+.pa-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.pa-scroll::-webkit-scrollbar-thumb {
+  background: rgba(29, 31, 34, 0.18);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* MapLibre attribution: keep it quiet and on-brand ------------------------- */
+.pencil-app .maplibregl-ctrl-attrib {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pencil-app *,
+  .pencil-app *::before,
+  .pencil-app *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Inputs: pressed into the surface ---------------------------------------- */
+.pencil-app :where(input[type="text"], input[type="search"], input[type="email"], input[type="number"], select, textarea):not(.bg-transparent) {
+  border: 0 !important;
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: inset 2px 2px 6px rgba(150, 168, 158, 0.3), inset -2px -2px 6px rgba(255, 255, 255, 0.9);
+}
+.pa-inset {
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: var(--card) !important;
+  box-shadow: inset 2px 2px 6px rgba(150, 168, 158, 0.3), inset -2px -2px 6px rgba(255, 255, 255, 0.9);
+}
+.pa-inset:focus-within {
+  outline: 2px solid #145A40;
+  outline-offset: 2px;
+}
+.pa-raised {
+  border: 0 !important;
+  border-radius: 14px !important;
+  background: var(--card) !important;
+  box-shadow: 3px 3px 10px rgba(150, 168, 158, 0.24), -3px -3px 10px rgba(255, 255, 255, 0.8);
+}

@@ -2,7 +2,6 @@ import { parcelZoningLabel, type FeasibilityResult } from "./feasibility";
 import type { ADUReport } from "./adu-analysis";
 import type { DealSignals, SiteSignals } from "./deal-scoring";
 import {
-  calculateCombinedScore,
   calculateDealScore,
   daduZoningScoreForDeal,
   getSeattleDealSignals,
@@ -74,7 +73,7 @@ function assessedTotalDisplay(result: FeasibilityResult): string {
   }).format(total);
 }
 
-function buildSiteSignalsForDealScore(
+export function buildSiteSignalsForDealScore(
   result: FeasibilityResult,
   signals: DealSignals
 ): SiteSignals {
@@ -198,9 +197,9 @@ export function buildFeasibilityTableRow(
   const signals = getSeattleDealSignals(result, report);
   const siteSignals = buildSiteSignalsForDealScore(result, signals);
   const deal = calculateDealScore(siteSignals);
-  const combined = calculateCombinedScore(deal.score, report.confidence);
   const availCov = report.coverage?.availableSqft;
-  let daduScore = combined.score;
+  // The score is the six weighted site factors only. No model confidence is blended in.
+  let daduScore = deal.score;
   if (availCov != null && Number.isFinite(availCov) && availCov < 700) {
     daduScore = Math.min(daduScore, 74);
   }

@@ -346,7 +346,9 @@ export function getSeattleDealSignals(
   const parcel = result.parcel;
   const feasibility = result.feasibility;
   const lotSqft = parcel?.lotSqft ?? 0;
-  const coverageFrac = (feasibility?.lotCoveragePercent ?? 0) / 100;
+  // GIS coverage arrives as a 0-1 fraction (sometimes 0-100). Normalize to a fraction.
+  const rawCoverage = feasibility?.lotCoveragePercent ?? 0;
+  const coverageFrac = rawCoverage > 1 ? rawCoverage / 100 : rawCoverage;
   const lotWidth = feasibility?.lotWidth ?? 0;
   const steepSlope = feasibility?.steepSlopePercent ?? 0;
 

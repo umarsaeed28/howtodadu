@@ -1,49 +1,21 @@
 import type { Metadata } from "next";
-import {
-  Space_Grotesk,
-  IBM_Plex_Sans,
-  IBM_Plex_Mono,
-  Spectral,
-  Hanken_Grotesk,
-} from "next/font/google";
+import { Archivo, Public_Sans } from "next/font/google";
 import "./globals.css";
-import "./app/app.css";
+import "./pencil-ui.css";
 import "./site.css";
 import SiteShell from "@/components/site/SiteShell";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+const archivo = Archivo({
+  variable: "--font-display",
   subsets: ["latin"],
   display: "swap",
-  weight: ["500", "700"],
+  axes: ["wdth"],
 });
 
-const plexSans = IBM_Plex_Sans({
-  variable: "--font-plex-sans",
+const publicSans = Public_Sans({
+  variable: "--font-body",
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600"],
-});
-
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["400", "500"],
-});
-
-const spectral = Spectral({
-  variable: "--font-spectral",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["600", "700"],
-});
-
-const hanken = Hanken_Grotesk({
-  variable: "--font-hanken",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -82,7 +54,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${spaceGrotesk.variable} ${plexSans.variable} ${plexMono.variable} ${spectral.variable} ${hanken.variable} antialiased`}
+        className={`${archivo.variable} ${publicSans.variable} antialiased`}
       >
         <SiteShell>{children}</SiteShell>
       </body>

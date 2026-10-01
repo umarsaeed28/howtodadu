@@ -1,4 +1,4 @@
-import type { Verdict } from "@/lib/parcels";
+import type { Verdict } from "@/lib/verdict";
 import { propertyPhoto, zillowUrl } from "@/lib/property-image";
 
 /** Pencil-style verdict from the DADU score (0-100).

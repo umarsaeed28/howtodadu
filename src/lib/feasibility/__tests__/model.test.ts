@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computeFeasibility, type DealInputs } from "../model";
-import { baseDealInputs, parcelToDealInputs } from "../defaults";
-import { parcels } from "@/lib/parcels";
+import { baseDealInputs } from "../defaults";
 
 function inputs(overrides: Partial<DealInputs> = {}): DealInputs {
   const base = baseDealInputs({ purchasePrice: 1_000_000, units: 6, buildType: "stacked_flats" });
@@ -98,36 +97,5 @@ describe("computeFeasibility", () => {
       hard: { ...base.hard, costPerSqft: base.hard.costPerSqft + 150 },
     });
     expect(pricey.marginOnCost).toBeLessThan(cheap.marginOnCost);
-  });
-
-  it("parcelToDealInputs anchors to authored economics for well-formed deals", () => {
-    // Anchorable = authored all-in leaves room above land + floor costs.
-    const anchorable = parcels.filter((p) => p.allInCost > p.listPrice * 1.25);
-    expect(anchorable.length).toBeGreaterThan(5);
-    for (const p of anchorable) {
-      const r = computeFeasibility(parcelToDealInputs(p));
-      expect(Math.abs(r.costBreakdown.total - p.allInCost) / p.allInCost).toBeLessThan(0.04);
-      const netRevenue = r.grossRevenue - r.sellingCosts;
-      expect(Math.abs(netRevenue - p.projectedValue) / p.projectedValue).toBeLessThan(0.04);
-    }
-  });
-
-  it("parcelToDealInputs keeps PENCILS parcels pencilling", () => {
-    const strong = parcels.filter(
-      (p) => p.verdict === "PENCILS" && p.allInCost > p.listPrice * 1.25
-    );
-    for (const p of strong) {
-      const r = computeFeasibility(parcelToDealInputs(p));
-      expect(r.marginOnCost).toBeGreaterThanOrEqual(15);
-    }
-  });
-
-  it("every parcel yields a finite, valid result", () => {
-    for (const p of parcels) {
-      const r = computeFeasibility(parcelToDealInputs(p));
-      expect(Number.isFinite(r.marginOnCost)).toBe(true);
-      expect(Number.isFinite(r.costBreakdown.total)).toBe(true);
-      expect(r.costBreakdown.total).toBeGreaterThan(0);
-    }
   });
 });

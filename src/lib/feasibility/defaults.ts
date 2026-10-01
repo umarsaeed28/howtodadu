@@ -5,8 +5,6 @@
  * The user can override every value through the assumption panels. Percentages
  * are whole numbers (e.g. 6 = 6%).
  */
-import type { Parcel } from "@/lib/parcels";
-import type { DashboardPropertySlim } from "@/lib/dashboard-normalize";
 import type { DealInputs } from "./model";
 
 export type BuildType = "stacked_flats" | "townhomes" | "fourplex" | "sfr_dadu";
@@ -142,76 +140,4 @@ export function baseDealInputs(opts: {
     },
     units,
   };
-}
-
-/**
- * Map an existing Parcel into DealInputs, anchored so the initial computed result
- * reproduces the parcel's authored economics: costPerSqft is back-solved so total
- * cost ≈ parcel.allInCost, and sale price is set so net revenue ≈ projectedValue.
- * Every field stays fully editable from there.
- */
-export function parcelToDealInputs(parcel: Parcel): DealInputs {
-  const units = Math.max(parcel.unitsUnlocked, 1);
-  const buildType = buildTypeFor(units, parcel.bestUse);
-  const inputs = baseDealInputs({ purchasePrice: parcel.listPrice, units, buildType });
-
-  // Back-solve costPerSqft so computeFeasibility(inputs).total ≈ parcel.allInCost.
-  const acq =
-    parcel.listPrice * (1 + inputs.acquisition.closingCostsPct / 100) +
-    inputs.acquisition.demoSitePrep;
-  const fixedSoft =
-    inputs.soft.permitsAndFees + inputs.soft.surveyEnviro + inputs.soft.legalAccounting;
-  const softPct =
-    (inputs.soft.architecturePct +
-      inputs.soft.engineeringPct +
-      inputs.soft.projectMgmtPct +
-      inputs.soft.insurancePct) /
-    100;
-  const hardFactor = 1 + inputs.hard.contingencyPct / 100 + softPct; // hb multiplier in preFinancing
-  const carrying =
-    (inputs.financing.propertyTaxMonthly + inputs.financing.utilitiesMaintMonthly) *
-    inputs.financing.buildMonths;
-  const finK =
-    1 +
-    (inputs.financing.loanToCostPct / 100) *
-      (inputs.financing.interestRatePct / 100) *
-      (inputs.financing.buildMonths / 12) *
-      0.6;
-  const preFinTarget = (parcel.allInCost - carrying) / finK;
-  const hbTarget = (preFinTarget - acq - fixedSoft) / hardFactor;
-  const solved = hbTarget / inputs.hard.buildableSqft;
-  // Anchor when feasible; floor at a sane minimum so internally-inconsistent
-  // sample data can't produce an absurd cost per sqft.
-  if (Number.isFinite(solved)) {
-    inputs.hard.costPerSqft = Math.max(Math.round(solved), 60);
-  }
-
-  // Anchor sale price so net revenue (after selling costs) ≈ projectedValue.
-  const grossTarget = parcel.projectedValue / (1 - inputs.exit.sellingCostsPct / 100);
-  inputs.exit.salePricePerUnit = Math.round(grossTarget / units);
-
-  return inputs;
-}
-
-/** Allowed unit count implied by zoning + lot size (editable placeholder). */
-function unitsFromZoning(zoning: string | null, lotSqft: number | null): number {
-  const z = (zoning ?? "").toUpperCase();
-  if (z.includes("LR")) return 8;
-  if (z.includes("NR2") || z.includes("NR3")) return (lotSqft ?? 0) >= 5500 ? 6 : 4;
-  if (z.includes("NR1") || z === "NR") return 4;
-  if (z.includes("RSL")) return 3;
-  if (z.includes("RS")) return 2;
-  return 4;
-}
-
-/**
- * Map a feasibility result (DADU dashboard row) into DealInputs so the same
- * assumption panels work in the feasibility tool. Uses assessed value and zoning
- * as a starting point; every field is an editable placeholder.
- */
-export function slimToDealInputs(slim: DashboardPropertySlim): DealInputs {
-  const purchasePrice = slim.assessedValueNum ?? 800_000;
-  const units = unitsFromZoning(slim.zoning, slim.lotSizeSqft);
-  const buildType = buildTypeFor(units);
-  return baseDealInputs({ purchasePrice, units, buildType });
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Mail, Sparkles } from "lucide-react";
-import { Section, Container, Eyebrow, Heading, Lede, Button } from "@/components/ui";
+import { Section, Container, Heading, Lede, Button } from "@/components/ui";
 import ContactForm from "@/components/site/ContactForm";
 
 export const metadata: Metadata = {
@@ -16,7 +16,6 @@ export default function ContactPage() {
         <Container>
           <div className="s-grid s-grid-2" style={{ gap: "clamp(2rem,5vw,4rem)", alignItems: "start" }}>
             <div>
-              <Eyebrow>Talk to us</Eyebrow>
               <Heading level={1} style={{ marginTop: 18 }}>
                 Let&apos;s look at a deal together.
               </Heading>

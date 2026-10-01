@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Heart, AlertTriangle, ExternalLink } from "lucide-react";
 import type { DashboardPropertySlim } from "@/lib/dashboard-normalize";
 import { verdictFromScore, feasPhoto, zillowUrl } from "@/lib/feasibility-verdict";
-import VerdictPill from "@/components/pencil-app/VerdictPill";
+import VerdictPill from "@/components/shared/VerdictPill";
 
 const VERDICT_COLOR = {
   PENCILS: "var(--green)",
@@ -120,7 +120,7 @@ export default function FeasCard({
         </p>
         <div className="mt-0.5 flex items-center justify-between gap-2">
           <p className="text-xs" style={{ color: "var(--slate)" }}>
-            {slim.neighborhood} · {slim.confidenceShort} confidence
+            {slim.neighborhood}
           </p>
           <a
             href={zillowUrl(slim.address)}

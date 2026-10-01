@@ -13,13 +13,13 @@ import { fetchBulkFeasibilityInChunks } from "@/lib/bulk-feasibility-client";
 import { parseAddressesFromCsvText } from "@/lib/parse-csv-addresses";
 import { pushRecentAddress } from "@/lib/recent-addresses";
 import { useFavorites } from "@/hooks/useFavorites";
-import type { Verdict } from "@/lib/parcels";
+import type { Verdict } from "@/lib/verdict";
 import { verdictFromScore } from "@/lib/feasibility-verdict";
 import FeasAppBar from "./FeasAppBar";
 import FeasFilterBar from "./FeasFilterBar";
 import FeasCard from "./FeasCard";
-import FeasDetailPanel from "./FeasDetailPanel";
-import { NoSearchResults } from "@/components/pencil-app/states";
+import FeasibilityReportView from "@/components/report/FeasibilityReportView";
+import { NoSearchResults } from "@/components/shared/states";
 import type { FeasSortKey } from "./types";
 
 const PAGE = 24;
@@ -324,8 +324,7 @@ export default function FeasibilityPencil() {
             ].map(({ Icon, title, body }) => (
               <div
                 key={title}
-                className="rounded-[10px] border p-4"
-                style={{ borderColor: "var(--hairline)", background: "var(--card)" }}
+                className="pa-raised p-4"
               >
                 <span style={{ color: "var(--green)" }}>
                   <Icon size={18} aria-hidden />
@@ -363,7 +362,7 @@ export default function FeasibilityPencil() {
 
       {selectedSlim ? (
         <main className="mx-auto w-full max-w-[1500px] flex-1 px-4 py-6 md:px-6">
-          <FeasDetailPanel
+          <FeasibilityReportView
             slim={selectedSlim}
             detailRow={detailRow}
             loading={detailLoading}
