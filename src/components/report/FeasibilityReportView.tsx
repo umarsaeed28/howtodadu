@@ -136,9 +136,21 @@ function Hero({ report, slim }: { report: FeasibilityReport; slim: DashboardProp
 
 function ReportBody({ report, row, snapshotRef }: { report: FeasibilityReport; row: FeasibilityTableRow; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null> }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start">
-      {/* Left column scrolls */}
-      <div className="order-2 flex flex-col gap-6 lg:order-1">
+    <div className="flex flex-col gap-6">
+      {/* The master plan breaks out of the page column to (nearly) the full screen width, so there is room to work. */}
+      <div className="mx-[calc((100%_-_min(100vw_-_2rem,1680px))/2)] w-[min(100vw_-_2rem,1680px)] max-w-none">
+        <MasterPlan
+          lot={row.result.lot}
+          sitePlan={row.result.sitePlan}
+          feasibility={row.result.feasibility}
+          report={row.report}
+          pin={row.result.parcel?.pin ?? null}
+          terrain={row.result.terrain ?? null}
+          snapshotRef={snapshotRef}
+        />
+      </div>
+
+      <div className="flex flex-col gap-6">
         <Section id="rep-facts" title="Property facts">
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {report.property_facts.map((f) => (
@@ -245,19 +257,6 @@ function ReportBody({ report, row, snapshotRef }: { report: FeasibilityReport; r
           </ul>
           <p className="mt-2">Preliminary estimate. Not a permit or legal opinion. Cost is construction only, estimated at {usd(COST_PER_SF)} per buildable sf.</p>
         </footer>
-      </div>
-
-      {/* Right column: summary, then the pinned master plan */}
-      <div className="order-1 flex flex-col gap-6 lg:sticky lg:top-24 lg:order-2 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
-        <MasterPlan
-          lot={row.result.lot}
-          sitePlan={row.result.sitePlan}
-          feasibility={row.result.feasibility}
-          report={row.report}
-          pin={row.result.parcel?.pin ?? null}
-          terrain={row.result.terrain ?? null}
-          snapshotRef={snapshotRef}
-        />
       </div>
     </div>
   );

@@ -566,6 +566,9 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
 
   return (
     <figure ref={figRef} className="plat-sheet" style={{ margin: 0, padding: "clamp(12px, 2vw, 20px)" }}>
+      {/* Wide screens: the drawing takes the room, the unit controls sit beside it so both stay in view. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
+      <div className="min-w-0">
       <svg
         ref={svgRef}
         className="plat"
@@ -575,7 +578,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
         onPointerCancel={endGrab}
         role="img"
         aria-label={`Master plan of the lot at ${lotW} by ${lotD} feet with the buildable envelope, existing structures${dadu ? ", and a proposed detached accessory dwelling unit" : ""}.`}
-        style={{ fontSize: fs, maxHeight: "68vh", touchAction: active ? "none" : undefined, userSelect: "none" }}
+        style={{ fontSize: fs, maxHeight: "80vh", touchAction: active ? "none" : undefined, userSelect: "none" }}
       >
         <defs>
           <pattern id="mp-house" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -849,9 +852,11 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
           source={terrain?.source ?? ""}
         />
       )}
+      </div>
 
+      <div className="min-w-0 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
       {units.length > 0 && (
-        <div className="mt-3 flex flex-col gap-2" aria-live="polite">
+        <div className="mt-3 flex flex-col gap-2 xl:mt-0" aria-live="polite">
           {units.map((x, idx) => {
             const c = checks[idx];
             const st = UNIT_STYLE[x.kind];
@@ -916,6 +921,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
           <p className="text-[11px]" style={{ color: "var(--slate)" }}>Select a unit, then drag it to move or drag a handle to resize. Arrow keys move it; Shift with arrows resizes. A detached ADU keeps {HOUSE_SEPARATION_FT} ft from the house; an attached ADU joins it. A sketch to get a feel for the lot, not a design.</p>
         </div>
       )}
+      </div>
+      </div>
 
       <figcaption className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 border-t pt-3 text-xs" style={{ color: "var(--slate)", borderColor: "var(--hairline)" }}>
         <Key swatch={<i style={{ background: "rgba(30, 110, 80,0.3)", border: "1px dashed #145A40" }} />}>Buildable envelope ({side} ft side, {rear ? `${rear} ft rear` : "no rear setback on the alley"})</Key>

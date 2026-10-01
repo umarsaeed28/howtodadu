@@ -234,9 +234,19 @@ async function alleysNear(bbox: [number, number, number, number]): Promise<numbe
   }
 }
 
+/**
+ * The parcel's own extent. Layers filtered to the lot (buildings, trees, driveways) must query this, not the padded
+ * aerial bbox: that one covers a whole block, and the record cap then drops the lot's own features in dense areas.
+ */
+function parcelExtent(rings: number[][]): [number, number, number, number] {
+  const xs = rings.map((c) => c[0]), ys = rings.map((c) => c[1]);
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+}
+
 async function queryBuildings(
   bbox: [number, number, number, number],
-  parcelRings: number[][]
+  parcelRings: number[][],
+  subjectPin: string | null = null
 ): Promise<SitePlanBuilding[]> {
   const [xmin, ymin, xmax, ymax] = bbox;
   const pad = 0.00015;
@@ -249,7 +259,7 @@ async function queryBuildings(
     outFields: "OBJECTID,PIN,Shape__Area,AREA",
     outSR: "4326",
     returnGeometry: "true",
-    resultRecordCount: "50",
+    resultRecordCount: "200",
     f: "json",
   });
   try {
@@ -267,7 +277,9 @@ async function queryBuildings(
         rings.reduce((s: number, c: number[]) => s + c[0], 0) / rings.length;
       const cy =
         rings.reduce((s: number, c: number[]) => s + c[1], 0) / rings.length;
-      if (!pointInPolygon(cx, cy, parcelRings)) continue;
+      // A building tagged with this lot's PIN belongs to it even when its vertex average falls outside (L-shapes, lot-line houses).
+      const ownPin = !!subjectPin && str(f.attributes?.PIN) === subjectPin;
+      if (!ownPin && !pointInPolygon(cx, cy, parcelRings)) continue;
       const area = num(f.attributes?.Shape__Area ?? f.attributes?.AREA) ?? 0;
       buildings.push({
         rings,
@@ -534,10 +546,10 @@ export async function getFeasibilityForAddress(
   const [contours, buildings, trees, streets, driveways, adjacentParcels, terrain] =
     await Promise.all([
       lotData ? queryContours(lotData.bbox) : [],
-      lotData && parcelRings ? queryBuildings(lotData.bbox, parcelRings) : [],
-      lotData && parcelRings ? queryTrees(lotData.bbox, parcelRings) : [],
+      lotData && parcelRings ? queryBuildings(parcelExtent(parcelRings), parcelRings, subjectPin) : [],
+      lotData && parcelRings ? queryTrees(parcelExtent(parcelRings), parcelRings) : [],
       bbox ? queryStreets(bbox) : [],
-      lotData && parcelRings ? queryDriveways(lotData.bbox, parcelRings) : [],
+      lotData && parcelRings ? queryDriveways(parcelExtent(parcelRings), parcelRings) : [],
       lotData && parcelRings
         ? queryAdjacentParcels(lotData.bbox, parcelRings, subjectPin)
         : [],
