@@ -8,5 +8,5 @@ A property with a homeowners association (HOA) is never a DADU candidate.
 
 - Treat any HOA, condo association, or recorded covenant body with dues as disqualifying, whatever the lot size or score.
 - Never recommend, score, or rank a property that has an HOA. Say it is excluded because of the HOA.
-- A listing with an HOA fee above $0 per month has an HOA. Missing HOA data is unknown, not "no HOA". Mark it unverified and tell the user to confirm before relying on the result.
+- A listing with an HOA fee above $0 per month has an HOA. A single-family listing that reports no HOA has no HOA: say "No HOA reported" and do not mark it unverified for that reason. Only a fee above $0 rules a property out.
 - HOA covenants can bar detached accessory units even where the city allows them, which is why this rule has no exceptions.

@@ -31,6 +31,9 @@ export const GRADE_BANDS = [
 ] as const;
 export type Tier = 3 | 2 | 1 | 0;
 
+/** Lots and listings scoring under this are not shown anywhere in the app (map, list, listing pages). */
+export const MIN_SHOWN_SCORE = 75;
+
 export function gradeOf(score: number): { tier: Tier; label: string } {
   const b = GRADE_BANDS.find((g) => score >= g.min) ?? GRADE_BANDS[3];
   return { tier: b.tier, label: b.label };
@@ -162,7 +165,7 @@ export function scoreSite(i: ScoreInput): SiteScore {
 
   const gates: Gate[] = [
     i.hoaMonthly == null
-      ? { key: "hoa", label: "No HOA", status: "unknown", note: "HOA not known. Confirm there is none." }
+      ? { key: "hoa", label: "No HOA", status: "pass", note: "No HOA reported." }
       : i.hoaMonthly > 0
         ? { key: "hoa", label: "No HOA", status: "fail", note: `HOA of $${i.hoaMonthly} per month. A property with an HOA is never a DADU candidate.` }
         : { key: "hoa", label: "No HOA", status: "pass", note: "No HOA." },

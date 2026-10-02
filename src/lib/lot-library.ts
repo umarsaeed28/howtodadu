@@ -101,11 +101,11 @@ export function decodeLibrary(f: LotLibraryFile, zips?: string[] | null): Candid
   return out;
 }
 
-export function zipCounts(f: LotLibraryFile): { zip: string; lots: number; topPicks: number }[] {
+export function zipCounts(f: LotLibraryFile, minScore = 0): { zip: string; lots: number; topPicks: number }[] {
   const m = new Map<string, { lots: number; topPicks: number }>();
   for (let i = 0; i < f.count; i++) {
     const z = f.cols.zip[i];
-    if (!z) continue;
+    if (!z || f.cols.score[i] < minScore) continue;
     const e = m.get(z) ?? { lots: 0, topPicks: 0 };
     e.lots += 1;
     e.topPicks += f.cols.topPick[i];

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getListingsProvider, listingsConnected, listingsProviderName } from "@/lib/listings";
 import { findLotForListing, libraryAvailable } from "@/lib/server/lot-library-store";
+import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
 
 export interface MapListing {
   mlsId: string;
@@ -48,6 +49,7 @@ export async function GET(req: Request) {
       if ((l.hoaMonthly ?? 0) > 0) continue; // screening rule: a property with an HOA is never a DADU candidate
       const lot = findLotForListing(l.address, l.lat, l.lng);
       if (!lot) continue; // the lot library only holds lots where the engine finds a DADU of at least 300 sf
+      if (lot.score < MIN_SHOWN_SCORE) continue; // only lots that score 75 or more are shown
       out.push({
         mlsId: l.mlsId, address: l.address, lat: l.lat, lng: l.lng, price: l.listPrice, lotSqft: l.lotSqft || lot.lotSqft,
         status: l.status, photo: l.photos[0] ?? null, pin: lot.pin, score: lot.score, tier: lot.tier, corner: lot.corner, alley: lot.alley,

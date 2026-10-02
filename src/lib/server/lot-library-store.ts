@@ -1,6 +1,7 @@
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { decodeLibrary, makeLotFinder, zipCounts, type LotLibraryFile } from "@/lib/lot-library";
+import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
 import type { Candidate } from "./candidates";
 
 const FILE = join(process.cwd(), "data", "lot-library.json");
@@ -50,7 +51,7 @@ export function getSlimLots(zips: string[] | null): { generatedAt: string; zips:
   const want = zips && zips.length ? new Set(zips) : null;
   const out: SlimLots = { count: 0, pin: [], lat: [], lng: [], score: [], tier: [], flags: [], zip: [] };
   for (let i = 0; i < l.file.count; i++) {
-    if (c.tier[i] < 1) continue; // top picks, good and fair lots (score 74 and up); anything lower has no DADU room
+    if (c.score[i] < MIN_SHOWN_SCORE) continue; // only lots that score 75 or more are shown
     if (want && !(c.zip[i] && want.has(c.zip[i]!))) continue;
     out.pin.push(c.pin[i]);
     out.lat.push(c.lat[i]);
@@ -61,7 +62,7 @@ export function getSlimLots(zips: string[] | null): { generatedAt: string; zips:
     out.zip.push(c.zip[i]);
   }
   out.count = out.pin.length;
-  return { generatedAt: l.file.generatedAt, zips: zipCounts(l.file), lots: out };
+  return { generatedAt: l.file.generatedAt, zips: zipCounts(l.file, MIN_SHOWN_SCORE), lots: out };
 }
 
 export function getLot(pin: string): Candidate | null {

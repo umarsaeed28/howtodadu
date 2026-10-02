@@ -183,7 +183,7 @@ def build_graph(deps: Deps) -> Any:
         req = state["req"]
         r = AGENTS.retrieve
         lot_type = req.lot.lot_type if req.lot and req.lot.lot_type else "single-family"
-        hoa = "unknown HOA" if req.listing.hoa_monthly is None else "no HOA"
+        hoa = "no HOA"
         question = f"DADU screening rules for a {lot_type} lot with {hoa} in Seattle"
         extra: list[str] = []
         if req.site and req.site.eligible:
@@ -289,7 +289,7 @@ def build_graph(deps: Deps) -> Any:
         a = state["analysis"]
         v = validate_findings(a.findings, state["passages"], state["facts"])
         verdict, extra = enforce_verdict(
-            a, has_lot=req.lot is not None, hoa_known=req.listing.hoa_monthly is not None, kept_findings=len(v.kept)
+            a, has_lot=req.lot is not None, kept_findings=len(v.kept)
         )
         note = f"{len(v.kept)} kept, {len(v.dropped)} dropped" + (f" ({v.dropped[0][1]})" if v.dropped else "")
         return {

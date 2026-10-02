@@ -101,7 +101,7 @@ export function buildFacts(l: RawListing, lot: Candidate | null, adu: Aduniverse
     [`Address: ${l.address}`, "listing feed"],
     [`List price: ${usd(l.listPrice)}`, "listing feed"],
     [`Home: ${l.beds ?? "unknown"} beds, ${l.baths ?? "unknown"} baths, ${l.livingSqft ?? "unknown"} sf, built ${l.yearBuilt ?? "unknown"}`, "listing feed"],
-    [`HOA: ${l.hoaMonthly == null ? "unknown (not reported by the listing)" : l.hoaMonthly > 0 ? `${usd(l.hoaMonthly)} per month` : "none"}`, "listing feed"],
+    [`HOA: ${l.hoaMonthly == null ? "none reported by the listing" : l.hoaMonthly > 0 ? `${usd(l.hoaMonthly)} per month` : "none"}`, "listing feed"],
   ];
   if (lot) {
     rows.push(
@@ -207,7 +207,7 @@ export async function runAssessment(l: RawListing, lot: Candidate | null, deps: 
   });
 
   // Node 4, deterministic retrieval: documents first, then chunks inside them.
-  const question = `DADU screening rules for a ${lot?.lotType ?? "single-family"} lot with ${l.hoaMonthly == null ? "unknown HOA" : "no HOA"} in Seattle`;
+  const question = `DADU screening rules for a ${lot?.lotType ?? "single-family"} lot with no HOA in Seattle`;
   // Also pull how the score works and the guidance behind the weakest factors, so adjustments can be grounded.
   const weakest = site?.eligible ? [...site.factors].sort((a, b) => a.score - b.score).slice(0, 2).map((f) => f.name.toLowerCase()) : [];
   const extra = site?.eligible ? [`How the DADU site score, factors and grades work; ${weakest.join(" and ")}`, `Market fit for a DADU: target size, price and oversupplied unit types`] : [];
@@ -270,7 +270,7 @@ export async function runAssessment(l: RawListing, lot: Candidate | null, deps: 
     const v = validateFindings(analysis.findings ?? [], passages, facts);
     return { value: v, ok: v.dropped.length === 0, note: `${v.kept.length} kept, ${v.dropped.length} dropped${v.dropped[0] ? ` (${v.dropped[0].reason})` : ""}` };
   });
-  const { verdict, extraConfirm } = enforceVerdict(analysis, { hasLot: !!lot, hoaKnown: l.hoaMonthly != null, keptFindings: kept.length });
+  const { verdict, extraConfirm } = enforceVerdict(analysis, { hasLot: !!lot, keptFindings: kept.length });
 
   // Node 7, deterministic: the score Claude decided, after every adjustment is checked.
   const score = await step(st, "decide score", "deterministic", async () => {
@@ -288,6 +288,12 @@ export async function runAssessment(l: RawListing, lot: Candidate | null, deps: 
     ...facts.filter((f) => used.has(f.label)).map((f) => ({ label: f.label, docId: f.source, section: f.text.split(":")[0] })),
   ];
   const confirm = [...(analysis.confirm ?? []), ...extraConfirm].slice(0, 6);
-  const headline = kept.length ? analysis.headline : "Data unavailable in retrieved sources. None of the model's findings could be tied to a source.";
+  // The badge and the headline must agree. When the checks above changed the model's verdict, its headline no longer
+  // fits, so the page says plainly why instead.
+  const headline = !kept.length
+    ? "Data unavailable in retrieved sources. None of the model's findings could be tied to a source."
+    : verdict !== analysis.verdict
+      ? `This could work, but it needs confirming first. ${extraConfirm[0] ?? "The checks could not confirm the model's read."}`
+      : analysis.headline;
   return { verdict, headline, findings: kept, confirm, unavailable, citations, text: render({ headline, findings: kept, confirm, unavailable }), models: [...st.models], trace: st.trace, score, tokens: meter.total, costUsd: Math.round(meter.costUsd * 1e6) / 1e6 };
 }

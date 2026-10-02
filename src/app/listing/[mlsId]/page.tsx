@@ -17,6 +17,7 @@ import ListingPhoto from "@/components/listing/ListingPhoto";
 import LotSketch from "@/components/listing/LotSketch";
 import DaduSnapshot from "@/components/listing/DaduSnapshot";
 import { siteScoreFor } from "@/lib/server/site-score";
+import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ async function load(id: string): Promise<{ listing: RawListing; detail: ListingD
 
 function riskFlags(i: { hoa?: number; plan: ReturnType<typeof planSite> | null; adu: Awaited<ReturnType<typeof getAduniverseFacts>>; canopyPct: number | null; zoning: string }): { text: string; source: string; level: "stop" | "watch" | "ok" }[] {
   const out: { text: string; source: string; level: "stop" | "watch" | "ok" }[] = [];
-  if (i.hoa == null) out.push({ text: "HOA not reported. An HOA rules a property out, so confirm there is none.", source: "Listing feed", level: "watch" });
+  if (i.hoa == null) out.push({ text: "No HOA reported.", source: "Listing feed", level: "ok" });
   else if (i.hoa > 0) out.push({ text: `HOA of ${usd(i.hoa)} per month. A property with an HOA is never a DADU candidate.`, source: "Listing feed", level: "stop" });
   else out.push({ text: "No HOA reported.", source: "Listing feed", level: "ok" });
   if (i.plan && !i.plan.area.pass) out.push({ text: `Lot is under the ${i.plan.area.min.toLocaleString()} sq ft minimum.`, source: "Team guide", level: "stop" });
@@ -94,6 +95,29 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
   const site = siteScoreFor(l, lot, adu);
   const widthFt = lot?.lotWidth ?? adu?.raw.lotWidth ?? null;
   const depthFt = lot?.lotDepth ?? adu?.raw.lotDepth ?? null;
+
+  // Pencil only shows homes that score 75 or more. An old link to a lower one gets a short note, not the full page.
+  const shownScore = site?.eligible ? site.score : 0;
+  if (shownScore < MIN_SHOWN_SCORE) {
+    return (
+      <div className="pencil-app">
+        <article className="mx-auto max-w-[640px] px-4 pb-16 pt-10 md:px-6">
+          <h1 className="pa-display text-2xl" style={{ color: "var(--ink)" }}>{street(l.address)} is below the bar</h1>
+          <p className="mt-3 text-base leading-relaxed" style={{ color: "var(--ink)" }}>
+            {site?.eligible
+              ? `Its lot scores ${site.score} out of 100 for a DADU. Pencil shows homes that score ${MIN_SHOWN_SCORE} or more.`
+              : site
+                ? `A screening rule rules this lot out for a DADU: ${site.gates.find((g) => g.status === "fail")?.note ?? "it fails a screening check."}`
+                : "This address is not in the city lot library, so it is not an eligible single-family lot with room for a DADU."}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Link href={`/?zip=${l.zip}`} className="pa-btn pa-btn-primary no-underline"><ArrowLeft size={14} aria-hidden /> See homes that score {MIN_SHOWN_SCORE}+ nearby</Link>
+            <Link href={`/feasibility?address=${encodeURIComponent(l.address)}`} className="pa-btn no-underline">Check the lot anyway</Link>
+          </div>
+        </article>
+      </div>
+    );
+  }
 
   return (
     <div className="pencil-app">
@@ -242,7 +266,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
                   ["Land share of assessed value", basis.landSharePct != null ? `${basis.landSharePct}%` : null],
                   ["Price to assessed value", basis.priceToAssessed ? `${basis.priceToAssessed.toFixed(2)}x` : null],
                   ["Days on market", l.daysOnMarket != null ? String(l.daysOnMarket) : null],
-                  ["HOA", l.hoaMonthly == null ? "Not reported" : l.hoaMonthly > 0 ? `${usd(l.hoaMonthly)} per month` : "None"],
+                  ["HOA", l.hoaMonthly == null ? "None reported" : l.hoaMonthly > 0 ? `${usd(l.hoaMonthly)} per month` : "None"],
                 ] as [string, string | null][]).filter(([, v]) => v != null).map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-4 border-b py-2.5" style={{ borderColor: "var(--hairline)" }}>
                     <dt style={{ color: "var(--slate)" }}>{k}</dt><dd className="text-right font-semibold tabular-nums" style={{ color: "var(--ink)" }}>{v}</dd>
@@ -284,7 +308,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
                   ["Living area", l.livingSqft ? `${l.livingSqft.toLocaleString()} sf` : null],
                   ["Lot size", l.lotSqft ? `${l.lotSqft.toLocaleString()} sf` : null],
                   ["Price per sf", l.livingSqft ? usd(l.listPrice / l.livingSqft) : null],
-                  ["HOA", l.hoaMonthly == null ? "Not reported" : l.hoaMonthly > 0 ? `${usd(l.hoaMonthly)} per month` : "None"],
+                  ["HOA", l.hoaMonthly == null ? "None reported" : l.hoaMonthly > 0 ? `${usd(l.hoaMonthly)} per month` : "None"],
                   ["Zoning", lot?.zoning],
                   ["Parking", d.garage],
                   ["Redfin estimate", d.estimate ? usd(d.estimate) : null],

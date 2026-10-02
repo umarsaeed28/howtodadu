@@ -54,17 +54,13 @@ export function validateFindings(findings: Finding[], passages: Passage[], facts
  * - A candidate needs lot facts, and an HOA that is known to be absent. Otherwise it is unverified.
  * - If every finding was dropped, there is nothing to stand on: unverified.
  */
-export function enforceVerdict(a: Analysis, ctx: { hasLot: boolean; hoaKnown: boolean; keptFindings: number }): { verdict: Verdict; extraConfirm: string[] } {
+export function enforceVerdict(a: Analysis, ctx: { hasLot: boolean; keptFindings: number }): { verdict: Verdict; extraConfirm: string[] } {
   const extra: string[] = [];
   let verdict = a.verdict;
   if (verdict === "candidate") {
     if (!ctx.hasLot) {
       verdict = "unverified";
       extra.push("This address is not in the city lot library, so its DADU size is unknown.");
-    }
-    if (!ctx.hoaKnown) {
-      verdict = "unverified";
-      extra.push("Confirm there is no HOA. The listing does not report one, and an HOA rules a property out.");
     }
   }
   if (!ctx.keptFindings) verdict = "unverified";

@@ -22,7 +22,7 @@ const DADU_COLOR = "#145A40";
 export const TIERS = [
   { id: 3, label: "Top pick", note: "Scores 93 and up: alley or corner access, a layout that fits, a full-size DADU", color: "#145A40" },
   { id: 2, label: "Good", note: "Scores 82 to 92", color: "#6CB98A" },
-  { id: 1, label: "Fair", note: "Scores 70 to 81: tight access, a narrow lot or a smaller DADU", color: "#D9A441" },
+  { id: 1, label: "Fair", note: "Scores 75 to 81: tight access, a narrow lot or a smaller DADU", color: "#D9A441" },
   { id: 0, label: "Marginal", note: "Scores under 70: a DADU fits, but the site is hard", color: "#B8B2A4" },
 ] as const;
 const tierOf = (t: number) => TIERS.find((x) => x.id === t) ?? TIERS[3];
@@ -414,7 +414,7 @@ export default function CandidateMap() {
                   </label>
                 </div>
                 <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--slate)" }} aria-label="Grade key">
-                  {TIERS.map((t) => (
+                  {TIERS.filter((t) => t.id > 0).map((t) => (
                     <li key={t.id} className="flex items-center gap-1.5" title={t.note}><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: t.color }} />{t.label}</li>
                   ))}
                 </ul>

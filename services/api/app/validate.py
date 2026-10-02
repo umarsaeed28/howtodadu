@@ -52,17 +52,14 @@ def validate_findings(findings: list[Finding], passages: list[Passage], facts: l
     return res
 
 
-def enforce_verdict(a: Analysis, *, has_lot: bool, hoa_known: bool, kept_findings: int) -> tuple[Verdict, list[str]]:
-    """Rules the model cannot override: a candidate needs lot facts and a known-absent HOA; no surviving findings means unverified."""
+def enforce_verdict(a: Analysis, *, has_lot: bool, kept_findings: int) -> tuple[Verdict, list[str]]:
+    """Rules the model cannot override: a candidate needs lot facts (a listing that reports no HOA has none); no surviving findings means unverified."""
     extra: list[str] = []
     verdict: Verdict = a.verdict
     if verdict == "candidate":
         if not has_lot:
             verdict = "unverified"
             extra.append("This address is not in the city lot library, so its DADU size is unknown.")
-        if not hoa_known:
-            verdict = "unverified"
-            extra.append("Confirm there is no HOA. The listing does not report one, and an HOA rules a property out.")
     if not kept_findings:
         verdict = "unverified"
     return verdict, extra

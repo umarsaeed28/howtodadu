@@ -42,12 +42,11 @@ describe("validation (deterministic)", () => {
     const r = validateFindings([{ claim: "The DADU can be 895 sf.", cites: ["F1"] }], [], [{ label: "F1", text: "Largest DADU: 895 sf", source: "city GIS" }]);
     expect(r.kept).toHaveLength(1);
   });
-  it("never publishes candidate without a lot or with unknown HOA", () => {
+  it("never publishes candidate without a lot or without findings; no HOA reported does not hold it back", () => {
     const a = analysis({});
-    expect(enforceVerdict(a, { hasLot: false, hoaKnown: true, keptFindings: 2 }).verdict).toBe("unverified");
-    expect(enforceVerdict(a, { hasLot: true, hoaKnown: false, keptFindings: 2 }).verdict).toBe("unverified");
-    expect(enforceVerdict(a, { hasLot: true, hoaKnown: true, keptFindings: 2 }).verdict).toBe("candidate");
-    expect(enforceVerdict(a, { hasLot: true, hoaKnown: true, keptFindings: 0 }).verdict).toBe("unverified");
+    expect(enforceVerdict(a, { hasLot: false, keptFindings: 2 }).verdict).toBe("unverified");
+    expect(enforceVerdict(a, { hasLot: true, keptFindings: 2 }).verdict).toBe("candidate");
+    expect(enforceVerdict(a, { hasLot: true, keptFindings: 0 }).verdict).toBe("unverified");
   });
 });
 
@@ -138,9 +137,16 @@ describe("assessment chain", () => {
     expect(a.headline).toMatch(/Data unavailable in retrieved sources/);
     expect(calls).not.toContain("json");
   });
-  it("downgrades candidate to unverified when HOA is not reported", async () => {
+  it("a listing with no HOA reported stays a candidate, and its HOA fact says none reported", async () => {
     const a = await runAssessment({ ...listing, hoaMonthly: undefined }, lot, { llm: stub(analysis({})), search });
+    expect(a.verdict).toBe("candidate");
+    expect(a.confirm.join(" ")).not.toMatch(/HOA/);
+    expect(a.headline).toBe("Strong candidate.");
+  });
+  it("when the checks change the verdict, the headline changes with it (no 'strong candidate' under a 'needs confirming' badge)", async () => {
+    const a = await runAssessment(listing, null, { llm: stub(analysis({ headline: "This is a strong DADU candidate." })), search });
     expect(a.verdict).toBe("unverified");
-    expect(a.confirm.join(" ")).toMatch(/HOA/);
+    expect(a.headline).not.toMatch(/strong/i);
+    expect(a.headline).toMatch(/needs confirming/);
   });
 });

@@ -28,10 +28,11 @@ describe("gates", () => {
   it("a lot under 3,200 sf fails", () => expect(scoreSite({ ...base, lotSqft: 3120 }).eligible).toBe(false));
   it("two existing ADUs fail", () => expect(scoreSite({ ...base, existingAdus: 2 }).eligible).toBe(false));
   it("room for under 300 sf fails", () => expect(scoreSite({ ...base, daduSqft: 250 }).eligible).toBe(false));
-  it("unknown HOA is not a failure (the lot library has no HOA data)", () => {
+  it("no HOA reported counts as no HOA (single-family listings)", () => {
     const s = scoreSite({ ...base, hoaMonthly: null });
     expect(s.eligible).toBe(true);
-    expect(s.gates.find((g) => g.key === "hoa")!.status).toBe("unknown");
+    expect(s.gates.find((g) => g.key === "hoa")!.status).toBe("pass");
+    expect(s.gates.find((g) => g.key === "hoa")!.note).toBe("No HOA reported.");
   });
   it("zoning outside NR/SF is unknown, not a fail", () => {
     const s = scoreSite({ ...base, zoning: "LR2" });
