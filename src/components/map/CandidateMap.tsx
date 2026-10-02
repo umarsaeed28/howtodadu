@@ -12,7 +12,7 @@ import { downloadListingsCsv, downloadSavedCsv } from "@/lib/listings-csv";
 import SaveButton from "@/components/listing/SaveButton";
 import { useSavedListings } from "@/hooks/useSavedListings";
 import { gradeOf } from "@/lib/dadu-score";
-import { redfinLink } from "@/lib/listings/redfin-link";
+import { zillowUrl } from "@/lib/property-image";
 
 const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE ?? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const SEATTLE = { longitude: -122.335, latitude: 47.62, zoom: 10.6 };
@@ -652,14 +652,11 @@ function LotPanel({ pin, lot, error, listing, onBack }: { pin: string | null; lo
                 View the listing <ArrowRight size={15} aria-hidden />
               </Link>
             )}
-            {listing && (() => {
-              const rf = redfinLink(listing.address, listing.listingUrl);
-              return (
-                <a href={rf.href} target="_blank" rel="noopener noreferrer" className="pa-btn w-full no-underline">
-                  {rf.direct ? "View on Redfin" : "Find on Redfin"} <ExternalLink size={14} aria-hidden />
-                </a>
-              );
-            })()}
+            {listing && (
+              <a href={zillowUrl(cleanAddress(listing.address) + ", Seattle, WA " + listing.zip)} target="_blank" rel="noopener noreferrer" className="pa-btn w-full no-underline">
+                View on Zillow <ExternalLink size={14} aria-hidden />
+              </a>
+            )}
             <Link href={`/feasibility?address=${encodeURIComponent(address + ", Seattle, WA")}`} className="pa-btn w-full no-underline">Open the full report</Link>
             <Link href={calculatorHref({ sf, address })} className="pa-btn w-full no-underline"><Calculator size={15} aria-hidden /> Estimate your return</Link>
           </div>

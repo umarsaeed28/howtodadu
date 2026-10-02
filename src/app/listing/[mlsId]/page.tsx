@@ -16,7 +16,7 @@ import InvestorSnapshot from "@/components/listing/InvestorSnapshot";
 import ListingPhoto from "@/components/listing/ListingPhoto";
 import LotSketch from "@/components/listing/LotSketch";
 import SaveButton from "@/components/listing/SaveButton";
-import { redfinLink } from "@/lib/listings/redfin-link";
+import { zillowUrl } from "@/lib/property-image";
 import { overrideFor, statusOverrides } from "@/lib/listings/status-overrides";
 import { isPending } from "@/lib/listings/status";
 import DaduSnapshot from "@/components/listing/DaduSnapshot";
@@ -418,10 +418,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
               <div className="mt-5 flex flex-col gap-2">
                 <Link href={`/feasibility?address=${encodeURIComponent(fullAddress)}`} className="pa-btn pa-btn-primary w-full no-underline">Open the full report <ArrowRight size={15} aria-hidden /></Link>
                 <Link href={calculatorHref({ sf, address: fullAddress })} className="pa-btn w-full no-underline"><Calculator size={15} aria-hidden /> Estimate your return</Link>
-                {(() => {
-                  const rf = redfinLink(l.address, l.listingUrl);
-                  return <a href={rf.href} target="_blank" rel="noopener noreferrer" className="pa-btn w-full no-underline">{rf.direct ? "View on Redfin" : "Find on Redfin"} <ExternalLink size={14} aria-hidden /></a>;
-                })()}
+                <a href={zillowUrl(l.address)} target="_blank" rel="noopener noreferrer" className="pa-btn w-full no-underline">View on Zillow <ExternalLink size={14} aria-hidden /></a>
               </div>
               {(d.agent || d.brokerage) && <p className="mt-4 text-xs" style={{ color: "var(--slate)" }}>Listed by {[d.agent, d.brokerage].filter(Boolean).join(", ")}</p>}
             </div>
