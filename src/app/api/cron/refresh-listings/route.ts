@@ -4,7 +4,7 @@ import { listingsCache } from "@/lib/listings/redfin";
 
 export const maxDuration = 300;
 
-/** Scheduled every 12 hours (vercel.json). Forces a fresh pull from Redfin. Send `Authorization: Bearer $CRON_SECRET`. */
+/** Scheduled daily at 13:00 UTC (vercel.json; Hobby allows one run a day). Forces a fresh pull from Redfin. Send `Authorization: Bearer $CRON_SECRET`. */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
