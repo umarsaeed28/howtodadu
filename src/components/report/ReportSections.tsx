@@ -94,7 +94,8 @@ const CHECK_TONE = {
 } as const;
 
 export function ConstraintsGrid({ row }: { row: FeasibilityTableRow }) {
-  const checks = row.report.checks;
+  // Only the two checks the rest of the report does not already show: existing ADUs and critical areas.
+  const checks = row.report.checks.filter((c) => /adu/i.test(c.label));
   const eca = row.report.eca;
   return (
     <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
