@@ -35,9 +35,13 @@ export interface DealInputs {
     projectMgmtPct: number;
     legalAccounting: number;
     insurancePct: number;
+    /** Any other flat soft cost (design, utilities, fees) in dollars. */
+    otherFlat?: number;
   };
   financing: {
     loanToCostPct: number;
+    /** A fixed loan amount. When set it replaces loan-to-cost (capped at the pre-financing cost). */
+    loanAmount?: number;
     interestRatePct: number;
     buildMonths: number;
     propertyTaxMonthly: number;
@@ -157,7 +161,8 @@ function softCost(inputs: DealInputs, hb: number): number {
     hb * (s.insurancePct / 100) +
     s.permitsAndFees +
     s.surveyEnviro +
-    s.legalAccounting
+    s.legalAccounting +
+    (s.otherFlat ?? 0)
   );
 }
 
@@ -199,11 +204,11 @@ function run(
   const soft = softCost(inputs, hb);
 
   const preFinancing = acquisition + hard + soft;
-  const loanAmount = preFinancing * (inputs.financing.loanToCostPct / 100);
+  const loanAmount = inputs.financing.loanAmount != null ? Math.max(0, Math.min(inputs.financing.loanAmount, preFinancing)) : preFinancing * (inputs.financing.loanToCostPct / 100);
   const rate = inputs.financing.interestRatePct / 100;
   const permitMonths = inputs.financing.permitMonths ?? 0;
   const exitMonths = inputs.financing.exitMonths ?? 0;
-  const ltc = inputs.financing.loanToCostPct / 100;
+  const ltc = preFinancing > 0 ? loanAmount / preFinancing : 0;
   const buildInterest = loanAmount * rate * (inputs.financing.buildMonths / 12) * AVG_DRAW_FACTOR;
   // Permit period: only the land (and closing) is financed and fully drawn.
   const permitInterest = acquisition * ltc * rate * (permitMonths / 12);

@@ -658,7 +658,7 @@ function LotPanel({ pin, lot, error, listing, onBack }: { pin: string | null; lo
               </a>
             )}
             <Link href={`/feasibility?address=${encodeURIComponent(address + ", Seattle, WA")}`} className="pa-btn w-full no-underline">Open the full report</Link>
-            <Link href={calculatorHref({ sf, address })} className="pa-btn w-full no-underline"><Calculator size={15} aria-hidden /> Estimate your return</Link>
+            <Link href={calculatorHref({ sf, address, price: listing?.price, houseSqft: listing?.sqft })} className="pa-btn w-full no-underline"><Calculator size={15} aria-hidden /> Estimate your return</Link>
           </div>
 
           <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">

@@ -421,7 +421,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
               <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>20% down, 30-year fixed at 6.25%, tax at 0.92% of price. A rough guide, not a quote.</p>
               <div className="mt-5 flex flex-col gap-2">
                 <Link href={`/feasibility?address=${encodeURIComponent(fullAddress)}`} className="pa-btn pa-btn-primary w-full no-underline">Open the full report <ArrowRight size={15} aria-hidden /></Link>
-                <Link href={calculatorHref({ sf, address: fullAddress })} className="pa-btn w-full no-underline"><Calculator size={15} aria-hidden /> Estimate your return</Link>
+                <Link href={calculatorHref({ sf, address: fullAddress, price: l.listPrice, houseSqft: l.livingSqft })} className="pa-btn w-full no-underline"><Calculator size={15} aria-hidden /> Estimate your return</Link>
                 <a href={zillowUrl(l.address)} target="_blank" rel="noopener noreferrer" className="pa-btn w-full no-underline">View on Zillow <ExternalLink size={14} aria-hidden /></a>
               </div>
               {(d.agent || d.brokerage) && <p className="mt-4 text-xs" style={{ color: "var(--slate)" }}>Listed by {[d.agent, d.brokerage].filter(Boolean).join(", ")}</p>}

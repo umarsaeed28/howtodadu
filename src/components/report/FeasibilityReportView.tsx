@@ -350,7 +350,7 @@ export default function FeasibilityReportView({
             {favorite ? "Saved" : "Save"}
           </button>
           {report && (
-            <Link href={calculatorHref({ sf: drawnSf ?? report.summary.max_buildable_sf?.value, address: slim.address })} className="pa-btn pa-btn-primary pa-btn-sm no-underline">
+            <Link href={calculatorHref({ sf: drawnSf ?? report.summary.max_buildable_sf?.value, address: slim.address, price: detailRow?.result.listing?.price, houseSqft: detailRow?.result.listing?.livingSqft ?? detailRow?.result.feasibility?.totalBuildingSqft })} className="pa-btn pa-btn-primary pa-btn-sm no-underline">
               Estimate your return
             </Link>
           )}

@@ -16,8 +16,10 @@ import { maxOffer, TARGET_MARGIN_PCT } from "@/lib/feasibility/analysis";
 import { usd, pct } from "@/lib/format";
 import Field from "./Field";
 import CostStack from "./CostStack";
+import Proforma from "./Proforma";
+import { REHAB_LABELS, REHAB_RATES, type RehabLevel } from "@/lib/dadu-value";
 import Heatmap, { TONE_TINT, TONE_VAR, toneOf } from "./Heatmap";
-import { RentCard, SaleCard } from "./ExitCompare";
+import { RentCard } from "./ExitCompare";
 
 function Group({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
@@ -78,7 +80,7 @@ export default function CalculatorClient() {
         <div>
           <h1 className="pa-display text-2xl sm:text-3xl" style={{ color: "var(--ink)" }}>Estimate your return</h1>
           <p className="mt-1 max-w-xl text-sm" style={{ color: "var(--slate)" }}>
-            Enter your own numbers. Only the build cost starts filled in; nothing else is guessed.
+            A full proforma: the house, the cottage, financing, holding costs and the exit. Team rules start filled in; market numbers are yours.
             {address ? <> Estimating for <strong style={{ color: "var(--ink)" }}>{address}</strong>.</> : null}
           </p>
         </div>
@@ -89,40 +91,68 @@ export default function CalculatorClient() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
         <div className="flex flex-col gap-5">
-          <Group title="The DADU" note="The report fills in the area from the lot's design.">
+          <Group title="The house" note="Leave the price blank if you already own it and are only adding the DADU.">
+            <Field label="Purchase price" value={form.price} onChange={set("price")} prefix="$" error={err("price")} />
+            <Field label="Closing costs" value={form.closingPct} onChange={set("closingPct")} suffix="%" error={err("closingPct")} />
+            <Field label="House area" value={form.houseSqft} onChange={set("houseSqft")} suffix="sf" hint="Living area of the existing house" error={err("houseSqft")} />
+            <div className="sm:col-span-2">
+              <p className="mb-1 text-xs font-semibold" style={{ color: "var(--ink)" }}>Rehab of the house</p>
+              <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Rehab level">
+                {(["none", "light", "moderate", "heavy"] as RehabLevel[]).map((l) => (
+                  <button key={l} type="button" aria-pressed={form.rehabLevel === l} onClick={() => setForm((f) => ({ ...f, rehabLevel: l }))} className={`pa-chip ${form.rehabLevel === l ? "pa-chip-active" : ""}`} style={{ minHeight: 36 }}>
+                    {REHAB_LABELS[l]}{l !== "none" && <span className="ml-1 text-[11px] opacity-70">${REHAB_RATES[l]}/sf</span>}
+                  </button>
+                ))}
+                <button type="button" aria-pressed={form.rehabLevel === "custom"} onClick={() => setForm((f) => ({ ...f, rehabLevel: "custom" }))} className={`pa-chip ${form.rehabLevel === "custom" ? "pa-chip-active" : ""}`} style={{ minHeight: 36 }}>Custom</button>
+                {form.rehabLevel === "custom" && <Field label="" value={form.rehabPerSf} onChange={set("rehabPerSf")} prefix="$" suffix="per sf" width={160} error={err("rehabPerSf")} />}
+              </div>
+              {parsed.rehab.cost > 0 && <p className="mt-1 text-xs tabular-nums" style={{ color: "var(--slate)" }}>{parsed.rehab.houseSqft.toLocaleString("en-US")} sf × {usd(parsed.rehab.rate)} = {usd(parsed.rehab.cost)}</p>}
+            </div>
+            <Field label="House ARV" value={form.houseArv} onChange={set("houseArv")} prefix="$" placeholder={parsed.autoSaleParts && !parsed.autoSaleParts.houseIsOwn && parsed.autoSaleParts.house > 0 ? Math.round(parsed.autoSaleParts.house).toLocaleString("en-US") : undefined} hint="What the house is worth after the rehab. Blank means break-even: price plus rehab." error={err("houseArv")} />
+          </Group>
+
+          <Group title="The DADU" note="The report fills in the area from the lot's design. $50,000 soft costs is the team's rule; change it if you know better.">
             <Field label="DADU area" value={form.sf} onChange={set("sf")} suffix="sf" placeholder="1,000" error={err("sf")} />
             <Field label="Build cost" value={form.costPerSf} onChange={set("costPerSf")} prefix="$" suffix="per sf" error={err("costPerSf")} />
-            <Field label="Site work and utilities" value={form.siteWork} onChange={set("siteWork")} prefix="$" error={err("siteWork")} />
-            <Field label="Permits and fees" value={form.permits} onChange={set("permits")} prefix="$" error={err("permits")} />
-            <Field label="Soft costs" value={form.softPct} onChange={set("softPct")} suffix="% of build" hint="Design, engineering, management" error={err("softPct")} />
+            <Field label="Soft costs" value={form.softFlat} onChange={set("softFlat")} prefix="$" hint="Design, permits, fees, utilities" error={err("softFlat")} />
+            <Field label="Site work" value={form.siteWork} onChange={set("siteWork")} prefix="$" error={err("siteWork")} />
+            <Field label="Extra permits and fees" value={form.permits} onChange={set("permits")} prefix="$" error={err("permits")} />
             <Field label="Contingency" value={form.contingencyPct} onChange={set("contingencyPct")} suffix="% of build" error={err("contingencyPct")} />
           </Group>
 
-          <Group title="The land" note="Leave the price blank if you already own the house and are only adding the DADU.">
-            <Field label="Purchase price" value={form.price} onChange={set("price")} prefix="$" error={err("price")} />
-            <Field label="Closing costs" value={form.closingPct} onChange={set("closingPct")} suffix="%" error={err("closingPct")} />
-          </Group>
-
-          <Group title="Time and financing" note="Blank means none. With no loan, the whole cost is your cash.">
-            <Field label="Permit review" value={form.permitMonths} onChange={set("permitMonths")} suffix="months" inputMode="numeric" error={err("permitMonths")} />
-            <Field label="Construction" value={form.buildMonths} onChange={set("buildMonths")} suffix="months" inputMode="numeric" error={err("buildMonths")} />
-            <Field label="Sale or lease-up" value={form.exitMonths} onChange={set("exitMonths")} suffix="months" inputMode="numeric" error={err("exitMonths")} />
-            <Field label="Loan to cost" value={form.ltcPct} onChange={set("ltcPct")} suffix="%" error={err("ltcPct")} />
+          <Group title="Financing and holding" note="Loan amount wins over loan to cost. Blank loan means all cash. Holding costs run for the whole timeline.">
+            <Field label="Loan amount" value={form.loanAmount} onChange={set("loanAmount")} prefix="$" error={err("loanAmount")} />
+            <Field label="Or loan to cost" value={form.ltcPct} onChange={set("ltcPct")} suffix="%" error={err("ltcPct")} />
             <Field label="Interest rate" value={form.ratePct} onChange={set("ratePct")} suffix="%" error={err("ratePct")} />
+            <div className="grid grid-cols-3 gap-2">
+              <Field label="Permits" value={form.permitMonths} onChange={set("permitMonths")} suffix="mo" inputMode="numeric" error={err("permitMonths")} />
+              <Field label="Build" value={form.buildMonths} onChange={set("buildMonths")} suffix="mo" inputMode="numeric" error={err("buildMonths")} />
+              <Field label="Sale" value={form.exitMonths} onChange={set("exitMonths")} suffix="mo" inputMode="numeric" error={err("exitMonths")} />
+            </div>
+            <Field label="Property tax" value={form.taxMonthly} onChange={set("taxMonthly")} prefix="$" suffix="a month" error={err("taxMonthly")} />
+            <Field label="Insurance" value={form.insuranceMonthly} onChange={set("insuranceMonthly")} prefix="$" suffix="a month" error={err("insuranceMonthly")} />
+            <Field label="Utilities and upkeep" value={form.utilitiesMonthly} onChange={set("utilitiesMonthly")} prefix="$" suffix="a month" error={err("utilitiesMonthly")} />
           </Group>
 
-          <Group title="What it is worth" note="Add a sale price, a rent, or both. MLS comps will suggest these later.">
-            <Field label="Expected sale price" value={form.salePrice} onChange={set("salePrice")} prefix="$" error={err("salePrice")} />
-            <Field label="Selling costs" value={form.sellingPct} onChange={set("sellingPct")} suffix="%" error={err("sellingPct")} />
-            <Field label="Monthly rent" value={form.rent} onChange={set("rent")} prefix="$" error={err("rent")} />
-            <Field label="Cap rate" value={form.capPct} onChange={set("capPct")} suffix="%" hint="Needed with rent" error={err("capPct")} />
-            <Field label="Vacancy" value={form.vacancyPct} onChange={set("vacancyPct")} suffix="%" error={err("vacancyPct")} />
-            <Field label="Operating costs" value={form.opexPct} onChange={set("opexPct")} suffix="% of rent" error={err("opexPct")} />
+          <Group title="The exit" note="The sale price starts at the house ARV (or break-even) plus what the DADU sells for. Type your own to override.">
+            <Field label="Sale price (ARV)" value={form.salePrice} onChange={set("salePrice")} prefix="$" placeholder={parsed.autoSalePrice ? Math.round(parsed.autoSalePrice).toLocaleString("en-US") : undefined} hint={parsed.autoSaleParts && !form.salePrice ? `House ${usd(parsed.autoSaleParts.house)} + DADU ${usd(parsed.autoSaleParts.dadu)}` : undefined} error={err("salePrice")} />
+            <div>
+              <p className="mb-1 text-xs font-semibold" style={{ color: "var(--ink)" }}>Selling costs</p>
+              <label className="flex items-center gap-2 text-sm" style={{ color: "var(--ink)", minHeight: 44 }}>
+                <input type="checkbox" checked={form.sellSix === "1"} onChange={(e) => setForm((f) => ({ ...f, sellSix: e.target.checked ? "1" : "" }))} className="h-4 w-4 accent-[var(--green)]" />
+                Standard 6% (agent fees and closing)
+              </label>
+              {form.sellSix !== "1" && <Field label="" value={form.sellingPct} onChange={set("sellingPct")} suffix="%" placeholder="0" error={err("sellingPct")} />}
+            </div>
             <details className="sm:col-span-2">
-              <summary className="cursor-pointer text-xs font-semibold" style={{ color: "var(--ink)" }}>Refinance terms for rent</summary>
+              <summary className="cursor-pointer text-xs font-semibold" style={{ color: "var(--ink)" }}>Or hold and rent it</summary>
               <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field label="Loan to value" value={form.permLtvPct} onChange={set("permLtvPct")} suffix="%" error={err("permLtvPct")} />
-                <Field label="Rate" value={form.permRatePct} onChange={set("permRatePct")} suffix="%" error={err("permRatePct")} />
+                <Field label="Monthly rent" value={form.rent} onChange={set("rent")} prefix="$" error={err("rent")} />
+                <Field label="Cap rate" value={form.capPct} onChange={set("capPct")} suffix="%" hint="Needed with rent" error={err("capPct")} />
+                <Field label="Vacancy" value={form.vacancyPct} onChange={set("vacancyPct")} suffix="%" error={err("vacancyPct")} />
+                <Field label="Operating costs" value={form.opexPct} onChange={set("opexPct")} suffix="% of rent" error={err("opexPct")} />
+                <Field label="Refinance loan to value" value={form.permLtvPct} onChange={set("permLtvPct")} suffix="%" error={err("permLtvPct")} />
+                <Field label="Refinance rate" value={form.permRatePct} onChange={set("permRatePct")} suffix="%" error={err("permRatePct")} />
                 <Field label="Amortization" value={form.permYears} onChange={set("permYears")} suffix="years" inputMode="numeric" error={err("permYears")} />
                 <Field label="Minimum debt coverage" value={form.minDscr} onChange={set("minDscr")} suffix="x" error={err("minDscr")} />
               </div>
@@ -167,7 +197,7 @@ export default function CalculatorClient() {
 
               {!headline && (
                 <section className="pa-inset p-5 text-sm" style={{ color: "var(--ink)" }} role="status">
-                  Add an expected sale price or rent to see profit. MLS comps will fill this in later.
+                  Add a purchase price (or a sale price) to see the proforma and profit.
                 </section>
               )}
 
@@ -203,12 +233,10 @@ export default function CalculatorClient() {
                 </section>
               )}
 
-              {(parsed.sale || parsed.rent) && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {parsed.sale && <SaleCard r={parsed.sale.result} />}
-                  {parsed.rent && <RentCard r={parsed.rent.result} />}
-                </div>
+              {parsed.sale && (
+                <Proforma inputs={parsed.sale.inputs} result={parsed.sale.result} rehabCost={parsed.rehab.cost} soft={{ flat: parseFloat(form.softFlat.replace(/[$,\s]/g, "")) || 0, permits: parseFloat(form.permits.replace(/[$,\s]/g, "")) || 0, pct: parseFloat(form.softPct) || 0 }} sellingPct={parsed.sellingPct} />
               )}
+              {parsed.rent && <RentCard r={parsed.rent.result} />}
 
               {headline && (
                 <section className="pa-inset p-5" aria-label="Sensitivity">

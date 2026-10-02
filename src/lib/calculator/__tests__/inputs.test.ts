@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_FORM, calculatorHref, fromSearchParams, parseForm, parseNumber, toSearchParams, type CalcForm } from "../inputs";
 import { COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
 
-const form = (o: Partial<CalcForm> = {}): CalcForm => ({ ...DEFAULT_FORM, ...o });
+/** The team defaults (soft costs, selling costs, timeline, rate) cleared, so each test sets only what it is about. */
+const BLANK: CalcForm = { ...DEFAULT_FORM, softFlat: "", sellSix: "", permitMonths: "", buildMonths: "", exitMonths: "", ratePct: "" };
+const form = (o: Partial<CalcForm> = {}): CalcForm => ({ ...BLANK, ...o });
 
 describe("cost constant", () => {
   it("prices 1,000 sf at $350 per sf", () => {
@@ -22,6 +24,53 @@ describe("parseNumber", () => {
   });
 });
 
+describe("proforma", () => {
+  it("team defaults: $50,000 soft, 6% selling, 4 + 8 + 2 months, 10% rate", () => {
+    expect(DEFAULT_FORM.softFlat).toBe("50000");
+    expect(DEFAULT_FORM.sellSix).toBe("1");
+    const p = parseForm({ ...DEFAULT_FORM, sf: "1000" });
+    expect(p.sellingPct).toBe(6);
+    expect(p.costOnly?.costBreakdown.soft).toBe(50_000);
+    expect(p.costOnly?.timelineMonths).toBe(14);
+  });
+  it("rehab of the house: level rate times house area, into hard cost", () => {
+    const p = parseForm(form({ sf: "1000", houseSqft: "2000", rehabLevel: "heavy" }));
+    expect(p.rehab).toEqual({ rate: 120, cost: 240_000, houseSqft: 2000 });
+    expect(p.costOnly?.costBreakdown.hard).toBe(350_000 + 240_000);
+    expect(parseForm(form({ sf: "1000", houseSqft: "2000", rehabLevel: "custom", rehabPerSf: "50" })).rehab.cost).toBe(100_000);
+  });
+  it("sale price defaults to the house at break-even plus the DADU resale; your ARV replaces the house side", () => {
+    const p = parseForm(form({ sf: "1000", price: "1000000", houseSqft: "2000", rehabLevel: "light" }));
+    expect(p.autoSaleParts).toEqual({ house: 1_140_000, dadu: 680_000, houseIsOwn: false });
+    expect(p.sale?.result.exits.sell?.grossRevenue).toBe(1_820_000);
+    const own = parseForm(form({ sf: "1000", price: "1000000", houseSqft: "2000", rehabLevel: "light", houseArv: "1300000" }));
+    expect(own.autoSaleParts?.house).toBe(1_300_000);
+    expect(own.autoSaleParts?.houseIsOwn).toBe(true);
+    const typed = parseForm(form({ sf: "1000", price: "1000000", salePrice: "2000000" }));
+    expect(typed.sale?.result.exits.sell?.grossRevenue).toBe(2_000_000);
+  });
+  it("the 6% box sets selling costs; unticked uses the typed percent", () => {
+    expect(parseForm(form({ sf: "1000", sellSix: "1", sellingPct: "3" })).sellingPct).toBe(6);
+    expect(parseForm(form({ sf: "1000", sellSix: "", sellingPct: "3" })).sellingPct).toBe(3);
+  });
+  it("holding costs run for the whole timeline and a loan amount replaces loan to cost", () => {
+    const p = parseForm(form({ sf: "1000", taxMonthly: "500", insuranceMonthly: "100", utilitiesMonthly: "200", permitMonths: "4", buildMonths: "8", exitMonths: "2", loanAmount: "200000", ratePct: "12", ltcPct: "90" }));
+    const r = p.costOnly!;
+    expect(r.loanAmount).toBe(200_000);
+    // carry 800 a month x 14 months = 11,200; permit interest on land only (none here); build 8 months at 60% drawn; sale 2 months fully drawn
+    expect(r.costBreakdown.financing).toBe(Math.round(11_200 + 200_000 * 0.12 * ((8 / 12) * 0.6 + 2 / 12)));
+  });
+  it("the link carries price, house area, rehab and ARV", () => {
+    const href = calculatorHref({ sf: 870, address: "1 A St", price: 1_225_000, houseSqft: 2300, rehab: "heavy", houseArv: 1_500_000 });
+    const f = fromSearchParams(new URLSearchParams(href.split("?")[1]));
+    expect(f.price).toBe("1225000");
+    expect(f.houseSqft).toBe("2300");
+    expect(f.rehabLevel).toBe("heavy");
+    expect(f.houseArv).toBe("1500000");
+    expect(fromSearchParams(new URLSearchParams("rehab=bogus")).rehabLevel).toBe("none");
+  });
+});
+
 describe("parseForm", () => {
   it("is not ready until the area is entered, and that is not an error", () => {
     const p = parseForm(form());
@@ -30,15 +79,17 @@ describe("parseForm", () => {
     expect(p.costOnly).toBeNull();
   });
 
-  it("gives cost-only results with no invented value", () => {
+  it("gives cost results plus the DADU's own resale value when there is no purchase price (an owner adding a cottage)", () => {
     const p = parseForm(form({ sf: "1000" }));
     expect(p.ready).toBe(true);
     expect(p.construction).toBe(350_000);
     expect(p.costOnly?.costBreakdown.total).toBe(350_000);
-    expect(p.hasSale || p.hasRent).toBe(false);
-    expect(p.sale).toBeNull();
+    expect(p.hasRent).toBe(false);
     expect(p.rent).toBeNull();
     expect(p.costOnly?.equityRequired).toBe(350_000);
+    // No market number is invented: the only value is the team's DADU resale rule ($680 per sf at 1,000 sf).
+    expect(p.autoSaleParts).toEqual({ house: 0, dadu: 680_000, houseIsOwn: false });
+    expect(p.sale?.result.exits.sell?.grossRevenue).toBe(680_000);
   });
 
   it("adds soft, contingency and fixed costs on top of construction", () => {
