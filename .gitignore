@@ -40,9 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# generated lot library (npm run build:lots)
-/data/lot-library.json
-/data/alleys.geojson
+# generated lot library (npm run build:lots) and alleys: committed, the deployed site reads them at runtime
 
 # credentials template is safe to commit; the real file stays ignored
 !.env.credentials.example

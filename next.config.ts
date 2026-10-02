@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Data files read with fs at runtime: make sure they ship with the server functions.
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./data/lot-library.json", "./data/alleys.geojson", "./data/test-data/listings.fixture.json"],
+    "/listing/**/*": ["./data/lot-library.json", "./data/test-data/listings.fixture.json"],
+  },
   async redirects() {
     // Explore deals and the Product page were removed. Keep old links working.
     return [
