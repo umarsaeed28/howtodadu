@@ -7,6 +7,7 @@ import type { FeasibilityData, LotGeometry, SitePlanData } from "@/lib/feasibili
 import type { ADUReport } from "@/lib/adu-analysis";
 import { calculatorHref } from "@/lib/calculator/inputs";
 import { contourLines, profile, type TerrainGrid } from "@/lib/terrain";
+import { lotRotation, turn, unturn } from "@/lib/lot-orientation";
 import LotSection from "./LotSection";
 import { PlanPicker, PlacedPlanCard, type PlanFit } from "./PlanPicker";
 import { PREAPPROVED_PLANS, type PreApprovedPlan } from "@/lib/preapproved-dadus";
@@ -145,9 +146,13 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   const lat0 = lot.rings.reduce((s, r) => s + r[1], 0) / lot.rings.length;
   const lng0 = lot.rings.reduce((s, r) => s + r[0], 0) / lot.rings.length;
   const ftLng = FT_PER_DEG_LAT * Math.cos((lat0 * Math.PI) / 180);
-  const proj = (lng: number, lat: number): Pt => ({ x: (lng - lng0) * ftLng, y: -(lat - lat0) * FT_PER_DEG_LAT });
+  const projNorth = (lng: number, lat: number): Pt => ({ x: (lng - lng0) * ftLng, y: -(lat - lat0) * FT_PER_DEG_LAT });
+  // Square the lot to the page: a lot at an angle drawn north-up gives a tilted frame, so its width, depth, setbacks
+  // and the DADU would all be measured against the wrong box. Everything goes through `proj`, so it all turns together.
+  const theta = lotRotation(lot.rings.map((r) => projNorth(r[0], r[1])));
+  const proj = (lng: number, lat: number): Pt => unturn(projNorth(lng, lat), theta);
   const ring = (rs: number[][]) => rs.map((r) => proj(r[0], r[1]));
-  const unproj = (p: Pt): [number, number] => [lng0 + p.x / ftLng, lat0 - p.y / FT_PER_DEG_LAT];
+  const unproj = (p: Pt): [number, number] => { const q = turn(p, theta); return [lng0 + q.x / ftLng, lat0 - q.y / FT_PER_DEG_LAT]; };
 
   const lotPts = ring(lot.rings);
   const x0 = Math.min(...lotPts.map((q) => q.x));
@@ -556,7 +561,9 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     return { pts, x0: Math.min(...pts.map((q) => q.x)), x1: Math.max(...pts.map((q) => q.x)), y0: Math.min(...pts.map((q) => q.y)), y1: Math.max(...pts.map((q) => q.y)) };
   };
   /** The 5 ft separation a DADU keeps from the house, drawn as a dashed ring. */
-  const separation = mainHouse && daduUnit ? rect(mainHouse.u0 - HOUSE_SEPARATION_FT, mainHouse.v0 - HOUSE_SEPARATION_FT, mainHouse.u1 - mainHouse.u0 + 2 * HOUSE_SEPARATION_FT, mainHouse.v1 - mainHouse.v0 + 2 * HOUSE_SEPARATION_FT) : null;
+  // Kept inside the lot lines: the rule is about where the DADU can go, and the DADU never leaves the lot.
+  const separationRing = mainHouse && daduUnit ? lotEdges.reduce((poly, e) => (e.len > 1 && poly.length >= 3 ? clipInside(poly, e.a, e.n, 0) : poly), rect(mainHouse.u0 - HOUSE_SEPARATION_FT, mainHouse.v0 - HOUSE_SEPARATION_FT, mainHouse.u1 - mainHouse.u0 + 2 * HOUSE_SEPARATION_FT, mainHouse.v1 - mainHouse.v0 + 2 * HOUSE_SEPARATION_FT)) : null;
+  const separation = separationRing && separationRing.length >= 3 ? separationRing : null;
 
   /* ---- setback bands: the strip between each lot line and the envelope ---- */
   const setbackBands: { pts: Pt[]; label: string; at: Pt; vertical: boolean }[] = [];
@@ -941,8 +948,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
           );
         })}
 
-        {/* north arrow (north is up) */}
-        <g transform={`translate(${vbX + vbW - margin * 0.7} ${vbY + margin * 0.75})`}>
+        {/* north arrow, turned with the lot when the plan is squared to it */}
+        <g transform={`translate(${vbX + vbW - margin * 0.7} ${vbY + margin * 0.75}) rotate(${((-theta * 180) / Math.PI).toFixed(2)})`}>
           <circle r={fs * 1.3} fill="none" stroke="#17241D" strokeWidth={sw} />
           <path d={`M0 ${-fs} L${fs * 0.45} ${fs * 0.6} L0 ${fs * 0.25} L${-fs * 0.45} ${fs * 0.6} Z`} fill="#17241D" />
           <text y={-fs * 1.6} textAnchor="middle" style={{ fontSize: fs * 0.85, fontWeight: 700 }}>N</text>
