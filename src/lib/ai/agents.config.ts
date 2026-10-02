@@ -37,7 +37,7 @@ const HAIKU = "claude-haiku-4-5-20251001";
 export const AGENTS = {
   budget: {
     /** Upper bound on input + output tokens for one assessment, across all nodes. */
-    perRunMaxTokens: Number(env("AI_RUN_TOKEN_BUDGET", "5000")),
+    perRunMaxTokens: Number(env("AI_RUN_TOKEN_BUDGET", "8000")),
     /** Upper bound per UTC day across all assessments. Over it, runs return the rules-only score. */
     dailyMaxTokens: Number(env("AI_DAILY_TOKEN_BUDGET", "1500000")),
   },
@@ -56,7 +56,7 @@ export const AGENTS = {
     /** Hypothetical passage to improve retrieval. Only affects search, so the cheapest model is fine. */
     hyde: { kind: "llm", tier: "small", maxTokens: 120, temperature: 0, onFail: "skip" },
     retrieve: { kind: "code" },
-    analyze: { kind: "llm", tier: "mid", maxTokens: 800, temperature: 0, onFail: "throw" },
+    analyze: { kind: "llm", tier: "mid", maxTokens: 1500, temperature: 0, onFail: "throw" },
     validate: { kind: "code" },
     decide: { kind: "code" },
     /** Eval-only rubric judge. */

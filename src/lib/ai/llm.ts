@@ -67,6 +67,7 @@ export class AnthropicLlm implements Llm {
         messages: [{ role: "user", content: req.user }],
       });
       this.record(req.model, msg.usage);
+      if (msg.stop_reason === "max_tokens") throw new Error("The model's answer was cut off at the token limit.");
       if (msg.stop_reason === "refusal") throw new Error(`The model declined this request (${msg.stop_details?.category ?? "no category"}).`);
       const text = msg.content.map((b) => (b.type === "text" ? b.text : "")).join("");
       if (!text.trim()) throw new Error(`The model returned no structured result (stop: ${msg.stop_reason}).`);
@@ -82,6 +83,8 @@ export class AnthropicLlm implements Llm {
       messages: [{ role: "user", content: req.user }],
     });
     this.record(req.model, msg.usage);
+    // A cut-off tool call still parses, with its later fields missing, so treat it as a failure rather than an answer.
+    if (msg.stop_reason === "max_tokens") throw new Error("The model's answer was cut off at the token limit.");
     const block = msg.content.find((b) => b.type === "tool_use");
     if (!block || block.type !== "tool_use") throw new Error("The model returned no structured result.");
     return block.input as T;

@@ -10,7 +10,7 @@ import type { Assessment } from "@/lib/ai/types";
 import { knowledgeAvailable, knowledgeSearch } from "./rag";
 import { getAduniverseFacts } from "./aduniverse";
 import { planSite } from "@/lib/dadu-site-plan";
-import { ecaFlagsOf, scoreSite } from "@/lib/dadu-score";
+import { siteScoreFor } from "./site-score";
 import { assessViaApi, pencilApiConfigured } from "./pencil-api";
 
 export { hoaExcluded };
@@ -32,15 +32,9 @@ export async function assessListing(l: RawListing, lot: Candidate | null, client
   const adu = lot ? await getAduniverseFacts(lot.pin) : null; // ADUniverse adds ADU counts, garage, basement and critical-area flags
   const plan = lot ? planSite({ lotSqft: lot.lotSqft, widthFt: adu?.raw.lotWidth ?? null, depthFt: adu?.raw.lotDepth ?? null, alley: lot.alley }) : null;
   const planLines = plan?.lines ?? [];
-  const site = lot
-    ? scoreSite({
-        lotSqft: lot.lotSqft, widthFt: lot.lotWidth ?? adu?.raw.lotWidth ?? null, depthFt: lot.lotDepth ?? adu?.raw.lotDepth ?? null,
-        alley: lot.alley, corner: lot.corner, daduSqft: lot.daduSqft, steepPct: lot.steepPct, canopyPct: lot.canopyPct,
-        ecaFlags: ecaFlagsOf(adu?.raw), existingAdus: lot.existingAdus ?? adu?.raw.totalADU ?? null, sideClearanceFt: lot.sideClearanceFt ?? null, zoning: lot.zoning, hoaMonthly: l.hoaMonthly ?? null,
-      })
-    : null;
+  const site = siteScoreFor(l, lot, adu);
   if (viaApi) return assessViaApi(l, lot, buildFacts(l, lot, adu, planLines, site), site, clientIp); // the API caches and rate-limits
-  const memKey = `${l.mlsId}:${createHash("sha1").update(buildFacts(l, lot, adu, planLines, site).map((f) => f.text).join("|")).digest("hex").slice(0, 12)}`;
+  const memKey = `v2:${l.mlsId}:${createHash("sha1").update(buildFacts(l, lot, adu, planLines, site).map((f) => f.text).join("|")).digest("hex").slice(0, 12)}`;
   const hit = archival.get<Assessment>(memKey);
   if (hit) return { ...hit, cached: true };
 
@@ -51,6 +45,6 @@ export async function assessListing(l: RawListing, lot: Candidate | null, client
   const dailyLeft = AGENTS.budget.dailyMaxTokens - (await dailyBudget.used());
   const a = await runAssessment(l, lot, { models, meter, dailyLeft, search: (q, o) => knowledgeSearch(q, o) }, { adu, planLines, site });
   await dailyBudget.add(meter.total);
-  archival.set(memKey, a);
+  if (a.findings.length) archival.set(memKey, a); // never keep a failed or empty review; the next visit retries
   return a;
 }

@@ -243,7 +243,9 @@ export async function runAssessment(l: RawListing, lot: Candidate | null, deps: 
     const headline = "The AI review was skipped for this run (token budget). This is the rules score from the site guide.";
     return { verdict: "unverified", headline, findings: [], confirm: [], unavailable: [], citations: [], text: headline, models: [...st.models], trace: st.trace, score: rulesOnly(site) };
   }
-  const analysis = await step(st, "analyze", "llm", async () => {
+  let analysis: Analysis;
+  try {
+    analysis = await step(st, "analyze", "llm", async () => {
     st.models.add(analyst.model);
     const from = meter.calls.length;
     const a = await analyst.llm.json<Analysis>({
@@ -256,7 +258,12 @@ export async function runAssessment(l: RawListing, lot: Candidate | null, deps: 
       temperature: 0,
     });
     return { value: a, note: `${analyst.model}${reasons.length ? ` (escalated: ${reasons.join(", ")})` : ""}: verdict ${a.verdict}, ${a.findings?.length ?? 0} findings, ${a.adjustments?.length ?? 0} score adjustments${tokNote(from)}` };
-  });
+    });
+  } catch {
+    // The failure is already in the trace. Show the rules score, said plainly, instead of an empty review.
+    const headline = "The AI review could not finish for this listing. This is the rules score from the site guide.";
+    return { verdict: "unverified", headline, findings: [], confirm: [], unavailable: [], citations: [], text: headline, models: [...st.models], trace: st.trace, score: rulesOnly(site), tokens: meter.total, costUsd: Math.round(meter.costUsd * 1e6) / 1e6 };
+  }
 
   // Node 6, deterministic validation. Findings that cite nothing real, or carry numbers the sources lack, are dropped.
   const { kept, dropped } = await step(st, "validate", "deterministic", async () => {

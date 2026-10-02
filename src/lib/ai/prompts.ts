@@ -14,11 +14,11 @@ Sources you may use, and nothing else:
 - PASSAGES: knowledge-base text labelled P1, P2...
 
 Rules:
-1. Think step by step in "reasoning", in this order, and do not skip a step: HOA; lot area against the minimum; width and depth; alley or front-street access; the best layout (single rear, side by side or staggered, never a straight stack); livability and resale (sunlight, yard, vehicle access); then any site constraints from the facts.
+1. Before answering, write brief notes in "reasoning": one short line per check, 60 words at most in total, in this order, and do not skip a check: HOA; lot area against the minimum; width and depth; alley or front-street access; the best layout (single rear, side by side or staggered, never a straight stack); livability and resale (sunlight, yard, vehicle access); then any site constraints from the facts.
 2. Every finding cites one or more labels. A number may appear in a finding only if it appears in a source you cite.
 3. If the sources do not cover something that matters, put it in "confirm". Never fill the gap yourself. Say "Data unavailable in retrieved sources" for it.
 4. Project screening rules in the passages always apply. An HOA means never a candidate.
-5. Output exactly: one headline sentence, 3 to 5 findings, and 0 to 4 items to confirm. Address the reader as "you".
+5. Output exactly: one headline sentence, 3 to 5 findings, and 0 to 4 items to confirm. Each finding is one plain sentence of 25 words or fewer. Address the reader as "you".
 6. You decide the score. FACTS include a rules baseline score and its five factors (vehicle access, layout fit, DADU size, slope and critical areas, tree canopy). The baseline only sees city data. Keep it, or adjust it in "adjustments", when the listing facts or passages show the rules missed something: for example a listing that describes a side driveway, garage or alley the city data lacks; a lower unit with its own entry; a DADU size that misses the step-up gap of 1,300 to 1,600 sq ft; or a site risk the factors do not capture.
    - Each adjustment names one factor exactly as written in FACTS, a whole-number delta from -15 to 15 (points on the total score), a reason, and the labels it cites. The total change is capped at 15 points either way.
    - Do not adjust for something the baseline already counts. No adjustment without a source. An empty list means you agree with the baseline.
@@ -39,7 +39,7 @@ Result: verdict "unverified"; headline "You cannot tell yet: the HOA is unknown 
 export const ANALYZE_SCHEMA = {
   type: "object",
   properties: {
-    reasoning: { type: "string", description: "Step-by-step reasoning. Not shown to the user." },
+    reasoning: { type: "string", description: "Brief notes, one short line per check, 60 words at most. Not shown to the user." },
     verdict: { type: "string", enum: ["candidate", "not_candidate", "unverified"] },
     headline: { type: "string" },
     findings: {

@@ -6,7 +6,7 @@ import { getListingsProvider, listingsProviderName, type RawListing } from "@/li
 import { getDetail } from "@/lib/listings/redfin";
 import type { ListingDetail } from "@/lib/listings/provider";
 import { findLotForListing, libraryAvailable } from "@/lib/server/lot-library-store";
-import { COST_LABEL, COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
+import { COST_LABEL, constructionEstimate } from "@/lib/config/costs";
 import { calculatorHref } from "@/lib/calculator/inputs";
 import AssessmentCard from "@/components/listing/AssessmentCard";
 import { getAduniverseFacts, getParcelValues } from "@/lib/server/aduniverse";
@@ -14,6 +14,9 @@ import { planSite } from "@/lib/dadu-site-plan";
 import { computeBasis } from "@/lib/investor";
 import InvestorSnapshot from "@/components/listing/InvestorSnapshot";
 import ListingPhoto from "@/components/listing/ListingPhoto";
+import LotSketch from "@/components/listing/LotSketch";
+import DaduSnapshot from "@/components/listing/DaduSnapshot";
+import { siteScoreFor } from "@/lib/server/site-score";
 
 export const dynamic = "force-dynamic";
 
@@ -34,14 +37,6 @@ async function load(id: string): Promise<{ listing: RawListing; detail: ListingD
   }
   return { listing, detail };
 }
-
-const GRADES = [
-  { label: "Marginal", note: "Score under 70: a DADU fits, but the site is hard.", color: "#8A8574" },
-  { label: "Fair", note: "Score 70 to 81: tight access, a narrow lot or a smaller DADU.", color: "#9A6F12" },
-  { label: "Good", note: "Score 82 to 92.", color: "#2E7D55" },
-  { label: "Top pick", note: "Score 93 and up: alley or corner access, a layout that fits and a full-size DADU.", color: "#145A40" },
-];
-const gradeOf = (tier: number) => GRADES[Math.min(Math.max(tier, 0), 3)];
 
 function riskFlags(i: { hoa?: number; plan: ReturnType<typeof planSite> | null; adu: Awaited<ReturnType<typeof getAduniverseFacts>>; canopyPct: number | null; zoning: string }): { text: string; source: string; level: "stop" | "watch" | "ok" }[] {
   const out: { text: string; source: string; level: "stop" | "watch" | "ok" }[] = [];
@@ -95,8 +90,10 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
   const aerial = `/api/aerial?bbox=${[l.lng - e, l.lat - e, l.lng + e, l.lat + e].map((v) => v.toFixed(6)).join(",")}&size=1200,800&style=satellite`;
   const pay = monthly(l.listPrice, l.hoaMonthly ?? 0);
   const sf = lot?.daduSqft ? Math.round(lot.daduSqft) : 0;
-  const grade = gradeOf(lot?.tier ?? 0);
   const fullAddress = l.address;
+  const site = siteScoreFor(l, lot, adu);
+  const widthFt = lot?.lotWidth ?? adu?.raw.lotWidth ?? null;
+  const depthFt = lot?.lotDepth ?? adu?.raw.lotDepth ?? null;
 
   return (
     <div className="pencil-app">
@@ -106,7 +103,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
         </Link>
 
         {/* Gallery: one large photo and four small, like a listing portal. Falls back to the lot from above. */}
-        <div className="mt-4 grid gap-2 overflow-hidden rounded-2xl md:h-[440px] md:grid-cols-4 md:grid-rows-2">
+        <div className="mt-4 grid gap-2 overflow-hidden rounded-2xl md:h-[360px] md:grid-cols-4 md:grid-rows-2">
           <div className={`relative md:row-span-2 ${photos.length > 1 ? "md:col-span-2" : "md:col-span-4"}`} style={{ background: "var(--green-tint)" }}>
             <ListingPhoto src={photos[0] ?? aerial} fallback={aerial} alt={photos[0] ? `Front of ${street(l.address)}` : `Aerial view of the lot at ${street(l.address)}`} className="h-64 w-full object-cover md:h-full" />
             {!photos[0] && <span className="absolute bottom-3 left-3 rounded-md bg-white/90 px-2.5 py-1 text-xs font-semibold" style={{ color: "var(--ink)" }}>Aerial view, no listing photos yet</span>}
@@ -124,7 +121,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
         ) : null}
         <nav aria-label="Listing sections" className="sticky top-[var(--nav-h,64px)] z-20 -mx-4 mt-4 border-b px-4 md:-mx-6 md:px-6" style={{ background: "var(--paper)", borderColor: "var(--hairline)" }}>
           <ul className="pa-scroll flex gap-1 overflow-x-auto py-1">
-            {([["overview", "Overview"], ...(lot ? [["dadu-h", "DADU potential"]] : []), ...(plan && lot ? [["plan-h", "Site plan"]] : []), ["inv-h", "Investor view"], ["facts-h", "Home facts"], ...(d.priceHistory.length ? [["ph-h", "Price history"]] : []), ...(d.schools.length ? [["sch-h", "Schools"]] : [])] as [string, string][]).map(([id, label]) => (
+            {([["overview", "Overview"], ...(lot ? [["dadu-h", "DADU potential"]] : []), ["ai-h", "AI review"], ["inv-h", "Investor view"], ["facts-h", "Home facts"], ...(d.priceHistory.length ? [["ph-h", "Price history"]] : []), ...(d.schools.length ? [["sch-h", "Schools"]] : [])] as [string, string][]).map(([id, label]) => (
               <li key={id} className="shrink-0"><a href={`#${id}`} className="block rounded-lg px-3 py-2 text-sm font-semibold no-underline hover:bg-[var(--green-tint)]" style={{ color: "var(--ink)" }}>{label}</a></li>
             ))}
           </ul>
@@ -160,86 +157,81 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
                 ))}
               </ul>
               <h1 className="mt-3 text-xl font-semibold md:text-2xl" style={{ color: "var(--ink)" }}>{street(l.address)}, <span className="font-normal" style={{ color: "var(--slate)" }}>{l.address.split(",").slice(1).join(",").trim()}</span></h1>
-              {lot && (
-                <p className="mt-3 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold" style={{ background: "var(--green-tint)", color: "var(--green-bright)" }}>
-                  <span className="pa-display flex h-7 w-7 items-center justify-center rounded-full text-xs text-white" style={{ background: grade.color }}>{lot.score}</span>
-                  {grade.label} DADU lot{sf ? ` · up to ${sf.toLocaleString()} sf cottage` : ""}
-                </p>
-              )}
             </header>
 
-            {lot && (
+            {lot && site && (
               <section aria-labelledby="dadu-h">
                 <h2 id="dadu-h" className="pa-display scroll-mt-[130px] text-xl" style={{ color: "var(--ink)" }}>DADU potential</h2>
-                <div className="pa-raised mt-3 grid gap-5 p-5 sm:grid-cols-[auto_1fr] sm:items-center">
-                  <span className="pa-display flex h-20 w-20 items-center justify-center rounded-full text-3xl tabular-nums" style={{ background: "var(--card)", boxShadow: "var(--shadow-pop)", color: grade.color }} aria-label={`Site score ${lot.score} out of 100`}>
-                    {lot.score}
-                  </span>
-                  <div>
-                    <p className="flex items-center gap-2 text-sm font-semibold" style={{ color: grade.color }}>
-                      <span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: grade.color }} /> {grade.label}: this property can have a DADU
-                    </p>
-                    <p className="mt-2 text-sm" style={{ color: "var(--slate)" }}>Largest DADU this lot allows</p>
-                    <p className="pa-display text-3xl tabular-nums" style={{ color: "var(--ink)" }}>{sf ? `${sf.toLocaleString()} sf` : "n/a"}</p>
-                    {sf > 0 && <p className="mt-1 text-sm tabular-nums" style={{ color: "var(--slate)" }}>About {usd(constructionEstimate(sf))} to build at {usd(COST_PER_SF)} per sf. {COST_LABEL}.</p>}
-                    <p className="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
-                      {lot.corner && <span className="rounded-md px-2.5 py-1" style={{ background: "rgba(23,36,29,.08)" }}>Corner lot</span>}
-                      {lot.alley && <span className="rounded-md px-2.5 py-1" style={{ background: "rgba(46,92,110,.12)", color: "#2E5C6E" }}>Alley</span>}
-                      <span className="rounded-md px-2.5 py-1" style={{ background: "rgba(23,36,29,.08)" }}>{lot.adusNearby} ADUs nearby</span>
-                    </p>
-                    <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>{grade.note}</p>
-                  </div>
+                <div className="pa-raised mt-3 grid gap-6 p-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start">
+                  <LotSketch widthFt={widthFt} depthFt={depthFt} lotSqft={lot.lotSqft} alley={lot.alley} corner={lot.corner} layout={plan?.layout.kind ?? "single_rear"} daduSqft={sf || null} sideClearanceFt={lot.sideClearanceFt} street={titleCase(l.address.split(",")[0].replace(/^\d+[A-Z]?\s+/i, ""))} />
+                  <DaduSnapshot site={site} daduSqft={sf} buildCost={sf ? constructionEstimate(sf) : null} layoutLabel={plan?.layout.kind === "none" ? null : plan?.layout.label ?? null} />
                 </div>
-                {adu && (
-                  <div className="mt-4">
-                    <h3 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>What ADUniverse shows for this lot</h3>
-                    <ul className="mt-2 flex flex-col gap-1.5 text-sm" style={{ color: "var(--ink)" }}>
-                      {adu.lines.map((line) => (
-                        <li key={line} className="flex gap-2"><span aria-hidden style={{ color: "var(--green)" }}>•</span><span>{line}</span></li>
-                      ))}
-                    </ul>
-                    <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>Source: the city of Seattle&apos;s ADUniverse feasibility layer, {adu.vintage} data. It can be out of date, so confirm with the city before you design.</p>
-                  </div>
+                {plan?.warning && <p className="mt-3 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>{plan.warning}</p>}
+                {plan && (
+                  <details className="pa-more mt-3 text-sm">
+                    <summary className="cursor-pointer font-semibold" style={{ color: "var(--green)" }}>Layout, access and resale notes</summary>
+                    <div className="mt-3 flex max-w-[68ch] flex-col gap-3" style={{ color: "var(--ink)" }}>
+                      <p className="leading-relaxed">{plan.layout.why}</p>
+                      <p className="leading-relaxed"><strong>Access.</strong> {plan.access.summary}</p>
+                      <ul className="flex flex-col gap-1.5">
+                        <li><strong>Sunlight and sightlines.</strong> {plan.livability.sunlight}</li>
+                        <li><strong>Vehicle and parking.</strong> {plan.livability.vehicle}</li>
+                        <li><strong>Yard space.</strong> {plan.livability.yard}</li>
+                        <li><strong>Marketability: {plan.marketability.rating}.</strong> {plan.marketability.why}</li>
+                        <li><strong>Height.</strong> {plan.height}</li>
+                      </ul>
+                      <div>
+                        <p className="font-semibold">Before you buy</p>
+                        <ol className="mt-1 list-decimal pl-5 leading-relaxed">{plan.nextSteps.map((n) => <li key={n}>{n}</li>)}</ol>
+                      </div>
+                      {adu && (
+                        <div>
+                          <p className="font-semibold">What ADUniverse shows for this lot</p>
+                          <ul className="mt-1 list-disc pl-5">{adu.lines.map((line) => <li key={line}>{line}</li>)}</ul>
+                        </div>
+                      )}
+                      <p className="text-xs" style={{ color: "var(--slate)" }}>Sources: the team&apos;s Seattle DADU guide applied to city lot data, and the city&apos;s ADUniverse layer{adu ? ` (${adu.vintage})` : ""}. Screening rules, not Seattle Municipal Code.</p>
+                    </div>
+                  </details>
                 )}
               </section>
             )}
 
-            {plan && lot && (
-              <section aria-labelledby="plan-h">
-                <h2 id="plan-h" className="pa-display scroll-mt-[130px] text-xl" style={{ color: "var(--ink)" }}>Site plan and layout</h2>
-                <dl className="mt-3 grid grid-cols-1 gap-x-10 text-sm sm:grid-cols-2">
-                  {([
-                    ["Lot area", `${plan.area.sqft.toLocaleString()} sf, ${plan.area.pass ? "meets" : "under"} the ${plan.area.min.toLocaleString()} sf minimum`],
-                    ["Lot shape", plan.dimensions.known ? `${plan.dimensions.widthFt} ft wide by ${plan.dimensions.depthFt} ft deep` : "Not known"],
-                    ["Alley", plan.alley === "yes" ? "Yes" : plan.alley === "no" ? "No" : "Unknown"],
-                    ["Best layout", plan.layout.label],
-                  ] as [string, string][]).map(([k, v]) => (
-                    <div key={k} className="flex justify-between gap-4 border-b py-2.5" style={{ borderColor: "var(--hairline)" }}>
-                      <dt style={{ color: "var(--slate)" }}>{k}</dt><dd className="text-right font-semibold tabular-nums" style={{ color: "var(--ink)" }}>{v}</dd>
-                    </div>
-                  ))}
-                </dl>
-                <p className="mt-4 max-w-[68ch] text-base leading-relaxed" style={{ color: "var(--ink)" }}>{plan.layout.why}</p>
-                {plan.warning && <p className="mt-3 max-w-[68ch] rounded-lg px-3 py-2 text-sm" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>{plan.warning}</p>}
-                <h3 className="mt-5 text-sm font-semibold" style={{ color: "var(--ink)" }}>Access</h3>
-                <p className="mt-1 max-w-[68ch] text-sm leading-relaxed" style={{ color: "var(--ink)" }}>{plan.access.summary}</p>
-                <h3 className="mt-5 text-sm font-semibold" style={{ color: "var(--ink)" }}>Livability and resale</h3>
-                <ul className="mt-2 flex flex-col gap-1.5 text-sm" style={{ color: "var(--ink)" }}>
-                  <li><strong>Sunlight and sightlines.</strong> {plan.livability.sunlight}</li>
-                  <li><strong>Vehicle and parking.</strong> {plan.livability.vehicle}</li>
-                  <li><strong>Yard space.</strong> {plan.livability.yard}</li>
-                  <li><strong>Marketability: {plan.marketability.rating}.</strong> {plan.marketability.why}</li>
-                  <li><strong>Height.</strong> {plan.height}</li>
-                </ul>
-                <h3 className="mt-5 text-sm font-semibold" style={{ color: "var(--ink)" }}>Before you buy</h3>
-                <ol className="mt-2 list-decimal pl-5 text-sm leading-relaxed" style={{ color: "var(--ink)" }}>{plan.nextSteps.map((n) => <li key={n}>{n}</li>)}</ol>
-                <p className="mt-3 text-xs" style={{ color: "var(--slate)" }}>Source: the team&apos;s Seattle DADU guide, applied to the city&apos;s lot size, shape and alley data. Screening rules, not Seattle Municipal Code.</p>
-              </section>
-            )}
+            <AssessmentCard mlsId={l.mlsId} />
 
             <section aria-labelledby="inv-h">
               <h2 id="inv-h" className="pa-display scroll-mt-[130px] text-xl" style={{ color: "var(--ink)" }}>Investor view</h2>
-              <h3 className="mt-3 text-sm font-semibold" style={{ color: "var(--ink)" }}>What you pay</h3>
+              <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {([
+                  ["Price plus DADU", lot?.daduSqft ? usd(basis.allIn) : null, lot?.daduSqft ? `${usd(l.listPrice)} + ${usd(basis.buildCost)} build` : "No DADU size found"],
+                  ["Per sf, house plus DADU", basis.allInPerTotalSf ? usd(basis.allInPerTotalSf) : null, basis.pricePerSf ? `${usd(basis.pricePerSf)} for the house alone` : ""],
+                  ["Land share of value", basis.landSharePct != null ? `${basis.landSharePct}%` : null, basis.landSharePct != null && basis.landSharePct >= 70 ? "High: the house adds little" : "Of the assessed value"],
+                  ["Price to assessed", basis.priceToAssessed ? `${basis.priceToAssessed.toFixed(2)}x` : null, values?.landAv != null && values?.bldgAv != null ? `Assessed ${usd(values.landAv + values.bldgAv)}` : "King County assessor"],
+                ] as [string, string | null, string][]).filter(([, v]) => v != null).map(([k, v, note]) => (
+                  <div key={k} className="pa-raised p-4">
+                    <dt className="text-xs" style={{ color: "var(--slate)" }}>{k}</dt>
+                    <dd className="pa-display mt-1 text-xl tabular-nums" style={{ color: "var(--ink)" }}>{v}</dd>
+                    {note && <dd className="mt-0.5 text-xs" style={{ color: "var(--slate)" }}>{note}</dd>}
+                  </div>
+                ))}
+              </dl>
+
+              <div className="mt-4"><InvestorSnapshot price={l.listPrice} daduSqft={lot?.daduSqft ?? 0} buildCost={basis.buildCost} address={fullAddress} /></div>
+
+              {risks.some((r) => r.level !== "ok") && (
+                <ul className="mt-4 flex flex-col gap-2 text-sm" aria-label="Risks and flags">
+                  {risks.filter((r) => r.level !== "ok").map((r, i) => (
+                    <li key={i} className="flex gap-2.5 rounded-lg px-3 py-2" style={{ background: r.level === "stop" ? "var(--red-tint)" : "var(--amber-tint)", color: "var(--ink)" }}>
+                      <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: r.level === "stop" ? "var(--red)" : "#D9A441" }} />
+                      <span><span className="sr-only">{r.level === "stop" ? "Deal breaker: " : "Check: "}</span>{r.text} <span className="text-xs" style={{ color: "var(--slate)" }}>({r.source})</span></span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <details className="pa-more mt-3 text-sm">
+                <summary className="cursor-pointer font-semibold" style={{ color: "var(--green)" }}>All the numbers</summary>
+                <h3 className="mt-3 text-sm font-semibold" style={{ color: "var(--ink)" }}>What you pay</h3>
               <dl className="mt-1 grid grid-cols-1 gap-x-10 text-sm sm:grid-cols-2">
                 {([
                   ["List price", usd(l.listPrice)],
@@ -257,9 +249,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
                   </div>
                 ))}
               </dl>
-              {basis.landSharePct != null && basis.landSharePct >= 70 && <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>Land is {basis.landSharePct}% of the assessed value, so the house adds little to the assessment. That can point to a teardown or heavy remodel.</p>}
-
-              <h3 className="mt-6 text-sm font-semibold" style={{ color: "var(--ink)" }}>What the DADU costs</h3>
+                <h3 className="mt-5 text-sm font-semibold" style={{ color: "var(--ink)" }}>What the DADU costs</h3>
               {lot?.daduSqft ? (
                 <dl className="mt-1 grid grid-cols-1 gap-x-10 text-sm sm:grid-cols-2">
                   {([
@@ -274,28 +264,9 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
                   ))}
                 </dl>
               ) : <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>The engine found no DADU size for this lot, so there is no build estimate.</p>}
-              <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>{COST_LABEL}. No soft costs, permits, financing or site work. Add them in the full underwriting.</p>
-
-              <h3 className="mt-6 text-sm font-semibold" style={{ color: "var(--ink)" }}>What it could earn</h3>
-              <div className="mt-2"><InvestorSnapshot price={l.listPrice} daduSqft={lot?.daduSqft ?? 0} buildCost={basis.buildCost} address={fullAddress} /></div>
-
-              {risks.length > 0 && (
-                <>
-                  <h3 className="mt-6 text-sm font-semibold" style={{ color: "var(--ink)" }}>Risks and flags</h3>
-                  <ul className="mt-2 flex flex-col gap-2 text-sm">
-                    {risks.map((r, i) => (
-                      <li key={i} className="flex gap-2.5" style={{ color: "var(--ink)" }}>
-                        <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: r.level === "stop" ? "var(--red)" : r.level === "watch" ? "#D9A441" : "var(--green)" }} />
-                        <span><span className="sr-only">{r.level === "stop" ? "Deal breaker: " : r.level === "watch" ? "Check: " : "Clear: "}</span>{r.text} <span className="text-xs" style={{ color: "var(--slate)" }}>({r.source})</span></span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              <p className="mt-5 text-xs" style={{ color: "var(--slate)" }}>Not available yet: rent comps, sale comps and past DADU sale prices. They need the live listings feed. Until then, the rent above is yours to set.</p>
+                <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>{COST_LABEL}. No soft costs, permits, financing or site work. Rent comps, sale comps and past DADU sales need the live listings feed.</p>
+              </details>
             </section>
-
-            <AssessmentCard mlsId={l.mlsId} />
 
             {d.description && (
               <section aria-labelledby="desc-h">
