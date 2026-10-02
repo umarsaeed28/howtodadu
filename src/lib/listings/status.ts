@@ -8,3 +8,8 @@ export function isForSale(status: string | null | undefined): boolean {
   if (/pending|contingen|under contract|sale pending|sold|closed|expired|withdrawn|cancel|off market|coming soon|inactive/.test(s)) return false;
   return /^(active|for sale|new|price change|back on market)/.test(s);
 }
+
+/** Pending or contingent: under contract, not for sale, but shown with a tag (users can hide them). */
+export function isPending(status: string | null | undefined): boolean {
+  return /pending|contingen|under contract/.test((status ?? "").toLowerCase());
+}

@@ -73,6 +73,7 @@ export default function CandidateMap() {
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX);
   const [topOnly, setTopOnly] = useState(false);
   const [savedOnly, setSavedOnly] = useState(false);
+  const [hidePending, setHidePending] = useState(false);
   // Off-market lots (the buy box, not listed) show as dots only when this is on. Remembered for the browser session.
   const [offOn, setOffOn] = useState(() => { try { return typeof window !== "undefined" && sessionStorage.getItem("pencil-offmarket") === "1"; } catch { return false; } });
   const [offLots, setOffLots] = useState<OffMarketLots | null>(null);
@@ -160,14 +161,14 @@ export default function CandidateMap() {
 
   /* ---- what is on the map right now ---- */
   const shown = useMemo(() => {
-    const rows = listings.filter((l) => (!savedOnly || isSaved(l.mlsId)) && (maxPrice >= PRICE_MAX || l.price <= maxPrice) && (!topOnly || l.tier === 3) && (!cornerOnly || l.corner) && (!alleyOnly || l.alley));
+    const rows = listings.filter((l) => (!hidePending || !l.pending) && (!savedOnly || isSaved(l.mlsId)) && (maxPrice >= PRICE_MAX || l.price <= maxPrice) && (!topOnly || l.tier === 3) && (!cornerOnly || l.corner) && (!alleyOnly || l.alley));
     const m = sort.dir === "asc" ? 1 : -1;
     return [...rows].sort((a, b) => {
       const x = sortValue(a, sort.key), y = sortValue(b, sort.key);
       const c = typeof x === "string" ? x.localeCompare(y as string) : (x as number) - (y as number);
       return c * m || a.price - b.price;
     });
-  }, [listings, maxPrice, topOnly, cornerOnly, alleyOnly, sort, savedOnly, isSaved]);
+  }, [listings, maxPrice, topOnly, cornerOnly, alleyOnly, sort, savedOnly, isSaved, hidePending]);
 
   const byPin = useMemo(() => new globalThis.Map(shown.map((l) => [l.pin, l])), [shown]);
   const shapesColored = useMemo<GeoJSON.FeatureCollection | null>(() => {
@@ -352,6 +353,9 @@ export default function CandidateMap() {
             <Chip on={topOnly} onClick={() => setTopOnly((v) => !v)}>Top picks</Chip>
             <Chip on={cornerOnly} onClick={() => setCornerOnly((v) => !v)}>Corner lot</Chip>
             <Chip on={alleyOnly} onClick={() => setAlleyOnly((v) => !v)}>Alley access</Chip>
+            {listings.some((l) => l.pending) && (
+              <Chip on={hidePending} onClick={() => setHidePending((v) => !v)}>Hide pending ({listings.filter((l) => l.pending).length})</Chip>
+            )}
           </div>
           <span className="mx-1 h-6 w-px shrink-0" style={{ background: "var(--hairline)" }} aria-hidden />
           <button type="button" role="switch" aria-checked={offOn} onClick={() => setOffOn((v) => !v)} className={`pa-chip shrink-0 ${offOn ? "pa-chip-active" : ""}`} style={{ minHeight: 36 }} title="Show lots in the buy box that are not for sale">
@@ -433,9 +437,10 @@ export default function CandidateMap() {
                   selectPin(l.pin);
                 }}
                 className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold text-white"
-                style={{ background: t.color, boxShadow: on ? "0 0 0 3px #17241D, 0 4px 12px rgba(23,36,29,.4)" : "0 2px 8px rgba(23,36,29,.3)", border: "1.5px solid #fff", transform: on ? "scale(1.12)" : undefined, transition: "transform .15s cubic-bezier(.16,1,.3,1)" }}
-                aria-label={`${t.label} listing at ${cleanAddress(l.address)}, ${usdShort(l.price)}, score ${l.score}`}
+                style={{ background: l.pending ? "#8A8F8C" : t.color, opacity: l.pending && !on ? 0.85 : 1, boxShadow: on ? "0 0 0 3px #17241D, 0 4px 12px rgba(23,36,29,.4)" : "0 2px 8px rgba(23,36,29,.3)", border: "1.5px solid #fff", transform: on ? "scale(1.12)" : undefined, transition: "transform .15s cubic-bezier(.16,1,.3,1)" }}
+                aria-label={`${l.pending ? "Pending. " : ""}${t.label} listing at ${cleanAddress(l.address)}, ${usdShort(l.price)}, score ${l.score}`}
               >
+                {l.pending && <span className="rounded-sm bg-white/90 px-1 text-[9px] font-bold uppercase" style={{ color: "#4A504D" }}>Pending</span>}
                 {l.tier === 3 && <Star size={11} aria-hidden fill="#fff" />}
                 {usdShort(l.price)}
               </button>
@@ -561,6 +566,11 @@ function ListingCard({ l, onSelect }: { l: MapListing; onSelect: () => void }) {
             {l.tier === 3 && <Star size={11} aria-hidden fill={t.color} color={t.color} />}
             {t.label}
           </span>
+          {l.pending && (
+            <span className="absolute bottom-2.5 left-2.5 rounded-lg px-2 py-1 text-[11px] font-bold" style={{ background: "#FFF4D6", color: "#7A5A12" }} title={l.pendingNote ?? undefined}>
+              Pending
+            </span>
+          )}
           <span className="pa-display absolute right-2.5 top-2.5 flex h-9 w-9 items-center justify-center rounded-full text-sm tabular-nums text-white" style={{ background: t.color, boxShadow: "0 0 0 2px #fff" }} aria-hidden>{l.score}</span>
         </span>
         <span className="block px-3.5 pb-3.5 pt-3">
@@ -611,6 +621,7 @@ function LotPanel({ pin, lot, error, listing, onBack }: { pin: string | null; lo
             {lot.alley && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(46,92,110,.12)", color: "#2E5C6E" }}>Alley</span>}
             {listing?.test && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>Sample data</span>}
             {!listing && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(23,36,29,.08)", color: "var(--ink)" }}>Off market</span>}
+            {listing?.pending && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "#FFF4D6", color: "#7A5A12" }} title={listing.pendingNote ?? undefined}>Pending</span>}
             <span className="ml-auto">
               <SaveButton
                 item={

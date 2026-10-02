@@ -154,8 +154,11 @@ async function pullAll(): Promise<DealMachinePull> {
     }
   }
   const v = verifyActive(candidates, activeByZip);
+  // Homes Redfin does not show as active are kept but marked pending, with the reason; users can hide them.
+  // A ZIP Redfin could not be read is not evidence of anything: those homes keep DealMachine's status, noted as unconfirmed.
+  const marked = v.dropped.map((d) => (/could not be read/.test(d.reason) ? d.listing : { ...d.listing, status: "pending" }));
   return {
-    listings: v.kept,
+    listings: [...v.kept, ...marked],
     check: {
       ...base,
       verified: failed.length === 0,

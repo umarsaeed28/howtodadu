@@ -3,8 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Data files read with fs at runtime: make sure they ship with the server functions.
   outputFileTracingIncludes: {
-    "/api/**/*": ["./data/lot-library.json", "./data/alleys.geojson", "./data/test-data/listings.fixture.json"],
-    "/listing/**/*": ["./data/lot-library.json", "./data/test-data/listings.fixture.json"],
+    "/api/**/*": ["./data/lot-library.json", "./data/alleys.geojson", "./data/test-data/listings.fixture.json", "./data/listing-status.json"],
+    "/listing/**/*": ["./data/lot-library.json", "./data/test-data/listings.fixture.json", "./data/listing-status.json"],
     // The knowledge base the AI review searches (rag-lexical.ts reads it at runtime).
     "/api/assessment": ["./rag/documents/**/*.md"],
   },

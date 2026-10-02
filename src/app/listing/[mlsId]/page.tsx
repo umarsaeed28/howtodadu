@@ -17,6 +17,8 @@ import ListingPhoto from "@/components/listing/ListingPhoto";
 import LotSketch from "@/components/listing/LotSketch";
 import SaveButton from "@/components/listing/SaveButton";
 import { redfinLink } from "@/lib/listings/redfin-link";
+import { overrideFor, statusOverrides } from "@/lib/listings/status-overrides";
+import { isPending } from "@/lib/listings/status";
 import DaduSnapshot from "@/components/listing/DaduSnapshot";
 import { siteScoreFor } from "@/lib/server/site-score";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
@@ -96,6 +98,9 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
   const sf = lot?.daduSqft ? Math.round(lot.daduSqft) : 0;
   const fullAddress = l.address;
   const site = siteScoreFor(l, lot, adu);
+  // Pending: from our status list (data/listing-status.json) or the source. Null when the listing is active.
+  const override = overrideFor(statusOverrides(), l.address, l.zip);
+  const pendingNote = override ? override.note : isPending(l.status) ? "" : null;
   const widthFt = lot?.lotWidth ?? adu?.raw.lotWidth ?? null;
   const depthFt = lot?.lotDepth ?? adu?.raw.lotDepth ?? null;
 
@@ -160,6 +165,11 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
         <div id="overview" className="mt-6 grid scroll-mt-32 gap-8 lg:grid-cols-[1fr_340px]">
           <div className="flex min-w-0 flex-col gap-8">
             <header>
+              {pendingNote != null && (
+                <p className="mb-3 inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: "#FFF4D6", color: "#7A5A12" }}>
+                  Pending{pendingNote ? `: ${pendingNote}` : ""}
+                </p>
+              )}
               {isTest && (
                 <p className="mb-3 inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>
                   <FlaskConical size={13} aria-hidden /> Sample data, not a live listing

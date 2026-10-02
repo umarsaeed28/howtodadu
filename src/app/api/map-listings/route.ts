@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getListingsProvider, listingsConnected, listingsProviderName } from "@/lib/listings";
 import { findLotForListing, libraryAvailable } from "@/lib/server/lot-library-store";
 import { inBuyBox } from "@/lib/buy-box";
-import { isForSale } from "@/lib/listings/status";
+import { isForSale, isPending } from "@/lib/listings/status";
+import { overrideFor, statusOverrides } from "@/lib/listings/status-overrides";
 import { dealMachineCache } from "@/lib/listings/dealmachine";
 
 export interface MapListing {
@@ -27,6 +28,10 @@ export interface MapListing {
   daysOnMarket: number | null;
   /** The listing page at the source, when it gave one (Redfin feed). DealMachine does not. */
   listingUrl: string | null;
+  /** Under contract (pending or contingent): shown with a tag; users can hide these. */
+  pending: boolean;
+  /** Why it is marked pending, when we know. */
+  pendingNote: string | null;
   /** True for sample listings (the fixture provider). Real listings come from the live feed. */
   test: boolean;
 }
@@ -48,8 +53,12 @@ export async function GET(req: Request) {
   try {
     const { listings, total } = await getListingsProvider().search({ city: source === "flex" || source === "redfin" ? "Seattle" : undefined, zips, pageSize: 250 });
     const out: MapListing[] = [];
+    const overrides = statusOverrides();
     for (const l of listings) {
-      if (!isForSale(l.status)) continue; // active listings only: no pending, contingent, sold or expired
+      // Active listings, plus pending ones we show with a tag (from the feed, our status list, or the Redfin check).
+      const override = overrideFor(overrides, l.address, l.zip);
+      const pending = !!override || isPending(l.status);
+      if (!pending && !isForSale(l.status)) continue; // sold, closed, expired, withdrawn and the rest are out
       if ((l.hoaMonthly ?? 0) > 0) continue; // screening rule: a property with an HOA is never a DADU candidate
       const lot = findLotForListing(l.address, l.lat, l.lng);
       if (!lot) continue; // the lot library only holds lots where the engine finds a DADU of at least 300 sf
@@ -58,7 +67,7 @@ export async function GET(req: Request) {
       out.push({
         mlsId: l.mlsId, address: l.address, lat: l.lat, lng: l.lng, price: l.listPrice, lotSqft: l.lotSqft || lot.lotSqft,
         status: l.status, photo: l.photos[0] ?? null, pin: lot.pin, score: lot.score, tier: lot.tier, corner: lot.corner, alley: lot.alley,
-        beds: l.beds ?? null, baths: l.baths ?? null, sqft: l.livingSqft ?? null, daduSqft: lot.daduSqft ?? null, zip: l.zip, daysOnMarket: l.daysOnMarket ?? null, listingUrl: l.listingUrl ?? null, test: source === "fixture",
+        beds: l.beds ?? null, baths: l.baths ?? null, sqft: l.livingSqft ?? null, daduSqft: lot.daduSqft ?? null, zip: l.zip, daysOnMarket: l.daysOnMarket ?? null, listingUrl: l.listingUrl ?? null, pending, pendingNote: override?.note ?? (pending ? "Marked pending by the listing source." : null), test: source === "fixture",
       });
     }
     // How the truly-active check went (DealMachine feed): shown under the list, and useful when a status looks wrong.
