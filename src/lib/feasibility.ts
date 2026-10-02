@@ -213,6 +213,19 @@ export interface FeasibilityResult {
   sitePlan?: SitePlanData | null;
   /** Ground elevation grid around the lot (USGS 3DEP lidar), for contours and the lot section. */
   terrain?: TerrainGrid | null;
+  /** The home's current listing, when it is for sale (matched by address in the listings feed). Null otherwise. */
+  listing?: ReportListing | null;
+}
+
+export interface ReportListing {
+  mlsId: string;
+  price: number;
+  /** Under contract: shown with a Pending tag. */
+  pending: boolean;
+  daysOnMarket: number | null;
+  beds: number | null;
+  baths: number | null;
+  livingSqft: number | null;
 }
 
 export async function fetchFeasibility(

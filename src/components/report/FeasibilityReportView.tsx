@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReportListing } from "@/lib/feasibility";
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { ArrowLeft, Download, Heart, Loader2, ExternalLink, ShieldAlert, ShieldCheck, CircleHelp } from "lucide-react";
 import type { DashboardPropertySlim } from "@/lib/dashboard-normalize";
@@ -84,7 +85,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-function Hero({ report, slim }: { report: FeasibilityReport; slim: DashboardPropertySlim }) {
+function Hero({ report, slim, listing }: { report: FeasibilityReport; slim: DashboardPropertySlim; listing: ReportListing | null }) {
   const s = report.summary;
   const score = Math.round(s.score.value);
   const v = VERDICT_STYLE[s.verdict];
@@ -117,7 +118,25 @@ function Hero({ report, slim }: { report: FeasibilityReport; slim: DashboardProp
         </h2>
         <p className="mt-2 max-w-2xl text-base leading-relaxed" style={{ color: "var(--slate)" }}>{s.headline} {slim.neighborhood ? `${slim.neighborhood}. ` : ""}This is the site and code check.</p>
       </div>
-      <aside className="pa-raised p-5" aria-label="Build estimate">
+      <aside className="pa-raised p-5" aria-label="Price and build estimate">
+        {listing && (
+          <div className="mb-4 border-b pb-4" style={{ borderColor: "var(--hairline)" }}>
+            <p className="flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--slate)" }}>
+              List price
+              {listing.pending && <span className="rounded-md px-2 py-0.5 text-[11px] font-bold" style={{ background: "#FFF4D6", color: "#7A5A12" }}>Pending</span>}
+            </p>
+            <p className="pa-display mt-1 text-3xl tabular-nums" style={{ color: "var(--ink)" }}>{usd(listing.price)}</p>
+            <p className="mt-1 text-xs tabular-nums" style={{ color: "var(--slate)" }}>
+              {[listing.beds != null && `${listing.beds} bd`, listing.baths != null && `${listing.baths} ba`, listing.livingSqft != null && `${sf(listing.livingSqft)}`, listing.daysOnMarket != null && `${listing.daysOnMarket} days on market`].filter(Boolean).join(" · ")}
+            </p>
+            {s.construction_cost_usd && (
+              <p className="mt-2 text-sm tabular-nums" style={{ color: "var(--ink)" }}>
+                Price plus DADU build: <strong>{usd(listing.price + s.construction_cost_usd.value)}</strong>
+              </p>
+            )}
+            <Link href={`/listing/${encodeURIComponent(listing.mlsId)}`} className="mt-2 inline-block text-xs font-semibold no-underline" style={{ color: "var(--green)" }}>View the listing</Link>
+          </div>
+        )}
         <p className="text-sm font-semibold" style={{ color: "var(--slate)" }}>Build estimate</p>
         <p className="pa-display mt-1 text-3xl tabular-nums" style={{ color: "var(--ink)" }}>{s.construction_cost_usd ? usd(s.construction_cost_usd.value) : "None"}</p>
         {s.max_buildable_sf && s.construction_cost_usd && (
@@ -405,7 +424,7 @@ export default function FeasibilityReportView({
         </div>
       )}
 
-      {report && <Hero report={report} slim={slim} />}
+      {report && <Hero report={report} slim={slim} listing={detailRow?.result.listing ?? null} />}
       {report && detailRow && <SectionTabs />}
       {report && detailRow && <ReportBody report={report} row={detailRow} snapshotRef={snapshotRef} />}
 

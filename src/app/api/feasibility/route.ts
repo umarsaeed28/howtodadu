@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFeasibilityForAddress } from "@/lib/server/feasibility-query";
+import { listingForAddress } from "@/lib/server/listing-for-address";
 
 export async function GET(request: NextRequest) {
   const address = request.nextUrl.searchParams.get("address");
@@ -15,5 +16,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: outcome.error }, { status: outcome.status });
   }
 
-  return NextResponse.json(outcome.data);
+  // The home's own listing, when it is for sale: the report then shows the price next to the build estimate.
+  const p = outcome.data.parcel;
+  const listing = await listingForAddress(p?.address ?? address, p?.zip ?? null);
+  return NextResponse.json({ ...outcome.data, listing });
 }
