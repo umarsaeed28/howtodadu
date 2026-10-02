@@ -216,7 +216,11 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
       const c = { x: b.pts.reduce((s, q) => s + q.x, 0) / b.pts.length, y: b.pts.reduce((s, q) => s + q.y, 0) / b.pts.length };
       return pointInPoly(c, lotPts);
     });
-  const hLocal = houses.flatMap((h) => h.pts.map(toLocal));
+  // The driveway question is about the house only (the largest building), the same rule the score's side-clearance
+  // measurement uses. A shed or garage in a back corner must not decide which side the car goes down.
+  const polyArea = (pts: Pt[]) => Math.abs(pts.reduce((s, p, i) => { const q = pts[(i + 1) % pts.length]; return s + p.x * q.y - q.x * p.y; }, 0)) / 2;
+  const houseShape = houses.reduce<(typeof houses)[number] | null>((best, h) => (!best || polyArea(h.pts) > polyArea(best.pts) ? h : best), null);
+  const hLocal = houseShape ? houseShape.pts.map(toLocal) : [];
   const houseMinU = hLocal.length ? Math.min(...hLocal.map((q) => q.u)) : null;
   const houseMaxU = hLocal.length ? Math.max(...hLocal.map((q) => q.u)) : null;
   const houseMaxV = hLocal.length ? Math.max(...hLocal.map((q) => q.v)) : 0;
@@ -420,7 +424,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
 
   /* ---- vehicle access: alley, corner, or the roomier side yard (same rule as the score) ---- */
   type AccessKind = "alley" | "corner" | "side" | "tight" | "blocked";
-  let access: { a: Pt; b: Pt; width: number | null; kind: AccessKind; label: string } | null = null;
+  let access: { a: Pt; b: Pt; width: number | null; kind: AccessKind; label: string; lane?: Pt[] } | null = null;
   let noSideYard = false;
   const isCorner = (feasibility?.lotType ?? "").toLowerCase().includes("corner");
   if (feasibility?.hasAlley) {
@@ -436,8 +440,11 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     const u = useLeft ? left / 2 : houseMaxU + right / 2;
     const kind: AccessKind = width >= DRIVEWAY_FT ? "side" : width >= BLOCKED_BELOW_FT ? "tight" : "blocked";
     const label = kind === "side" ? `Driveway ${width.toFixed(1)}'` : kind === "tight" ? `${width.toFixed(1)}': confirm` : `No car access: ${width.toFixed(1)}'`;
-    // From the front lot line to just past the back of the house: the stretch a car has to squeeze through.
-    if (drawn >= 1.5) access = { a: L(u, 1), b: L(u, Math.min(ld - 2, houseMaxV + 4)), width, kind: isCorner && kind === "blocked" ? "corner" : kind, label: isCorner && kind === "blocked" ? "Corner: use the side street" : label };
+    // From the front lot line past the house to the cottage (or just past the house): the lane a car would use.
+    const vEnd = Math.min(ld - 2, Math.max(houseMaxV + 4, daduExt && daduExt.v > houseMaxV ? daduExt.v : 0));
+    const laneW = Math.max(1, Math.min(drawn - 0.5, DRIVEWAY_FT));
+    const lane = rect(u - laneW / 2, 0, laneW, vEnd);
+    if (drawn >= 1.5) access = { a: L(u, 1), b: L(u, vEnd), width, kind: isCorner && kind === "blocked" ? "corner" : kind, label: isCorner && kind === "blocked" ? "Corner: use the side street" : label, lane };
     else noSideYard = true;
   }
   const accessColor = (k: AccessKind) => (k === "blocked" ? "#B9573F" : k === "tight" ? "#B8862B" : "#145A40");
@@ -854,7 +861,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
                 <path d="M0 0 L10 5 L0 10 Z" fill={accessColor(access.kind)} />
               </marker>
             </defs>
-            <line x1={access.a.x} y1={access.a.y} x2={access.b.x} y2={access.b.y} stroke={accessColor(access.kind)} strokeOpacity="0.85" strokeWidth={sw * 1.1} strokeDasharray={`${sw * 3} ${sw * 2}`} strokeLinecap="round" markerEnd={access.kind === "blocked" ? undefined : "url(#mp-arrow)"} />
+            {access.lane && <path d={path(access.lane)} fill={accessColor(access.kind)} fillOpacity="0.14" stroke={accessColor(access.kind)} strokeOpacity="0.55" strokeWidth={sw * 0.8} strokeDasharray={`${sw * 3} ${sw * 2}`} />}
+            <line x1={access.a.x} y1={access.a.y} x2={access.b.x} y2={access.b.y} stroke={accessColor(access.kind)} strokeOpacity="0.9" strokeWidth={sw * 1.4} strokeLinecap="round" markerEnd={access.kind === "blocked" ? undefined : "url(#mp-arrow)"} />
             {access.kind === "blocked" && (
               <g transform={`translate(${mid(access.a, access.b).x} ${mid(access.a, access.b).y})`} stroke="#B9573F" strokeWidth={sw * 2.2} strokeLinecap="round">
                 <line x1={-fs * 0.6} y1={-fs * 0.6} x2={fs * 0.6} y2={fs * 0.6} />
