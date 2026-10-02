@@ -22,14 +22,27 @@ const DRIVEWAY_FT = 10; // a driveway needs 10 ft (dadu-score)
 const BLOCKED_BELOW_FT = 8; // roofline gap under 8 ft: no vehicle access (dadu-score)
 
 /** Angle in degrees of the street segment nearest a point, kept upright for text. */
-function labelAt(paths: Pt[][], target: Pt): { p: Pt; deg: number } | null {
+function labelAt(paths: Pt[][], target: Pt, avoid?: Pt[]): { p: Pt; deg: number } | null {
   let best: { p: Pt; deg: number; d: number } | null = null;
   for (const pth of paths)
     for (let i = 0; i < pth.length - 1; i++) {
       const a = pth[i], b = pth[i + 1];
       const dx = b.x - a.x, dy = b.y - a.y, len2 = dx * dx + dy * dy || 1;
-      const t = Math.max(0, Math.min(1, ((target.x - a.x) * dx + (target.y - a.y) * dy) / len2));
-      const p = { x: a.x + t * dx, y: a.y + t * dy };
+      // The closest point on the segment, nudged along it until it is clear of the lot (a street that touches the lot).
+      let t = Math.max(0, Math.min(1, ((target.x - a.x) * dx + (target.y - a.y) * dy) / len2));
+      let p = { x: a.x + t * dx, y: a.y + t * dy };
+      if (avoid && (pointInPoly(p, avoid) || nearPoly(p, avoid, 12))) {
+        const len = Math.sqrt(len2);
+        let found = false;
+        for (const dir of [1, -1])
+          for (let k = 14; k <= len && !found; k += 4) {
+            const tt = t + (dir * k) / len;
+            if (tt < 0 || tt > 1) break;
+            const q = { x: a.x + tt * dx, y: a.y + tt * dy };
+            if (!pointInPoly(q, avoid) && !nearPoly(q, avoid, 12)) { p = q; t = tt; found = true; }
+          }
+        if (!found) continue;
+      }
       const d = Math.hypot(p.x - target.x, p.y - target.y);
       if (!best || d < best.d) {
         let deg = (Math.atan2(dy, dx) * 180) / Math.PI;
@@ -307,16 +320,25 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
             return Math.hypot(gu, gv) >= (i === 0 ? HOUSE_SEPARATION_FT : 0.5);
           }) &&
           (!avoidTrees || crowns.every((c) => Math.hypot(Math.max(0, u - c.u, c.u - (u + w)), Math.max(0, v - c.v, c.v - (v + dd))) >= c.r));
-        const us: number[] = [];
-        for (let k = 0; sideL + k <= lw - sideR - w; k += 1) us.push(sideL + k);
-        us.sort((p, q) => Math.abs(p - (lw - w) / 2) - Math.abs(q - (lw - w) / 2));
-        // Pass 1: behind the house and clear of trees (the same open ground the score measures). Pass 2: the old rule.
+        // Inside the buildable envelope: a lot that is not a rectangle (triangles, flag lots) has corners of its bounding
+        // box outside the lot, so every corner of the footprint must be inside the envelope polygon.
+        const inside = (u: number, v: number, ww: number, dd: number) => !polyEnvelope || rect(u, v, ww, dd).every((q) => pointInPoly(q, envelope) || nearPoly(q, envelope, 0.6));
         const behind = houseMaxV ? houseMaxV + HOUSE_SEPARATION_FT : 0;
+        // Pass 1: behind the house and clear of trees (the same open ground the score measures). Pass 2: anywhere.
+        // Widths shrink after depths, down to 15 ft, so a small spot still gets a cottage.
         for (const avoidTrees of [true, false])
-          for (let dd = d0; dd >= Math.min(d0, 15); dd -= 1)
-            for (let v = ld - rearSb - dd; v >= Math.max(frontSb, avoidTrees ? behind : 0); v -= 1)
-              for (const u of us) if (clear(u, v, dd, avoidTrees)) return { kind: "dadu", u, v, w, d: dd };
-        return { kind: "dadu", u: (lw - w) / 2, v: Math.max(frontSb, ld - rearSb - d0), w, d: d0 };
+          for (let ww = w; ww >= Math.min(w, 15); ww -= 1) {
+            const us: number[] = [];
+            for (let k = 0; sideL + k <= lw - sideR - ww; k += 1) us.push(sideL + k);
+            us.sort((p, q) => Math.abs(p - (lw - ww) / 2) - Math.abs(q - (lw - ww) / 2));
+            for (let dd = d0; dd >= Math.min(d0, 15); dd -= 1)
+              for (let v = ld - rearSb - dd; v >= Math.max(frontSb, avoidTrees ? behind : 0); v -= 1)
+                for (const u of us) if (inside(u, v, ww, dd) && clear(u, v, dd, avoidTrees)) return { kind: "dadu", u, v, w: ww, d: dd };
+          }
+        // Nothing fits: centre a minimum footprint on the envelope so it at least starts on the lot.
+        const c = envelope.reduce((a, q) => ({ x: a.x + q.x / envelope.length, y: a.y + q.y / envelope.length }), { x: 0, y: 0 });
+        const cl = toLocal(c);
+        return { kind: "dadu", u: cl.u - MIN_SIDE_FT / 2, v: cl.v - MIN_SIDE_FT / 2, w: MIN_SIDE_FT, d: MIN_SIDE_FT };
       })()
     : null);
   const [units, setUnits] = useState<Unit[]>(initialDadu ? [initialDadu] : []);
@@ -746,6 +768,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
             <path key={`s${i}-${j}`} d={path(p, false)} fill="none" stroke="#CFD9D3" strokeWidth={Math.max(9, sw * 14)} strokeLinecap="round" strokeLinejoin="round" />
           ))
         )}
+        {/* the lot itself, on paper: hides a street centreline or neighbour outline that the city data runs through it */}
+        <path d={path(lotPts)} fill="#FBFBFA" />
         {/* ground contours every 2 ft (index every 10 ft), from lidar elevation */}
         {contours.map((c) => (
           <path
@@ -853,7 +877,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
           <g pointerEvents="none">
             <path d={path(separation)} fill="none" stroke="#B9573F" strokeOpacity="0.7" strokeWidth={sw} strokeDasharray={`${sw * 2} ${sw * 2}`} />
             {(() => {
-              const p0 = L((mainHouse!.u0 + mainHouse!.u1) / 2, mainHouse!.v0 - HOUSE_SEPARATION_FT / 2);
+              // On the rear side of the house, where the DADU goes; the front side carries the front-yard label.
+              const p0 = L((mainHouse!.u0 + mainHouse!.u1) / 2, mainHouse!.v1 + HOUSE_SEPARATION_FT / 2);
               return (
                 <text x={p0.x} y={p0.y} dy={fs * 0.22} textAnchor="middle" stroke="#fff" strokeWidth={sw * 2.5} paintOrder="stroke" style={{ fontSize: fs * 0.5, fontWeight: 700, fill: "#9A4632" }}>
                   {`${HOUSE_SEPARATION_FT}' from house (DADU)`}
@@ -981,7 +1006,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
 
         {/* street names, along the street, nearest the lot; one label per name */}
         {[...new Map(streets.map((s) => [s.name.toUpperCase(), s])).values()]
-          .map((s) => ({ s, at: labelAt(s.paths, { x: cx, y: cy }) }))
+          .map((s) => ({ s, at: labelAt(s.paths, { x: cx, y: cy }, lotPts) }))
           .filter((x): x is { s: (typeof streets)[number]; at: { p: Pt; deg: number } } => !!x.at)
           .sort((a, b) => Math.hypot(a.at.p.x - cx, a.at.p.y - cy) - Math.hypot(b.at.p.x - cx, b.at.p.y - cy))
           .slice(0, 3)
