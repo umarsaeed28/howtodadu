@@ -1,5 +1,6 @@
 "use client";
 
+import { ECONOMICS_LABEL, daduEconomics } from "@/lib/dadu-value";
 import type { ReportListing } from "@/lib/feasibility";
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { ArrowLeft, Download, Heart, Loader2, ExternalLink, ShieldAlert, ShieldCheck, CircleHelp } from "lucide-react";
@@ -144,6 +145,24 @@ function Hero({ report, slim, listing }: { report: FeasibilityReport; slim: Dash
             {sf(s.max_buildable_sf.value)} × {usd(COST_PER_SF)} per sf. {COST_LABEL}.
           </p>
         )}
+        {(() => {
+          const e = daduEconomics(s.max_buildable_sf?.value);
+          if (!e) return null;
+          const pct = Math.round(e.roi * 100);
+          return (
+            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 border-t pt-4 text-sm tabular-nums" style={{ borderColor: "var(--hairline)" }} aria-label="DADU resale and return">
+              <dt style={{ color: "var(--slate)" }}>DADU resale value</dt>
+              <dd className="text-right font-semibold" style={{ color: "var(--ink)" }}>{usd(e.saleValue)} <span className="font-normal" style={{ color: "var(--slate)" }}>({usd(e.salePsf)}/sf)</span></dd>
+              <dt style={{ color: "var(--slate)" }}>All-in cost</dt>
+              <dd className="text-right font-semibold" style={{ color: "var(--ink)" }}>{usd(e.allInCost)} <span className="font-normal" style={{ color: "var(--slate)" }}>(+{usd(e.softCosts)} soft)</span></dd>
+              <dt style={{ color: "var(--slate)" }}>Profit</dt>
+              <dd className="text-right font-semibold" style={{ color: e.profit >= 0 ? "#145A40" : "var(--red)" }}>{e.profit < 0 ? "−" : ""}{usd(Math.abs(e.profit))}</dd>
+              <dt className="font-semibold" style={{ color: "var(--ink)" }}>ROI</dt>
+              <dd className="pa-display text-right text-xl" style={{ color: pct >= 0 ? "#145A40" : "var(--red)" }}>{pct}%</dd>
+              <dd className="col-span-2 text-xs" style={{ color: "var(--slate)" }}>{ECONOMICS_LABEL}</dd>
+            </dl>
+          );
+        })()}
         <Link href={calculatorHref({ sf: s.max_buildable_sf?.value, address: slim.address })} className="pa-btn pa-btn-primary mt-4 w-full no-underline" style={{ minHeight: 44 }}>
           Estimate your return
         </Link>

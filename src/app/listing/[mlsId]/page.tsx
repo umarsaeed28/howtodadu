@@ -22,6 +22,7 @@ import { isPending } from "@/lib/listings/status";
 import DaduSnapshot from "@/components/listing/DaduSnapshot";
 import { siteScoreFor } from "@/lib/server/site-score";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
+import { ECONOMICS_LABEL, daduEconomics } from "@/lib/dadu-value";
 import { GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT, gradeNote } from "@/lib/grade";
 
 export const dynamic = "force-dynamic";
@@ -98,6 +99,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
   const sf = lot?.daduSqft ? Math.round(lot.daduSqft) : 0;
   const fullAddress = l.address;
   const site = siteScoreFor(l, lot, adu);
+  const econ = daduEconomics(lot?.daduSqft);
   // Pending: from our status list (data/listing-status.json) or the source. Null when the listing is active.
   const override = overrideFor(statusOverrides(), l.address, l.zip);
   const pendingNote = override ? override.note : isPending(l.status) ? "" : null;
@@ -248,6 +250,8 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
               <h2 id="inv-h" className="pa-display scroll-mt-[130px] text-xl" style={{ color: "var(--ink)" }}>Investor view</h2>
               <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {([
+                  ["DADU ROI", econ ? `${Math.round(econ.roi * 100)}%` : null, econ ? `${usd(econ.profit)} profit on ${usd(econ.allInCost)} all in` : ""],
+                  ["DADU resale value", econ ? usd(econ.saleValue) : null, econ ? `${econ.sf.toLocaleString()} sf × ${usd(econ.salePsf)} per sf` : ""],
                   ["Price plus DADU", lot?.daduSqft ? usd(basis.allIn) : null, lot?.daduSqft ? `${usd(l.listPrice)} + ${usd(basis.buildCost)} build` : "No DADU size found"],
                   ["Per sf, house plus DADU", basis.allInPerTotalSf ? usd(basis.allInPerTotalSf) : null, basis.pricePerSf ? `${usd(basis.pricePerSf)} for the house alone` : ""],
                   ["Land share of value", basis.landSharePct != null ? `${basis.landSharePct}%` : null, basis.landSharePct != null && basis.landSharePct >= 70 ? "High: the house adds little" : "Of the assessed value"],
@@ -309,7 +313,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
                   ))}
                 </dl>
               ) : <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>The engine found no DADU size for this lot, so there is no build estimate.</p>}
-                <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>{COST_LABEL}. No soft costs, permits, financing or site work. Rent comps, sale comps and past DADU sales need the live listings feed.</p>
+                <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>{COST_LABEL}. {ECONOMICS_LABEL} Rent comps and past DADU sales need the live listings feed.</p>
               </details>
             </section>
 

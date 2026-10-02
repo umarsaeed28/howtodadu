@@ -1,5 +1,6 @@
 import { Check, HelpCircle, X } from "lucide-react";
 import type { SiteScore } from "@/lib/dadu-score";
+import { daduEconomics } from "@/lib/dadu-value";
 
 const GRADE_COLOR = ["#8A8574", "#9A6F12", "#2E7D55", "#145A40"];
 const usd = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
@@ -7,6 +8,7 @@ const usd = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 /** Score ring, the five factors as bars, the three numbers that matter, and the screening gates as pass/check/fail marks. */
 export default function DaduSnapshot({ site, daduSqft, buildCost, layoutLabel }: { site: SiteScore; daduSqft: number; buildCost: number | null; layoutLabel: string | null }) {
   const color = site.eligible ? GRADE_COLOR[site.tier] : "var(--red)";
+  const econ = daduEconomics(daduSqft);
   const r = 34;
   const c = 2 * Math.PI * r;
   const gates = site.gates.filter((g) => g.key !== "zoning" || g.status !== "pass");
@@ -29,7 +31,7 @@ export default function DaduSnapshot({ site, daduSqft, buildCost, layoutLabel }:
         <dl className="grid grid-cols-3 gap-2 text-center">
           {([
             [daduSqft ? `${daduSqft.toLocaleString()} sf` : "n/a", "largest cottage"],
-            [buildCost ? usd(buildCost) : "n/a", "to build, about"],
+            [econ ? `${Math.round(econ.roi * 100)}% ROI` : buildCost ? usd(buildCost) : "n/a", econ ? `${usd(econ.profit)} profit` : "to build, about"],
             [layoutLabel ?? "n/a", "best layout"],
           ] as [string, string][]).map(([v, k]) => (
             <div key={k} className="rounded-xl px-2 py-3" style={{ background: "var(--paper)" }}>
