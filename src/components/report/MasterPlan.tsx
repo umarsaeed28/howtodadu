@@ -704,9 +704,31 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
                 onPointerDown={startGrab(idx, "move")}
                 onDoubleClick={x.plan ? rotatePlan : undefined}
               />
-              <text x={cxu} y={cyu - fs * 0.55} textAnchor="middle" pointerEvents="none" style={{ fontSize: fs * 0.5, fontWeight: 800, fill: "#17241D", letterSpacing: x.plan ? "0.02em" : "0.06em" }}>{x.plan ? x.plan.name.slice(0, 18).toUpperCase() : st.name}</text>
-              <text x={cxu} y={cyu + fs * 0.2} textAnchor="middle" pointerEvents="none" style={{ fontSize: fs * 0.66, fontWeight: 800, fill: "#17241D" }}>{`${Math.round(x.w)}' × ${Math.round(x.d)}'`}</text>
-              <text x={cxu} y={cyu + fs * 0.92} textAnchor="middle" pointerEvents="none" style={{ fontSize: fs * 0.56, fontWeight: 600, fill: "#17241D" }}>{`${c.footprint.toLocaleString("en-US")} sf`}</text>
+              {(() => {
+                // Fit the label inside the footprint: measure the chords through its centre, turn the text to run
+                // along the long side when the box is tall and narrow, and shrink it (or drop the name) to fit.
+                const th = (((x.angle ?? 0) + (swap ? 90 : 0)) * Math.PI) / 180;
+                const cs = Math.abs(Math.cos(th)), sn = Math.abs(Math.sin(th));
+                const across = Math.min(cs > 1e-6 ? x.w / cs : Infinity, sn > 1e-6 ? x.d / sn : Infinity);
+                const down = Math.min(sn > 1e-6 ? x.w / sn : Infinity, cs > 1e-6 ? x.d / cs : Infinity);
+                const vertical = down > across * 1.3;
+                const runW = (vertical ? down : across) * 0.84, runH = (vertical ? across : down) * 0.84;
+                const name = x.plan ? x.plan.name.toUpperCase() : st.name;
+                const dimsText = `${Math.round(x.w)}' × ${Math.round(x.d)}'`;
+                const areaText = `${c.footprint.toLocaleString("en-US")} sf`;
+                const need = Math.max(name.length * 0.5 * 0.7, dimsText.length * 0.66 * 0.58, areaText.length * 0.56 * 0.56) * fs;
+                let k = Math.min(1, runW / need, runH / (fs * 2.3));
+                const showName = k >= 0.55 || runH >= fs * 1.6;
+                if (!showName) k = Math.min(1, runW / (dimsText.length * 0.66 * 0.58 * fs), runH / (fs * 1.6));
+                const f = fs * Math.max(0.35, k);
+                return (
+                  <g pointerEvents="none" transform={vertical ? `rotate(-90 ${cxu} ${cyu})` : undefined} style={{ fill: "#17241D" }}>
+                    {showName && <text x={cxu} y={cyu - f * 0.55} textAnchor="middle" style={{ fontSize: f * 0.5, fontWeight: 800, letterSpacing: x.plan ? "0.02em" : "0.06em" }}>{name}</text>}
+                    <text x={cxu} y={cyu + (showName ? f * 0.2 : f * 0.1)} textAnchor="middle" style={{ fontSize: f * 0.66, fontWeight: 800 }}>{dimsText}</text>
+                    <text x={cxu} y={cyu + (showName ? f * 0.92 : f * 0.82)} textAnchor="middle" style={{ fontSize: f * 0.56, fontWeight: 600 }}>{areaText}</text>
+                  </g>
+                );
+              })()}
               {on && x.plan && (() => {
                 // A small handle on a stem, out past the street-side edge. Drag it round to turn the footprint freely.
                 const ang = ((x.angle ?? 0) * Math.PI) / 180, ca = Math.cos(ang), sa = Math.sin(ang);
@@ -854,7 +876,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
       )}
       </div>
 
-      <div className="min-w-0 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
+      <div className="min-w-0 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto xl:overscroll-contain xl:pr-3">
       {units.length > 0 && (
         <div className="mt-3 flex flex-col gap-2 xl:mt-0" aria-live="polite">
           {units.map((x, idx) => {

@@ -12,7 +12,7 @@ function Silhouette({ plan, on }: { plan: PreApprovedPlan; on: boolean }) {
   const w = (plan.widthFt / SCALE_FT) * 100;
   const d = (plan.depthFt / SCALE_FT) * 100;
   return (
-    <svg viewBox="0 0 100 100" className="h-14 w-full" aria-hidden preserveAspectRatio="xMidYMid meet">
+    <svg viewBox="0 0 100 100" className="h-full w-full" aria-hidden preserveAspectRatio="xMidYMid meet">
       <rect x={(100 - w) / 2} y={(100 - d) / 2} width={w} height={d} rx="2" fill={on ? "#E6C97E" : "#EADFC0"} stroke="#17241D" strokeWidth="2.2" vectorEffect="non-scaling-stroke" />
       {plan.stories === 2 && <line x1={(100 - w) / 2} y1={50} x2={(100 + w) / 2} y2={50} stroke="#17241D" strokeOpacity="0.35" strokeWidth="1.5" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" />}
     </svg>
@@ -24,18 +24,22 @@ const fmt = (n: number) => (Math.abs(n - Math.round(n)) < 0.05 ? String(Math.rou
 
 /** The list of designs. Selecting one swaps the resizable box for that design's real footprint. */
 export function PlanPicker({ plans, fit, activeId, onPick }: { plans: PreApprovedPlan[]; fit: (p: PreApprovedPlan) => PlanFit; activeId: string | null; onPick: (p: PreApprovedPlan | null) => void }) {
-  // One card per design. Designs with a size that fits this lot come first; catalogue order is kept inside each group.
+  // One row per design. Designs with a size that fits this lot come first; catalogue order is kept inside each group.
   const families = planFamilies(plans);
   const bestOf = (vs: PreApprovedPlan[]) => vs.find((v) => fit(v).fits) ?? vs[0];
   const ordered = [...families].sort((a, b) => Number(fit(bestOf(b)).fits) - Number(fit(bestOf(a)).fits));
   const activeFamily = plans.find((p) => p.id === activeId)?.family ?? null;
+  const fitting = families.filter((vs) => vs.some((v) => fit(v).fits)).length;
   return (
-    <section aria-labelledby="pp-h" className="mt-4">
-      <h4 id="pp-h" className="pa-display text-base" style={{ color: "var(--ink)" }}>Start from a pre-approved design</h4>
+    <section aria-labelledby="pp-h" className="mt-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <h4 id="pp-h" className="pa-display text-base" style={{ color: "var(--ink)" }}>Pre-approved designs</h4>
+        <span className="shrink-0 text-xs tabular-nums" style={{ color: "var(--slate)" }}>{fitting} of {families.length} fit this lot</span>
+      </div>
       <p className="mt-0.5 text-xs" style={{ color: "var(--slate)" }}>
-        The {families.length} designs the City of Seattle has pre-approved. Pick one to drop its real footprint on the lot, then drag it where you want it.
+        Approved by the City of Seattle. Pick one to place its real footprint, then drag and turn it on the plan.
       </p>
-      <div role="radiogroup" aria-labelledby="pp-h" className="pp-row -mx-1 mt-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-2">
+      <ul role="radiogroup" aria-labelledby="pp-h" className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1">
         {ordered.map((vs) => {
           const lead = vs.find((v) => v.id === activeId) ?? bestOf(vs);
           const f = fit(lead);
@@ -43,53 +47,66 @@ export function PlanPicker({ plans, fit, activeId, onPick }: { plans: PreApprove
           const multi = vs.length > 1;
           const lo = Math.min(...vs.map((v) => v.sqft)), hi = Math.max(...vs.map((v) => v.sqft));
           const title = multi ? lead.name.replace(/\s+(Studio|\d Bed|Two Story)$/, "").replace(/, \d bed$/, "") : lead.name;
+          const area = multi && lo !== hi ? `${lo.toLocaleString("en-US")}–${hi.toLocaleString("en-US")} sf` : `${lead.sqft.toLocaleString("en-US")} sf`;
+          const beds = multi ? `${vs.length} sizes` : lead.beds === "Studio" ? "Studio" : `${lead.beds} bed`;
           return (
-            <div key={lead.family} className="relative w-[184px] shrink-0 snap-start">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => onPick(on ? null : lead)}
-              className="pp-card relative flex h-full w-full flex-col rounded-xl p-2.5 text-left"
-              data-on={on || undefined}
-              style={{ background: "var(--card, #fff)", boxShadow: on ? "0 0 0 2px #145A40, 0 6px 16px -8px rgba(23,36,29,.35)" : "0 1px 2px rgba(23,36,29,.08), 0 4px 14px -6px rgba(23,36,29,.18)", opacity: f.fits || on ? 1 : 0.82 }}
-            >
-              {on && (
-                <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-full" style={{ background: "#145A40", color: "#fff" }} aria-hidden>
-                  <Check size={12} strokeWidth={3} />
-                </span>
-              )}
-              <span className="pa-inset block rounded-lg px-2 py-1.5"><Silhouette plan={lead} on={on} /></span>
-              <span className="mt-2 block text-sm font-semibold leading-tight" style={{ color: "var(--ink)" }}>{title}</span>
-              <span className="block text-[11px]" style={{ color: "var(--slate)" }}>{lead.designer}</span>
-              <span className="mt-1.5 block text-xs tabular-nums" style={{ color: "var(--ink)" }}>
-                <strong>{multi && lo !== hi ? `${lo.toLocaleString("en-US")}-${hi.toLocaleString("en-US")}` : lead.sqft.toLocaleString("en-US")} sf</strong> · {multi ? `${vs.length} sizes` : lead.beds === "Studio" ? "Studio" : `${lead.beds} bed`}
-              </span>
-              <span className="block text-xs tabular-nums" style={{ color: "var(--slate)" }}>
-                {multi ? "Pick a size after placing" : `${lead.approx ? "about " : ""}${dims(lead)}${lead.stories === 2 ? " · 2 floors" : ""}`}
-              </span>
-              <span
-                className="mt-2 inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
-                style={f.fits ? { background: "var(--green-tint)", color: "var(--green)" } : { background: "var(--amber-tint)", color: "var(--amber)" }}
+            <li key={lead.family} className="relative">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => onPick(on ? null : lead)}
+                className="pp-row flex w-full items-center gap-3 rounded-xl py-2 pl-2 pr-11 text-left transition-shadow"
+                style={{
+                  background: on ? "var(--green-tint)" : "var(--card, #fff)",
+                  boxShadow: on ? "inset 0 0 0 1.5px #145A40" : "0 1px 2px rgba(23,36,29,.08), 0 3px 10px -6px rgba(23,36,29,.2)",
+                  opacity: f.fits || on ? 1 : 0.7,
+                }}
               >
-                {f.fits ? "Fits this lot" : f.reason ?? "Does not fit"}
-              </span>
-            </button>
+                <span className="pa-inset relative flex h-12 w-12 shrink-0 items-center justify-center rounded-lg p-1">
+                  <Silhouette plan={lead} on={on} />
+                  {on && (
+                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full" style={{ background: "#145A40", color: "#fff" }} aria-hidden>
+                      <Check size={10} strokeWidth={3.5} />
+                    </span>
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-baseline gap-1.5">
+                    <span className="truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{title}</span>
+                    <span className="truncate text-[11px]" style={{ color: "var(--slate)" }}>{lead.designer}</span>
+                  </span>
+                  <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs tabular-nums" style={{ color: "var(--slate)" }}>
+                    <span style={{ color: "var(--ink)" }}>{area}</span>
+                    <span aria-hidden>·</span>
+                    <span>{beds}</span>
+                    {!multi && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span>{lead.approx ? "~" : ""}{dims(lead)}{lead.stories === 2 ? ", 2 fl" : ""}</span>
+                      </>
+                    )}
+                    {!f.fits && (
+                      <span className="rounded px-1 py-px text-[10px] font-semibold" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>{f.reason ?? "Does not fit"}</span>
+                    )}
+                  </span>
+                </span>
+              </button>
               <a
                 href={lead.pdfUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 title={`Open the ${lead.designer} plan set (PDF)`}
                 aria-label={`Open the plan set for ${title} (PDF, new tab)`}
-                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full"
-                style={{ background: "var(--card, #fff)", color: "var(--green)", boxShadow: "0 1px 3px rgba(23,36,29,.25)" }}
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg"
+                style={{ color: "var(--green)" }}
               >
-                <ExternalLink size={12} aria-hidden />
+                <ExternalLink size={14} aria-hidden />
               </a>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   );
 }
