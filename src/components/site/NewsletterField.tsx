@@ -16,7 +16,7 @@ export default function NewsletterField() {
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, kind: "newsletter", source: window.location.pathname }),
       });
       setState(res.ok ? "ok" : "error");
     } catch {

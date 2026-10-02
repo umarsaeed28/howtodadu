@@ -15,12 +15,13 @@ export default function ContactForm() {
     const form = e.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
     try {
-      // TODO: wire to email or CRM. Reuse /api/subscribe to capture the email for now.
-      await fetch("/api/subscribe", {
+      // Saved as a contact sign-up (name, email and message) in Supabase.
+      const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.email }),
+        body: JSON.stringify({ kind: "contact", email: data.email, name: data.name, message: data.message, source: window.location.pathname }),
       });
+      if (!res.ok) throw new Error(String(res.status));
       setState("ok");
       form.reset();
     } catch {
