@@ -1,6 +1,19 @@
 {
   "_about": "Listings we know are not active, whatever the feed says. Matched by street address (any case). status: pending | contingent. Shown with a Pending tag; users can hide them. Remove an entry when it is no longer true.",
   "entries": [
-    { "address": "610 N 125th St", "zip": "98133", "status": "pending", "note": "Pending on Redfin; DealMachine still reports Active.", "marked": "2026-10-02" }
+    {
+      "address": "610 N 125th St",
+      "zip": "98133",
+      "status": "pending",
+      "note": "Pending on Redfin; DealMachine still reports Active.",
+      "marked": "2026-10-02"
+    },
+    {
+      "address": "3504 NE 93rd St",
+      "zip": "98115",
+      "status": "pending",
+      "note": "Pending on Redfin; DealMachine still reports Active.",
+      "marked": "2026-10-02"
+    }
   ]
 }
