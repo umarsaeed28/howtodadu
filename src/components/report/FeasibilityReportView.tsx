@@ -52,6 +52,9 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   const s = report.summary;
   // How much work the existing house needs: its cost per sf of house joins the all-in cost and the return.
   const [rehab, setRehab] = useState<RehabLevel>("none");
+  // Your estimate of the front house's after-repair value. Empty means break-even: what it costs plus the rehab.
+  const [houseArvText, setHouseArvText] = useState("");
+  const houseArvInput = Number(houseArvText.replace(/[^0-9.]/g, "")) || null;
   // The cottage the estimate is for: the one drawn on the plan when there is one, else the largest the lot allows.
   const estSf = drawnSf ?? s.max_buildable_sf?.value ?? null;
   const estCost = estSf ? constructionEstimate(estSf) : null;
@@ -93,7 +96,9 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   }
   // Total ARV: the house at break-even (what it cost plus any rehab) plus the DADU's resale value. Its own block, beside
   // the headline, not a tile.
-  const arv = listing && e ? { total: listing.price + e.rehabCost + e.saleValue, house: listing.price + e.rehabCost } : null;
+  const breakEven = listing && e ? listing.price + e.rehabCost : null;
+  const houseArv = houseArvInput ?? breakEven;
+  const arv = listing && e && houseArv != null ? { total: houseArv + e.saleValue, house: houseArv, own: houseArvInput != null } : null;
 
   return (
     <section aria-labelledby="rep-sum" id="rep-overview" className="mb-6 scroll-mt-[190px]">
@@ -124,14 +129,37 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
           <p className="text-sm font-semibold" style={{ color: "var(--slate)" }}>Total ARV</p>
           <p className="pa-display leading-none tabular-nums" style={{ color: "var(--ink)", fontSize: "clamp(32px, 4.5vw, 44px)" }}>{usd(arv.total)}</p>
           <p className="mt-1.5 text-xs tabular-nums" style={{ color: "var(--slate)" }}>
-            House {usd(arv.house)} at break-even{e!.rehabCost > 0 ? ` (${REHAB_LABELS[e!.rehab].toLowerCase()} ${usd(e!.rehabCost)})` : ""}
+            House {usd(arv.house)}{arv.own ? " (your ARV)" : ` at break-even${e!.rehabCost > 0 ? ` (${REHAB_LABELS[e!.rehab].toLowerCase()} ${usd(e!.rehabCost)})` : ""}`}
             <br />+ DADU resale {usd(e!.saleValue)}
           </p>
         </div>
       )}
       </div>
 
-      <div className="mt-4"><RehabPicker value={rehab} onChange={setRehab} houseSqft={houseSqft} /></div>
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <RehabPicker value={rehab} onChange={setRehab} houseSqft={houseSqft} />
+        {listing && (
+          <label className="flex items-center gap-2 text-xs font-semibold" style={{ color: "var(--ink)" }}>
+            Front house ARV
+            <span className="pa-inset flex items-center gap-1 px-2.5" style={{ minHeight: 32 }}>
+              <span style={{ color: "var(--slate)" }}>$</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={houseArvText}
+                onChange={(ev) => setHouseArvText(ev.target.value)}
+                placeholder={breakEven != null ? Math.round(breakEven).toLocaleString("en-US") : ""}
+                className="w-28 bg-transparent text-sm font-semibold tabular-nums outline-none"
+                style={{ color: "var(--ink)", boxShadow: "none" }}
+                aria-label="Front house after-repair value, dollars. Leave empty for break-even."
+              />
+            </span>
+            {houseArvInput != null && (
+              <button type="button" className="text-xs font-semibold" style={{ color: "var(--green)" }} onClick={() => setHouseArvText("")}>Reset</button>
+            )}
+          </label>
+        )}
+      </div>
       <dl className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5" aria-label="Price, cost and return">
         {tiles.map((t) => (
           <div key={t.label} className="pa-raised min-w-0 p-3 sm:p-4">
@@ -299,7 +327,7 @@ export default function FeasibilityReportView({
             {slim.zoning ? `, zoned ${slim.zoning}` : ""}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2 pt-1">
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           <a href={zillowUrl(slim.address)} target="_blank" rel="noopener noreferrer" className="pa-btn pa-btn-sm no-underline">
             Zillow
             <ExternalLink size={14} aria-hidden />
