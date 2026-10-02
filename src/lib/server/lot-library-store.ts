@@ -52,7 +52,7 @@ export function getSlimLots(zips: string[] | null): { generatedAt: string; zips:
   const want = zips && zips.length ? new Set(zips) : null;
   const out: SlimLots = { count: 0, pin: [], lat: [], lng: [], score: [], tier: [], flags: [], zip: [] };
   for (let i = 0; i < l.file.count; i++) {
-    if (c.score[i] < MIN_SHOWN_SCORE) continue; // only lots that score 75 or more are shown
+    if (c.score[i] < MIN_SHOWN_SCORE) continue; // only lots at or above the shown-score floor
     if (want && !(c.zip[i] && want.has(c.zip[i]!))) continue;
     out.pin.push(c.pin[i]);
     out.lat.push(c.lat[i]);

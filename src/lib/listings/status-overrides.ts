@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { streetKey } from "./verify-active";
+import { streetKey } from "./address-key";
 
 /**
  * Statuses we know better than the feed (data/listing-status.json): a home seen pending on Redfin while DealMachine

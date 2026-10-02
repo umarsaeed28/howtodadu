@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Heart, Menu, X } from "lucide-react";
+import { useSavedListings } from "@/hooks/useSavedListings";
 
 const NAV = [
   { href: "/", label: "Map" },
@@ -39,6 +40,8 @@ function Brand({ onClick }: { onClick?: () => void }) {
 export default function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { saved } = useSavedListings();
+  const nav = [...NAV, { href: "/saved", label: saved.length ? `Saved (${saved.length})` : "Saved", icon: true }];
 
   const solid = true;
 
@@ -48,13 +51,14 @@ export default function Header() {
         <Brand />
 
         <nav className="site-nav" aria-label="Primary">
-          {NAV.map((l) => (
+          {nav.map((l) => (
             <Link
               key={l.href}
               href={l.href}
               className="site-nav-link"
               data-active={isActive(pathname, l.href)}
             >
+              {"icon" in l && l.icon && <Heart size={13} aria-hidden className="mr-1 inline" fill={saved.length ? "#C2412D" : "none"} color={saved.length ? "#C2412D" : "currentColor"} />}
               {l.label}
             </Link>
           ))}
@@ -91,7 +95,7 @@ export default function Header() {
             </button>
           </div>
           <nav style={{ display: "flex", flexDirection: "column", marginTop: 8 }} aria-label="Mobile">
-            {NAV.map((l) => (
+            {nav.map((l) => (
               <Link key={l.href} href={l.href} className="site-sheet-link" onClick={() => setOpen(false)}>
                 {l.label}
               </Link>

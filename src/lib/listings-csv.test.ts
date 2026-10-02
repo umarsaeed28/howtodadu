@@ -4,7 +4,7 @@ import type { MapListing } from "@/app/api/map-listings/route";
 
 const row = (o: Partial<MapListing> = {}): MapListing => ({
   mlsId: "1", address: '12 "Main" St, Seattle', lat: 47.6, lng: -122.3, price: 900000, lotSqft: 5000, status: "Active", photo: null,
-  pin: "123", score: 95, tier: 3, corner: true, alley: false, beds: 3, baths: null, sqft: 1500, daduSqft: 800, zip: "98103", daysOnMarket: 4, listingUrl: null, pending: false, pendingNote: null, statusVerified: true, test: false, ...o,
+  pin: "123", score: 95, tier: 3, corner: true, alley: false, beds: 3, baths: null, sqft: 1500, daduSqft: 800, zip: "98103", daysOnMarket: 4, listingUrl: null, pending: false, pendingNote: null, test: false, ...o,
 });
 
 describe("listingsToCsv", () => {

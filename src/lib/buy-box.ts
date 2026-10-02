@@ -3,7 +3,7 @@ import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
 /**
  * The buy box: what the app shows, on market and off. Seattle single-family lots, zoned NR (NR, NR2, NR3; NR1 is out),
  * one unit on the lot (no existing ADU), lot of 3,800 sf or more, under 25% of the lot built on, and a DADU site score of
- * 75 or more. One place, so the map, the off-market dots and the listings feed never disagree.
+ * 65 or more. One place, so the map, the off-market dots and the listings feed never disagree.
  */
 export const BUY_BOX = { minLotSqft: 3800, maxCoveragePct: 25, zones: ["NR", "NR2", "NR3"] } as const;
 

@@ -19,8 +19,8 @@ describe("buy box", () => {
     for (const z of ["NR1", "LR1", "SF 5000", null]) expect(inBuyBox({ ...ok, zoning: z })).toBe(false);
   });
   it("one unit only: an existing ADU puts it out", () => expect(buyBoxMiss({ ...ok, existingAdus: 1 })).toMatch(/unit/));
-  it("score 75 is in, 74 is out", () => {
-    expect(inBuyBox({ ...ok, score: 75 })).toBe(true);
-    expect(buyBoxMiss({ ...ok, score: 74 })).toMatch(/score/);
+  it("score 65 is in, 64 is out", () => {
+    expect(inBuyBox({ ...ok, score: 65 })).toBe(true);
+    expect(buyBoxMiss({ ...ok, score: 64 })).toMatch(/score/);
   });
 });

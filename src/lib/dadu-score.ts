@@ -34,7 +34,7 @@ export const GRADE_BANDS = [
 export type Tier = 3 | 2 | 1 | 0;
 
 /** Lots and listings scoring under this are not shown anywhere in the app (map, list, listing pages). */
-export const MIN_SHOWN_SCORE = 75;
+export const MIN_SHOWN_SCORE = 65;
 
 export function gradeOf(score: number): { tier: Tier; label: string } {
   const b = GRADE_BANDS.find((g) => score >= g.min) ?? GRADE_BANDS[3];

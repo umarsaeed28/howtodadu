@@ -104,7 +104,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
   const widthFt = lot?.lotWidth ?? adu?.raw.lotWidth ?? null;
   const depthFt = lot?.lotDepth ?? adu?.raw.lotDepth ?? null;
 
-  // Pencil only shows homes that score 75 or more. An old link to a lower one gets a short note, not the full page.
+  // Pencil only shows homes at or above MIN_SHOWN_SCORE. An old link to a lower one gets a short note, not the full page.
   const shownScore = site?.eligible ? site.score : 0;
   if (shownScore < MIN_SHOWN_SCORE) {
     return (

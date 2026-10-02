@@ -26,8 +26,8 @@ const DADU_COLOR = "#145A40";
 export const TIERS = [
   { id: 3, label: "Top pick", note: "Scores 93 and up: alley or corner access, a layout that fits, a full-size DADU", color: "#145A40" },
   { id: 2, label: "Good", note: "Scores 82 to 92", color: "#6CB98A" },
-  { id: 1, label: "Fair", note: "Scores 75 to 81: tight access, a narrow lot or a smaller DADU", color: "#D9A441" },
-  { id: 0, label: "Marginal", note: "Scores under 70: a DADU fits, but the site is hard", color: "#B8B2A4" },
+  { id: 1, label: "Fair", note: "Scores 70 to 81: tight access, a narrow lot or a smaller DADU", color: "#D9A441" },
+  { id: 0, label: "Marginal", note: "Scores 65 to 69: a DADU fits, but the site is hard", color: "#B8B2A4" },
 ] as const;
 const tierOf = (t: number) => TIERS.find((x) => x.id === t) ?? TIERS[3];
 
@@ -466,9 +466,6 @@ export default function CandidateMap() {
               <div className="px-4 pb-1 pt-4 sm:px-5">
                 <h1 className="pa-display text-xl" style={{ color: "var(--ink)" }}>Seattle homes that can have a DADU</h1>
                 <div className="mt-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                  {loaded?.connected && !isTest && listings.length > 0 && !listings[0].statusVerified && (
-                    <p className="w-full text-xs" style={{ color: "var(--slate)" }}>Listing statuses come from DealMachine and are not yet checked against the MLS. Some homes shown as active may be pending.</p>
-                  )}
                   <p className="text-sm tabular-nums" style={{ color: "var(--slate)" }} aria-live="polite">{savedOnly ? `${saved.length} saved ${saved.length === 1 ? "home" : "homes"}${saved.some((x) => x.market === "off") ? ` (${saved.filter((x) => x.market === "off").length} off market)` : ""}` : resultLine}</p>
                   <button type="button" onClick={() => setSavedOnly((v) => !v)} aria-pressed={savedOnly} className="pa-btn pa-btn-sm" style={savedOnly ? { background: "#FBE9E5", borderColor: "#E7B3A8", color: "#9C2F1F" } : undefined}>
                     <Heart size={13} aria-hidden fill={saved.length ? "#C2412D" : "none"} color={saved.length ? "#C2412D" : "currentColor"} /> Saved ({saved.length})
@@ -482,7 +479,7 @@ export default function CandidateMap() {
                   </label>
                 </div>
                 <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--slate)" }} aria-label="Grade key">
-                  {TIERS.filter((t) => t.id > 0).map((t) => (
+                  {TIERS.map((t) => (
                     <li key={t.id} className="flex items-center gap-1.5" title={t.note}><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: t.color }} />{t.label}</li>
                   ))}
                 </ul>
@@ -573,10 +570,6 @@ function ListingCard({ l, onSelect }: { l: MapListing; onSelect: () => void }) {
             <span className="absolute bottom-2.5 left-2.5 rounded-lg px-2 py-1 text-[11px] font-bold" style={{ background: "#FFF4D6", color: "#7A5A12" }} title={l.pendingNote ?? undefined}>
               Pending
             </span>
-          ) : !l.statusVerified && !l.test ? (
-            <span className="absolute bottom-2.5 left-2.5 rounded-lg px-2 py-1 text-[11px] font-semibold" style={{ background: "rgba(255,255,255,.92)", color: "#5B6560" }} title="The listing source's status has not been checked against the MLS. It may already be pending.">
-              Status not verified
-            </span>
           ) : null}
           <span className="pa-display absolute right-2.5 top-2.5 flex h-9 w-9 items-center justify-center rounded-full text-sm tabular-nums text-white" style={{ background: t.color, boxShadow: "0 0 0 2px #fff" }} aria-hidden>{l.score}</span>
         </span>
@@ -629,7 +622,6 @@ function LotPanel({ pin, lot, error, listing, onBack }: { pin: string | null; lo
             {listing?.test && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>Sample data</span>}
             {!listing && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(23,36,29,.08)", color: "var(--ink)" }}>Off market</span>}
             {listing?.pending && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "#FFF4D6", color: "#7A5A12" }} title={listing.pendingNote ?? undefined}>Pending</span>}
-            {listing && !listing.pending && !listing.statusVerified && !listing.test && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(23,36,29,.06)", color: "var(--slate)" }} title="Not yet checked against the MLS; it may already be pending.">Status not verified</span>}
             <span className="ml-auto">
               <SaveButton
                 item={
