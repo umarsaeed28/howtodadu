@@ -91,17 +91,14 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
     tiles.push({ label: "Profit", value: money(e.profit), note: e.rehabCost > 0 ? `after ${usd(e.softCosts)} soft costs and rehab` : `after ${usd(e.softCosts)} soft costs`, tone: e.profit >= 0 ? "green" : "red" });
     tiles.push({ label: "ROI", value: `${roiPct}%`, note: "profit over all-in cost", tone: (roiPct ?? 0) >= 0 ? "green" : "red" });
   }
-  // With a rehab picked, the house is assumed to break even (worth what it cost plus the work), so the total ARV is
-  // that plus the DADU's resale value. Without one, the plain price-plus-build figure.
-  if (listing && estCost)
-    tiles.push(
-      e && e.rehabCost > 0
-        ? { label: "Total ARV", value: usd(listing.price + e.rehabCost + e.saleValue), note: `house ${usd(listing.price + e.rehabCost)} at break-even (${REHAB_LABELS[e.rehab].toLowerCase()} ${usd(e.rehabCost)}) + DADU ${usd(e.saleValue)}` }
-        : { label: "Price plus DADU build", value: usd(listing.price + estCost), note: "home and cottage together" }
-    );
+  // Total ARV: the house at break-even (what it cost plus any rehab) plus the DADU's resale value. Its own block, beside
+  // the headline, not a tile.
+  const arv = listing && e ? { total: listing.price + e.rehabCost + e.saleValue, house: listing.price + e.rehabCost } : null;
 
   return (
     <section aria-labelledby="rep-sum" id="rep-overview" className="mb-6 scroll-mt-[190px]">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+      <div className="min-w-0">
       <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
         <p className="pa-display leading-none tabular-nums" style={{ color: "var(--ink)", fontSize: "clamp(44px, 7vw, 64px)" }} aria-label={`DADU score ${score} out of 100`}>
           {score}
@@ -121,9 +118,21 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
         {s.verdict === "Feasible" ? "This lot can take a backyard cottage." : s.verdict === "Conditional" ? "A backyard cottage could work here, with conditions." : "A backyard cottage will not work on this lot as it stands."}
       </h2>
       <p className="mt-1 max-w-3xl text-base leading-relaxed" style={{ color: "var(--slate)" }}>{s.headline} {slim.neighborhood ? `${slim.neighborhood}. ` : ""}This is the site and code check.</p>
+      </div>
+      {arv && (
+        <div className="shrink-0 md:pl-6 md:text-right" aria-label="Total after-repair value">
+          <p className="text-sm font-semibold" style={{ color: "var(--slate)" }}>Total ARV</p>
+          <p className="pa-display leading-none tabular-nums" style={{ color: "var(--ink)", fontSize: "clamp(32px, 4.5vw, 44px)" }}>{usd(arv.total)}</p>
+          <p className="mt-1.5 text-xs tabular-nums" style={{ color: "var(--slate)" }}>
+            House {usd(arv.house)} at break-even{e!.rehabCost > 0 ? ` (${REHAB_LABELS[e!.rehab].toLowerCase()} ${usd(e!.rehabCost)})` : ""}
+            <br />+ DADU resale {usd(e!.saleValue)}
+          </p>
+        </div>
+      )}
+      </div>
 
       <div className="mt-4"><RehabPicker value={rehab} onChange={setRehab} houseSqft={houseSqft} /></div>
-      <dl className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6" aria-label="Price, cost and return">
+      <dl className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5" aria-label="Price, cost and return">
         {tiles.map((t) => (
           <div key={t.label} className="pa-raised min-w-0 p-3 sm:p-4">
             <dt className="text-xs" style={{ color: "var(--slate)" }}>{t.label}</dt>
