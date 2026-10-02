@@ -20,6 +20,11 @@ RLS is on for every table with no policies: the publishable key can read or writ
 Not stored here on purpose: the lot library and alleys (bundled JSON, rebuilt by scripts) and favorites / recent
 addresses (in the browser until there are user accounts).
 
+## Connected to this repo
+With the Supabase GitHub integration on this repo (working directory `supabase`, production branch `main`), every
+migration in `supabase/migrations/` is applied to the project when it is merged to `main`. Only add migrations there
+that should run in production. `config.toml` is the CLI project config (`supabase link --project-ref afinrgvsfepcedmzhmrp`).
+
 ## Superseded
-`0001`-`0004` (GIS tables, a voyage-law-2 `chunks` store, `report_cache`, `config`, `rules`) are not applied and no code
+`superseded/0001`-`0004` (GIS tables, a voyage-law-2 `chunks` store, `report_cache`, `config`, `rules`) are not applied and no code
 uses them. The knowledge base is the Pencil API's Jina store in `0005`. Kept for reference only.
