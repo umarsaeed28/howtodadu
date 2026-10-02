@@ -15,10 +15,10 @@ Zoning outside single-family Neighborhood Residential is not covered by the guid
 
 ## Factors and weights
 - Vehicle access, weight 30. Alley access is best; a corner lot is next. With no alley, the app measures the room the house leaves beside it: 12 ft or more fits a driveway, 10 to 12 ft is tight, 8 to 10 ft must be confirmed on site because the roofline overstates the house, and under 8 ft is excluded. When the room is not measured, it falls back to lot width (45 ft or wider can take a side driveway, 40 to 44 ft is very tight) and the lot cannot be a top pick until someone confirms a driveway fits.
-- Layout fit, weight 25. Side by side on lots 50 ft or wider is best; staggered on deep lots at least 45 ft wide is next; single rear DADU on 40 to 49 ft lots; deep narrow lots risk a straight stack.
-- DADU size, weight 20. Scales from 300 sq ft up to 1,000 sq ft, the size the engine currently allows.
+- Layout fit, weight 20. Side by side on lots 50 ft or wider is best; staggered on deep lots at least 45 ft wide is next; single rear DADU on 40 to 49 ft lots; deep narrow lots risk a straight stack.
+- DADU size, weight 15. Scales from 300 sq ft up to 1,000 sq ft, the size the engine currently allows.
 - Slope and critical areas, weight 15. Steep slope lowers the score, and each critical-area flag (wetland, riparian corridor, landslide, flood-prone, peat, landfill) lowers it further.
-- Tree canopy, weight 10. Up to 25% canopy is light; 25 to 50% may limit placement; over 50% is heavy.
+- Tree canopy, weight 20. Trees weigh heavily because Seattle's tree protection can shrink, move or rule out a DADU. Up to 10% canopy is open; 10 to 20% is light; 20 to 30% is moderate; 30 to 40% means an arborist report and placement limits; over 40% is heavy. Canopy over 40% also means the lot cannot be a top pick, and over 60% it is Fair at best.
 
 ## Grades
 - Top pick: 93 and up. An interior lot tops out near 92, so a top pick in practice has alley or corner access.

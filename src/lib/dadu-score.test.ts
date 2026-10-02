@@ -70,9 +70,20 @@ describe("factors follow the team guide", () => {
     expect(f(scoreSite({ ...base, steepPct: 0.3, ecaFlags: ["peat", "flood-prone"] }), "site")).toBe(0);
   });
   it("tree canopy bands", () => {
-    expect(f(scoreSite({ ...base, canopyPct: 20 }), "trees")).toBe(100);
-    expect(f(scoreSite({ ...base, canopyPct: 40 }), "trees")).toBe(60);
-    expect(f(scoreSite({ ...base, canopyPct: 0.7 }), "trees")).toBe(25);
+    expect(f(scoreSite({ ...base, canopyPct: 8 }), "trees")).toBe(100);
+    expect(f(scoreSite({ ...base, canopyPct: 20 }), "trees")).toBe(85);
+    expect(f(scoreSite({ ...base, canopyPct: 30 }), "trees")).toBe(65);
+    expect(f(scoreSite({ ...base, canopyPct: 40 }), "trees")).toBe(45);
+    expect(f(scoreSite({ ...base, canopyPct: 50 }), "trees")).toBe(30);
+    expect(f(scoreSite({ ...base, canopyPct: 0.6 }), "trees")).toBe(15);
+    expect(f(scoreSite({ ...base, canopyPct: 0.7 }), "trees")).toBe(0);
+  });
+  it("heavy canopy caps the grade", () => {
+    const best = { ...base, alley: true, widthFt: 60, depthFt: 140, daduSqft: 1000, steepPct: 0 };
+    expect(scoreSite({ ...best, canopyPct: 5 }).grade).toBe("Top pick");
+    expect(scoreSite({ ...best, canopyPct: 45 }).score).toBeLessThanOrEqual(92);
+    expect(scoreSite({ ...best, canopyPct: 65 }).score).toBeLessThanOrEqual(81);
+    expect(scoreSite({ ...best, canopyPct: 45 }).score).toBeLessThan(scoreSite({ ...best, canopyPct: 15 }).score - 10);
   });
   it("2722 NE Blakeley St (40 x 139 ft, no alley, 880 sf DADU, flat) lands in the high 60s, not 84", () => {
     const s = scoreSite({ ...base, widthFt: 40, depthFt: 139, daduSqft: 880, canopyPct: 0.2 });

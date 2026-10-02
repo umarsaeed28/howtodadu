@@ -11,7 +11,7 @@ import { MIN_LOT_SQFT, planSite, type Layout } from "@/lib/dadu-site-plan";
 export const MIN_DADU_SQFT = 300;
 const FULL_DADU_SQFT = 1000;
 
-export const WEIGHTS = { access: 30, layout: 25, size: 20, site: 15, trees: 10 } as const;
+export const WEIGHTS = { access: 30, layout: 20, size: 15, site: 15, trees: 20 } as const;
 export type FactorKey = keyof typeof WEIGHTS;
 
 export const FACTOR_NAMES: Record<FactorKey, string> = {
@@ -135,12 +135,23 @@ function siteFactor(steep: number | null, flags: string[]): { score: number; not
   return { score, note: flags.length ? `${slope}. Critical-area flags: ${flags.join(", ")}.` : `${slope}, and no critical-area flags.` };
 }
 
+/**
+ * Trees weigh heavily: Seattle's tree protection (SMC 25.11) can take a backyard off the table, a tree review adds time
+ * and arborist cost, and a DADU has to stay out of protected root zones. Canopy above these levels also caps the grade.
+ */
+export const CANOPY_NO_TOP_PICK = 40;
+export const CANOPY_FAIR_AT_BEST = 60;
+
 function treeFactor(canopy: number | null): { score: number; note: string } {
-  if (canopy == null) return { score: 70, note: "Tree canopy unknown." };
+  if (canopy == null) return { score: 60, note: "Tree canopy unknown. Check for large trees before planning." };
   const c = Math.round(canopy);
-  if (c <= 25) return { score: 100, note: `Tree canopy ${c}%: light, little tree review expected.` };
-  if (c <= 50) return { score: 60, note: `Tree canopy ${c}%: tree protection may limit where you build.` };
-  return { score: 25, note: `Tree canopy ${c}%: heavy, expect tree review to constrain the footprint.` };
+  if (c <= 10) return { score: 100, note: `Tree canopy ${c}%: open lot, little tree review expected.` };
+  if (c <= 20) return { score: 85, note: `Tree canopy ${c}%: light. A tree may still need to be worked around.` };
+  if (c <= 30) return { score: 65, note: `Tree canopy ${c}%: moderate. Tree protection may limit where the DADU goes.` };
+  if (c <= CANOPY_NO_TOP_PICK) return { score: 45, note: `Tree canopy ${c}%: substantial. Expect an arborist report and limits on placement.` };
+  if (c <= 50) return { score: 30, note: `Tree canopy ${c}%: heavy. Tree review is likely to shrink or move the footprint, so this lot cannot be a top pick.` };
+  if (c <= CANOPY_FAIR_AT_BEST) return { score: 15, note: `Tree canopy ${c}%: very heavy. Protected trees may rule out the best spots; this lot cannot be a top pick.` };
+  return { score: 0, note: `Tree canopy ${c}%: dense. Protected trees may rule out a DADU entirely, so this lot is Fair at best.` };
 }
 
 export function scoreSite(i: ScoreInput): SiteScore {
@@ -189,7 +200,10 @@ export function scoreSite(i: ScoreInput): SiteScore {
   const raw = factors.reduce((s, f) => s + (f.score * f.weight) / 100, 0);
   // Access not measured: cannot be a top pick until someone confirms a driveway fits.
   const accessUnknown = !i.alley && !i.corner && (side == null || side < DRIVEWAY_FT);
-  const score = eligible ? Math.min(Math.round(clamp(raw)), accessUnknown ? GRADE_BANDS[0].min - 1 : 100) : 0;
+  // Heavy canopy caps the grade: no top pick above 40%, Fair at best above 60%.
+  const canopy = pct(i.canopyPct);
+  const treeCap = canopy == null ? 100 : canopy > CANOPY_FAIR_AT_BEST ? GRADE_BANDS[1].min - 1 : canopy > CANOPY_NO_TOP_PICK ? GRADE_BANDS[0].min - 1 : 100;
+  const score = eligible ? Math.min(Math.round(clamp(raw)), accessUnknown ? GRADE_BANDS[0].min - 1 : 100, treeCap) : 0;
   const g = eligible ? gradeOf(score) : { tier: 0 as Tier, label: "Not eligible" };
   return { eligible, gates, factors, score, tier: g.tier, grade: g.label };
 }
