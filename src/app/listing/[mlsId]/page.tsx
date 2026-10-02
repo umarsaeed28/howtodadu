@@ -13,6 +13,7 @@ import { getAduniverseFacts, getParcelValues } from "@/lib/server/aduniverse";
 import { planSite } from "@/lib/dadu-site-plan";
 import { computeBasis } from "@/lib/investor";
 import InvestorSnapshot from "@/components/listing/InvestorSnapshot";
+import ListingPhoto from "@/components/listing/ListingPhoto";
 
 export const dynamic = "force-dynamic";
 
@@ -107,20 +108,26 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
         {/* Gallery: one large photo and four small, like a listing portal. Falls back to the lot from above. */}
         <div className="mt-4 grid gap-2 overflow-hidden rounded-2xl md:h-[440px] md:grid-cols-4 md:grid-rows-2">
           <div className={`relative md:row-span-2 ${photos.length > 1 ? "md:col-span-2" : "md:col-span-4"}`} style={{ background: "var(--green-tint)" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photos[0] ?? aerial} alt={photos[0] ? `Front of ${street(l.address)}` : `Aerial view of the lot at ${street(l.address)}`} className="h-64 w-full object-cover md:h-full" />
+            <ListingPhoto src={photos[0] ?? aerial} fallback={aerial} alt={photos[0] ? `Front of ${street(l.address)}` : `Aerial view of the lot at ${street(l.address)}`} className="h-64 w-full object-cover md:h-full" />
             {!photos[0] && <span className="absolute bottom-3 left-3 rounded-md bg-white/90 px-2.5 py-1 text-xs font-semibold" style={{ color: "var(--ink)" }}>Aerial view, no listing photos yet</span>}
           </div>
           {photos.slice(1, 5).map((p, i) => (
             <div key={p} className="relative hidden md:block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p} alt={`${street(l.address)}, photo ${i + 2}`} className="h-full w-full object-cover" loading="lazy" />
+              <ListingPhoto src={p} alt={`${street(l.address)}, photo ${i + 2}`} className="h-full w-full object-cover" loading="lazy" />
               {i === 3 && photos.length > 5 && <span className="absolute bottom-3 right-3 rounded-md bg-white/90 px-2.5 py-1 text-xs font-semibold">+{photos.length - 5} photos</span>}
             </div>
           ))}
         </div>
 
-        <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_340px]">
+        <nav aria-label="Listing sections" className="sticky top-[var(--nav-h,64px)] z-20 -mx-4 mt-4 border-b px-4 md:-mx-6 md:px-6" style={{ background: "var(--paper)", borderColor: "var(--hairline)" }}>
+          <ul className="pa-scroll flex gap-1 overflow-x-auto py-1">
+            {([["overview", "Overview"], ...(lot ? [["dadu-h", "DADU potential"]] : []), ...(plan && lot ? [["plan-h", "Site plan"]] : []), ["inv-h", "Investor view"], ["facts-h", "Home facts"], ...(d.priceHistory.length ? [["ph-h", "Price history"]] : []), ...(d.schools.length ? [["sch-h", "Schools"]] : [])] as [string, string][]).map(([id, label]) => (
+              <li key={id} className="shrink-0"><a href={`#${id}`} className="block rounded-lg px-3 py-2 text-sm font-semibold no-underline hover:bg-[var(--green-tint)]" style={{ color: "var(--ink)" }}>{label}</a></li>
+            ))}
+          </ul>
+        </nav>
+
+        <div id="overview" className="mt-6 grid scroll-mt-32 gap-8 lg:grid-cols-[1fr_340px]">
           <div className="flex min-w-0 flex-col gap-8">
             <header>
               {isTest && (
@@ -128,23 +135,39 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
                   <FlaskConical size={13} aria-hidden /> Sample data, not a live listing
                 </p>
               )}
-              <h1 className="pa-display text-3xl md:text-4xl" style={{ color: "var(--ink)" }}>{street(l.address)}</h1>
-              <p className="mt-1 text-base" style={{ color: "var(--slate)" }}>{l.address.split(",").slice(1).join(",").trim()}</p>
-              <div className="mt-5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                <p className="pa-display text-3xl tabular-nums" style={{ color: "var(--ink)" }}>{usd(l.listPrice)}</p>
-                <p className="text-sm font-semibold" style={{ color: "var(--green)" }}>{titleCase(l.status.replace(/_/g, " "))}{l.daysOnMarket != null ? `, ${l.daysOnMarket} ${l.daysOnMarket === 1 ? "day" : "days"} on market` : ""}</p>
+              {/* Price first, then the facts line, then the address: the order a home buyer scans in. */}
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+                <p className="pa-display leading-none tabular-nums" style={{ color: "var(--ink)", fontSize: "clamp(36px, 5vw, 48px)" }}>{usd(l.listPrice)}</p>
+                <p className="mb-1 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--green)" }}>
+                  <span className="h-2 w-2 rounded-full" style={{ background: "var(--green)" }} aria-hidden />
+                  {titleCase(l.status.replace(/_/g, " "))}{l.daysOnMarket != null ? ` · ${l.daysOnMarket} ${l.daysOnMarket === 1 ? "day" : "days"} on market` : ""}
+                </p>
               </div>
-              <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-base" style={{ color: "var(--ink)" }}>
-                {l.beds != null && <li className="flex items-center gap-1.5"><BedDouble size={17} aria-hidden /><strong>{l.beds}</strong> beds</li>}
-                {l.baths != null && <li className="flex items-center gap-1.5"><Bath size={17} aria-hidden /><strong>{l.baths}</strong> baths</li>}
-                {l.livingSqft != null && <li className="flex items-center gap-1.5"><Ruler size={17} aria-hidden /><strong>{l.livingSqft.toLocaleString()}</strong> sf</li>}
-                {l.lotSqft > 0 && <li className="flex items-center gap-1.5"><Trees size={17} aria-hidden /><strong>{l.lotSqft.toLocaleString()}</strong> sf lot</li>}
+              <ul className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-lg tabular-nums" style={{ color: "var(--ink)" }}>
+                {[
+                  l.beds != null ? <><BedDouble size={17} aria-hidden /><strong>{l.beds}</strong> bd</> : null,
+                  l.baths != null ? <><Bath size={17} aria-hidden /><strong>{l.baths}</strong> ba</> : null,
+                  l.livingSqft != null ? <><Ruler size={17} aria-hidden /><strong>{l.livingSqft.toLocaleString()}</strong> sqft</> : null,
+                  l.lotSqft > 0 ? <><Trees size={17} aria-hidden /><strong>{l.lotSqft.toLocaleString()}</strong> sqft lot</> : null,
+                ].filter(Boolean).map((item, i) => (
+                  <li key={i} className="flex items-center gap-1.5">
+                    {i > 0 && <span className="mr-1.5" style={{ color: "var(--line-strong)" }} aria-hidden>|</span>}
+                    {item}
+                  </li>
+                ))}
               </ul>
+              <h1 className="mt-3 text-xl font-semibold md:text-2xl" style={{ color: "var(--ink)" }}>{street(l.address)}, <span className="font-normal" style={{ color: "var(--slate)" }}>{l.address.split(",").slice(1).join(",").trim()}</span></h1>
+              {lot && (
+                <p className="mt-3 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold" style={{ background: "var(--green-tint)", color: "var(--green-bright)" }}>
+                  <span className="pa-display flex h-7 w-7 items-center justify-center rounded-full text-xs text-white" style={{ background: grade.color }}>{lot.score}</span>
+                  {grade.label} DADU lot{sf ? ` · up to ${sf.toLocaleString()} sf cottage` : ""}
+                </p>
+              )}
             </header>
 
             {lot && (
               <section aria-labelledby="dadu-h">
-                <h2 id="dadu-h" className="pa-display text-xl" style={{ color: "var(--ink)" }}>DADU potential</h2>
+                <h2 id="dadu-h" className="pa-display scroll-mt-[130px] text-xl" style={{ color: "var(--ink)" }}>DADU potential</h2>
                 <div className="pa-raised mt-3 grid gap-5 p-5 sm:grid-cols-[auto_1fr] sm:items-center">
                   <span className="pa-display flex h-20 w-20 items-center justify-center rounded-full text-3xl tabular-nums" style={{ background: "var(--card)", boxShadow: "var(--shadow-pop)", color: grade.color }} aria-label={`Site score ${lot.score} out of 100`}>
                     {lot.score}
@@ -180,7 +203,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
 
             {plan && lot && (
               <section aria-labelledby="plan-h">
-                <h2 id="plan-h" className="pa-display text-xl" style={{ color: "var(--ink)" }}>Site plan and layout</h2>
+                <h2 id="plan-h" className="pa-display scroll-mt-[130px] text-xl" style={{ color: "var(--ink)" }}>Site plan and layout</h2>
                 <dl className="mt-3 grid grid-cols-1 gap-x-10 text-sm sm:grid-cols-2">
                   {([
                     ["Lot area", `${plan.area.sqft.toLocaleString()} sf, ${plan.area.pass ? "meets" : "under"} the ${plan.area.min.toLocaleString()} sf minimum`],
@@ -212,7 +235,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
             )}
 
             <section aria-labelledby="inv-h">
-              <h2 id="inv-h" className="pa-display text-xl" style={{ color: "var(--ink)" }}>Investor view</h2>
+              <h2 id="inv-h" className="pa-display scroll-mt-[130px] text-xl" style={{ color: "var(--ink)" }}>Investor view</h2>
               <h3 className="mt-3 text-sm font-semibold" style={{ color: "var(--ink)" }}>What you pay</h3>
               <dl className="mt-1 grid grid-cols-1 gap-x-10 text-sm sm:grid-cols-2">
                 {([
@@ -279,7 +302,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
             )}
 
             <section aria-labelledby="facts-h">
-              <h2 id="facts-h" className="pa-display text-xl" style={{ color: "var(--ink)" }}>Home facts</h2>
+              <h2 id="facts-h" className="pa-display scroll-mt-[130px] text-xl" style={{ color: "var(--ink)" }}>Home facts</h2>
               <dl className="mt-3 grid grid-cols-1 gap-x-10 gap-y-0 text-sm sm:grid-cols-2">
                 {([
                   ["Type", d.propertyType ?? l.propertyType],
@@ -302,7 +325,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
 
             {d.priceHistory.length > 0 && (
               <section aria-labelledby="ph-h">
-                <h2 id="ph-h" className="pa-display text-xl" style={{ color: "var(--ink)" }}>Price history</h2>
+                <h2 id="ph-h" className="pa-display scroll-mt-[130px] text-xl" style={{ color: "var(--ink)" }}>Price history</h2>
                 <table className="mt-3 w-full text-sm">
                   <thead><tr className="text-left" style={{ color: "var(--slate)" }}><th className="py-2 font-medium">Date</th><th className="font-medium">Event</th><th className="text-right font-medium">Price</th></tr></thead>
                   <tbody>
@@ -349,7 +372,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
 
             {d.schools.length > 0 && (
               <section aria-labelledby="sch-h">
-                <h2 id="sch-h" className="pa-display text-xl" style={{ color: "var(--ink)" }}>Nearby schools</h2>
+                <h2 id="sch-h" className="pa-display scroll-mt-[130px] text-xl" style={{ color: "var(--ink)" }}>Nearby schools</h2>
                 <ul className="mt-3 flex flex-col">
                   {d.schools.slice(0, 5).map((s) => (
                     <li key={s.name} className="flex items-center gap-4 border-t py-3" style={{ borderColor: "var(--hairline)" }}>
@@ -363,7 +386,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
           </div>
 
           {/* Sticky side card */}
-          <aside className="lg:sticky lg:top-24 lg:self-start" aria-label="Costs and actions">
+          <aside className="lg:sticky lg:top-[132px] lg:self-start" aria-label="Costs and actions">
             <div className="pa-raised p-5">
               <p className="text-sm" style={{ color: "var(--slate)" }}>Estimated monthly</p>
               <p className="pa-display text-3xl tabular-nums" style={{ color: "var(--ink)" }}>{usd(pay.total)}</p>

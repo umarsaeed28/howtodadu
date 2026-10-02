@@ -52,8 +52,8 @@ function VerdictChip({ verdict }: { verdict: string | null }) {
 
 function Section({ id, title, children, hint }: { id: string; title: string; children: React.ReactNode; hint?: string }) {
   return (
-    <section aria-labelledby={id} className="pa-raised p-5 sm:p-6">
-      <h3 id={id} className="pa-display text-lg" style={{ color: "var(--ink)" }}>
+    <section aria-labelledby={`${id}-h`} id={id} className="pa-raised scroll-mt-[190px] p-5 sm:p-6">
+      <h3 id={`${id}-h`} className="pa-display text-xl" style={{ color: "var(--ink)" }}>
         {title}
       </h3>
       {hint && (
@@ -87,52 +87,78 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 function Hero({ report, slim }: { report: FeasibilityReport; slim: DashboardPropertySlim }) {
   const s = report.summary;
   const score = Math.round(s.score.value);
-  const r = 46;
-  const c = 2 * Math.PI * r;
   const v = VERDICT_STYLE[s.verdict];
+  const lot = report.property_facts.find((f) => /lot area/i.test(f.label));
+  const facts = [
+    s.max_buildable_sf ? `${sf(s.max_buildable_sf.value)} DADU` : "No DADU room",
+    lot ? `${sf(lot.value)} lot` : null,
+    slim.zoning ? `Zoned ${slim.zoning}` : null,
+  ].filter((x): x is string => !!x);
   return (
-    <section aria-labelledby="rep-sum" className="mb-8 overflow-hidden rounded-[16px] p-6 sm:p-8" style={{ background: "var(--dusk)", boxShadow: "var(--shadow-raised)" }}>
-      <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0 max-w-xl">
-          <h2 id="rep-sum" className="pa-display text-3xl sm:text-5xl" style={{ color: "var(--ink)" }}>
-            {s.verdict === "Feasible" ? "This lot can take a backyard cottage." : s.verdict === "Conditional" ? "A backyard cottage could work here, with conditions." : "A backyard cottage will not work on this lot as it stands."}
-          </h2>
-          <p className="mt-4 text-base leading-relaxed" style={{ color: "var(--ink)" }}>{s.headline}</p>
-          <p className="mt-2 text-sm" style={{ color: "var(--slate)" }}>{slim.neighborhood}{slim.zoning ? `, zoned ${slim.zoning}` : ""}. This is the site and code check.</p>
+    <section aria-labelledby="rep-sum" id="rep-overview" className="mb-6 grid scroll-mt-[190px] gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+          <p className="pa-display leading-none tabular-nums" style={{ color: "var(--ink)", fontSize: "clamp(44px, 7vw, 64px)" }} aria-label={`DADU score ${score} out of 100`}>
+            {score}
+            <span className="ml-1 text-2xl font-bold" style={{ color: "var(--slate)" }}>/100</span>
+          </p>
+          <span className="mb-1.5 inline-flex items-center rounded-lg px-2.5 py-1 text-sm font-bold" style={{ background: v.bg, color: v.fg }}>{s.verdict}</span>
         </div>
-        <div className="flex items-center gap-6">
-          <svg viewBox="0 0 120 120" className="h-36 w-36 shrink-0" role="img" aria-label={`Score ${score} out of 100, ${s.verdict}`}>
-            <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(23, 36, 29,0.12)" strokeWidth="11" />
-            <circle className="animate-gauge-draw" style={{ ["--gauge-circumference" as string]: c }} cx="60" cy="60" r={r} fill="none" stroke={v.fg} strokeWidth="11" strokeLinecap="round" strokeDasharray={`${(score / 100) * c} ${c}`} transform="rotate(-90 60 60)" />
-            <text x="60" y="64" textAnchor="middle" style={{ fontSize: 34, fontWeight: 800, fill: "var(--ink)", fontFamily: "var(--font-display)" }}>{score}</text>
-            <text x="60" y="82" textAnchor="middle" style={{ fontSize: 10, fill: "var(--slate)" }}>{s.verdict}</text>
-          </svg>
-          <dl className="grid gap-3">
-            <div>
-              <dt className="text-xs font-semibold" style={{ color: "var(--slate)" }}>Max buildable</dt>
-              <dd className="pa-display text-2xl tabular-nums" style={{ color: "var(--ink)" }}>{s.max_buildable_sf ? sf(s.max_buildable_sf.value) : "None"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold" style={{ color: "var(--slate)" }}>Build estimate</dt>
-              <dd className="pa-display text-2xl tabular-nums" style={{ color: "var(--ink)" }}>{s.construction_cost_usd ? usd(s.construction_cost_usd.value) : "None"}</dd>
-              {s.max_buildable_sf && s.construction_cost_usd && (
-                <dd className="mt-0.5 text-xs tabular-nums" style={{ color: "var(--slate)" }}>
-                  {sf(s.max_buildable_sf.value)} × {usd(COST_PER_SF)} per sf. {COST_LABEL}.
-                </dd>
-              )}
-            </div>
-            <div>
-              <Link
-                href={calculatorHref({ sf: s.max_buildable_sf?.value, address: slim.address })}
-                className="pa-btn pa-btn-sm no-underline"
-              >
-                Estimate your return
-              </Link>
-            </div>
-          </dl>
-        </div>
+        <p className="mt-3 text-[17px] tabular-nums" style={{ color: "var(--ink)" }}>
+          {facts.map((f, i) => (
+            <span key={f}>
+              {i > 0 && <span className="mx-2" style={{ color: "var(--line-strong)" }} aria-hidden>|</span>}
+              <strong className="font-bold">{f.split(" ")[0]}</strong> {f.split(" ").slice(1).join(" ")}
+            </span>
+          ))}
+        </p>
+        <h2 id="rep-sum" className="mt-4 text-xl font-semibold leading-snug sm:text-2xl" style={{ color: "var(--ink)" }}>
+          {s.verdict === "Feasible" ? "This lot can take a backyard cottage." : s.verdict === "Conditional" ? "A backyard cottage could work here, with conditions." : "A backyard cottage will not work on this lot as it stands."}
+        </h2>
+        <p className="mt-2 max-w-2xl text-base leading-relaxed" style={{ color: "var(--slate)" }}>{s.headline} {slim.neighborhood ? `${slim.neighborhood}. ` : ""}This is the site and code check.</p>
       </div>
+      <aside className="pa-raised p-5" aria-label="Build estimate">
+        <p className="text-sm font-semibold" style={{ color: "var(--slate)" }}>Build estimate</p>
+        <p className="pa-display mt-1 text-3xl tabular-nums" style={{ color: "var(--ink)" }}>{s.construction_cost_usd ? usd(s.construction_cost_usd.value) : "None"}</p>
+        {s.max_buildable_sf && s.construction_cost_usd && (
+          <p className="mt-1 text-xs tabular-nums" style={{ color: "var(--slate)" }}>
+            {sf(s.max_buildable_sf.value)} × {usd(COST_PER_SF)} per sf. {COST_LABEL}.
+          </p>
+        )}
+        <Link href={calculatorHref({ sf: s.max_buildable_sf?.value, address: slim.address })} className="pa-btn pa-btn-primary mt-4 w-full no-underline" style={{ minHeight: 44 }}>
+          Estimate your return
+        </Link>
+        <a href="#rep-plan" className="pa-btn mt-2 w-full no-underline" style={{ minHeight: 44 }}>
+          Open the master plan
+        </a>
+      </aside>
     </section>
+  );
+}
+
+const SECTION_TABS = [
+  ["rep-overview", "Overview"],
+  ["rep-plan", "Master plan"],
+  ["rep-facts", "Facts"],
+  ["rep-intel", "Site intelligence"],
+  ["rep-scen", "Scenarios"],
+  ["rep-risks", "Risks"],
+  ["rep-cite", "Code"],
+  ["rep-all", "All data"],
+] as const;
+
+/** Sticky in-page tabs, like the section bar on a home listing page. */
+function SectionTabs() {
+  return (
+    <nav aria-label="Report sections" className="z-20 -mx-4 mb-6 border-b px-4 sm:-mx-6 sm:px-6 md:sticky md:top-[133px]" style={{ background: "var(--paper)", borderColor: "var(--hairline)" }}>
+      <ul className="pa-scroll flex gap-1 overflow-x-auto py-1">
+        {SECTION_TABS.map(([id, label]) => (
+          <li key={id} className="shrink-0">
+            <a href={`#${id}`} className="block rounded-lg px-3 py-2 text-sm font-semibold no-underline transition-colors hover:bg-[var(--green-tint)]" style={{ color: "var(--ink)" }}>{label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 
@@ -140,7 +166,7 @@ function ReportBody({ report, row, snapshotRef }: { report: FeasibilityReport; r
   return (
     <div className="flex flex-col gap-6">
       {/* The master plan breaks out of the page column to (nearly) the full screen width, so there is room to work. */}
-      <div className="mx-[calc((100%_-_min(100vw_-_2rem,1680px))/2)] w-[min(100vw_-_2rem,1680px)] max-w-none">
+      <div id="rep-plan" className="mx-[calc((100%_-_min(100vw_-_2rem,1680px))/2)] w-[min(100vw_-_2rem,1680px)] max-w-none scroll-mt-[190px]">
         <MasterPlan
           lot={row.result.lot}
           sitePlan={row.result.sitePlan}
@@ -380,6 +406,7 @@ export default function FeasibilityReportView({
       )}
 
       {report && <Hero report={report} slim={slim} />}
+      {report && detailRow && <SectionTabs />}
       {report && detailRow && <ReportBody report={report} row={detailRow} snapshotRef={snapshotRef} />}
 
       <div className="mt-6">

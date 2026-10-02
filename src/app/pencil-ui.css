@@ -2,21 +2,22 @@
    tokens never leak into the existing howtodadu theme or the /pencil landing. */
 
 .pencil-app {
-  --paper: #EEF2EF;
-  --card: #F6F8F6;
-  --ink: #17241D;
-  --slate: #4A5A51;
-  --green: #237A55;
-  --green-bright: #2E8F64;
-  --green-tint: #DDEFE4;
+  --paper: #F6F7F6;
+  --card: #FFFFFF;
+  --ink: #111614;
+  --slate: #5B6560;
+  --green: #1F7A55;
+  --green-bright: #17603F;
+  --green-tint: #E6F2EB;
   --amber: #8a6a1f;
   --amber-tint: #f1e8d2;
   --red: #A9473A;
   --red-tint: #F5E1DB;
   --blue: #2E5C6E;
-  --hairline: rgba(23, 36, 29, 0.2);
-  --shadow-raised: 4px 4px 11px rgba(150, 168, 158, 0.24), -4px -4px 11px rgba(255, 255, 255, 0.8);
-  --shadow-pop: 2px 2px 7px rgba(150, 168, 158, 0.24), -2px -2px 7px rgba(255, 255, 255, 0.8);
+  --hairline: rgba(17, 22, 20, 0.12);
+  --line-strong: rgba(17, 22, 20, 0.18);
+  --shadow-raised: 0 1px 3px rgba(17, 22, 20, 0.08), 0 0 0 1px rgba(17, 22, 20, 0.07);
+  --shadow-pop: 0 4px 12px rgba(17, 22, 20, 0.12), 0 0 0 1px rgba(17, 22, 20, 0.08);
 
   background-color: var(--paper);
   color: var(--ink);
@@ -43,7 +44,7 @@
 /* Type roles --------------------------------------------------------------- */
 .pa-display {
   font-family: var(--font-display), system-ui, sans-serif;
-  font-weight: 700;
+  font-weight: 800;
   font-stretch: 100%;
   letter-spacing: -0.03em;
   text-wrap: balance;
@@ -71,9 +72,9 @@
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  border-radius: 10px;
-  border: 0;
-  box-shadow: 2px 2px 7px rgba(150, 168, 158, 0.24), -2px -2px 7px rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  box-shadow: none;
   background: var(--card);
   color: var(--ink);
   font-weight: 600;
@@ -84,17 +85,24 @@
   transition: background 0.14s ease, border-color 0.14s ease, transform 0.06s ease;
 }
 .pa-btn:hover {
-  color: #145A40;
+  background: #F2F5F3;
+  color: var(--ink);
 }
 .pa-btn:active {
-  box-shadow: inset 2px 2px 6px rgba(150, 168, 158, 0.3), inset -2px -2px 6px rgba(255, 255, 255, 0.9);
+  background: #E9EEEB;
+}
+.pa-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .pa-btn-primary {
-  background: #1E6E50;
+  background: var(--green);
+  border-color: var(--green);
   color: #fff;
 }
 .pa-btn-primary:hover {
-  background: #175C43;
+  background: var(--green-bright);
+  border-color: var(--green-bright);
   color: #fff;
 }
 .pa-btn-sm {
@@ -108,12 +116,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border-radius: 10px;
-  border: 0;
-  box-shadow: 2px 2px 6px rgba(150, 168, 158, 0.24), -2px -2px 6px rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  box-shadow: none;
   background: var(--card);
   color: var(--ink);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 500;
   padding: 0.4rem 0.8rem;
   min-height: 40px;
@@ -122,20 +130,22 @@
   transition: background 0.14s ease, border-color 0.14s ease;
 }
 .pa-chip:hover {
-  color: #145A40;
+  background: #F2F5F3;
 }
-.pa-chip-active {
-  background: var(--card);
-  box-shadow: inset 2px 2px 6px rgba(150, 168, 158, 0.3), inset -2px -2px 6px rgba(255, 255, 255, 0.9);
-  color: var(--green);
+.pa-chip-active,
+.pa-chip-active:hover {
+  background: var(--green-tint);
+  border-color: var(--green);
+  color: var(--green-bright);
+  font-weight: 600;
 }
 
 /* Cards -------------------------------------------------------------------- */
 .pa-card {
   background: var(--card);
   border: 0;
-  border-radius: 14px;
-  box-shadow: 4px 4px 11px rgba(150, 168, 158, 0.24), -4px -4px 11px rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  box-shadow: var(--shadow-raised);
 }
 
 /* Verdict pills ------------------------------------------------------------ */
@@ -292,13 +302,13 @@
   border: 0 !important;
   border-radius: 12px;
   background: var(--card);
-  box-shadow: inset 2px 2px 6px rgba(150, 168, 158, 0.3), inset -2px -2px 6px rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 .pa-inset {
   border: 0 !important;
-  border-radius: 10px !important;
-  background: var(--card) !important;
-  box-shadow: inset 2px 2px 6px rgba(150, 168, 158, 0.3), inset -2px -2px 6px rgba(255, 255, 255, 0.9);
+  border-radius: 12px !important;
+  background: #F5F7F6 !important;
+  box-shadow: inset 0 0 0 1px var(--hairline);
 }
 .pa-inset:focus-within {
   outline: 2px solid #145A40;
@@ -306,9 +316,9 @@
 }
 .pa-raised {
   border: 0 !important;
-  border-radius: 14px !important;
+  border-radius: 16px !important;
   background: var(--card) !important;
-  box-shadow: 3px 3px 10px rgba(150, 168, 158, 0.24), -3px -3px 10px rgba(255, 255, 255, 0.8);
+  box-shadow: var(--shadow-raised);
 }
 
 /* Report email wall: the report sharpens into view once unlocked ---------- */

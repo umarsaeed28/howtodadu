@@ -1,0 +1,44 @@
+# Pencil design language. Single source of truth (generated with the hue method, 2026-10-01).
+name: "Pencil"
+philosophy: "Zillow's clarity with a builder's precision: flat white surfaces, photo- and number-led hierarchy, one green accent."
+primary_mode: "light"
+brand_domain: "Seattle DADU (backyard cottage) feasibility and lot search"
+brand_type: "ui-rich"
+reference_layout: "Home-search portal patterns (map + results split, photo cards, price-first detail pages, sticky section tabs). Layout and hierarchy only; no third-party branding."
+primitives:
+  colors:
+    neutral: { 0: "#FFFFFF", 50: "#F6F7F6", 100: "#EEF1EF", 200: "#E1E6E3", 400: "#9AA39E", 600: "#5B6560", 900: "#111614" }
+    brand:   { 50: "#E6F2EB", 500: "#1F7A55", 600: "#17603F" }
+    amber:   { 50: "#F1E8D2", 500: "#8A6A1F" }
+    red:     { 50: "#F5E1DB", 500: "#A9473A" }
+    grade:   { top_pick: "#145A40", good: "#6CB98A", fair: "#D9A441", marginal: "#B8B2A4" }
+  radii: [8, 12, 16, 999]
+  spacing: [4, 8, 12, 16, 20, 24, 32, 48]
+tokens:
+  colors:
+    background: "{neutral.50}"      # page (--paper / --bg)
+    surface: "{neutral.0}"          # cards, bars (--card / --surface)
+    text1: "{neutral.900}"          # --ink
+    text2: "{neutral.600}"          # --slate
+    hairline: "rgba(17,22,20,0.12)" # --hairline; strong: 0.18
+    accent: "{brand.500}"           # --green; hover {brand.600}
+    accent_subtle: "{brand.50}"     # --green-tint
+  radii: { control: 12, card: 16, badge: 8, pill: 999 }
+  elevation:
+    card: "0 1px 3px rgba(17,22,20,.08), 0 0 0 1px rgba(17,22,20,.07)"
+    popover: "0 4px 12px rgba(17,22,20,.12), 0 0 0 1px rgba(17,22,20,.08)"
+  type:
+    display: { family: "Archivo", weight: 800, tracking: "-0.03em", use: "prices, scores, headings" }
+    body: { family: "Public Sans", size: 15, weight: 400 }
+    numerals: "tabular-nums for every price, score, area and dimension"
+components:
+  button: "40-44px tall, 12px radius, 1px strong hairline, white; primary = green fill, white text"
+  filter_pill: "40px tall, 12px radius, 1px hairline; active = green tint + green border"
+  listing_card: "16:10 photo (fallback: lot sketch on grade tint), grade label pill top-left, score disc top-right, price 22px/800, facts 'bd | ba | sqft', address in text2, DADU line in accent"
+  detail_header: "big number first (price or score), facts line with | separators, address, then a sticky section tab bar"
+  section: "white card, 16px radius, heading 20px/800"
+rules:
+  - "Numbers lead: price or DADU score is the largest thing on a detail page."
+  - "One accent: green for actions and DADU facts only; grade colors only for grades."
+  - "No neumorphic or colored shadows; depth is the one card elevation."
+  - "Phones: filter bars scroll sideways, results sit in a bottom sheet, section tabs are not sticky below md."

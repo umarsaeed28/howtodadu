@@ -8,37 +8,38 @@
    Everything below the .site scope so it wraps every route via root layout.
    ========================================================================== */
 .site {
-  --bg: #EEF2EF;
-  --bg-soft: #E3E9E5;
-  --surface: #F6F8F6;
-  --nm-dark: rgba(150, 168, 158, 0.24);
-  --nm-light: rgba(255, 255, 255, 0.85);
-  --nm-out: 5px 5px 14px var(--nm-dark), -5px -5px 14px var(--nm-light);
-  --nm-out-sm: 2px 2px 6px var(--nm-dark), -2px -2px 6px var(--nm-light);
-  --nm-in: inset 2px 2px 6px rgba(150, 168, 158,.3), inset -2px -2px 6px rgba(255,255,255,.9);
-  --nm-in-sm: inset 1px 1px 4px rgba(150, 168, 158,.3), inset -1px -1px 4px rgba(255,255,255,.9);
-  --ink: #17241D;
-  --slate: #4A5A51;
-  --line: rgba(23, 36, 29, 0.12);
-  --line-strong: rgba(23, 36, 29, 0.22);
-  --flag: #1E6E50;
-  --flag-deep: #145A40;
-  --flag-tint: #DDEEE4;
+  /* Pencil design language (see .claude/skills/pencil-design): Zillow-clear layout, Pencil green, flat white surfaces. */
+  --bg: #F6F7F6;
+  --bg-soft: #EEF1EF;
+  --surface: #FFFFFF;
+  --nm-dark: rgba(17, 22, 20, 0.08);
+  --nm-light: rgba(17, 22, 20, 0.06);
+  --nm-out: 0 1px 3px rgba(17, 22, 20, 0.08), 0 0 0 1px rgba(17, 22, 20, 0.07);
+  --nm-out-sm: 0 1px 2px rgba(17, 22, 20, 0.06), 0 0 0 1px rgba(17, 22, 20, 0.08);
+  --nm-in: inset 0 0 0 1px rgba(17, 22, 20, 0.14);
+  --nm-in-sm: inset 0 0 0 1px rgba(17, 22, 20, 0.12);
+  --ink: #111614;
+  --slate: #5B6560;
+  --line: rgba(17, 22, 20, 0.1);
+  --line-strong: rgba(17, 22, 20, 0.18);
+  --flag: #1F7A55;
+  --flag-deep: #17603F;
+  --flag-tint: #E6F2EB;
   --sakura: #E6C97E;
   --sakura-tint: #F4EAD2;
-  --dusk: linear-gradient(165deg, #DCEDE2 0%, #E9EFE2 50%, #F3ECDB 100%);
+  --dusk: linear-gradient(180deg, #EEF6F1 0%, #F6F8F6 100%);
   --blue: #3D5A6C;
-  --green: #237A55;
-  --green-bright: #2E8F64;
-  --green-tint: #DDEFE4;
+  --green: #1F7A55;
+  --green-bright: #17603F;
+  --green-tint: #E6F2EB;
   --amber: #9a6a12;
   --red: #A9473A;
 
   --font-data: var(--font-body);
   --maxw: 1180px;
   --gutter: 24px;
-  --radius-card: 14px;
-  --radius-ctl: 10px;
+  --radius-card: 16px;
+  --radius-ctl: 12px;
   --shadow-soft: none;
   --nav-h: 64px;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);

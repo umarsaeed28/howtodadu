@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Map, Source, Layer, Marker, NavigationControl, type MapRef, type MapLayerMouseEvent } from "react-map-gl/maplibre";
-import { ArrowLeft, ArrowRight, BedDouble, Calculator, Download, FlaskConical, Loader2, Search, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calculator, ChevronDown, Download, FlaskConical, Loader2, Search, Star } from "lucide-react";
 import type { Candidate } from "@/lib/server/candidates";
 import type { MapListing } from "@/app/api/map-listings/route";
 import { COST_LABEL, COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
@@ -12,7 +12,8 @@ import { downloadListingsCsv } from "@/lib/listings-csv";
 
 const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE ?? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const SEATTLE = { longitude: -122.335, latitude: 47.62, zoom: 10.6 };
-const PANEL_W = 392;
+/** Results column on desktop: Zillow-style, map on the left and the list on the right. */
+const panelWidth = () => (typeof window === "undefined" ? 440 : Math.round(Math.min(780, Math.max(400, window.innerWidth * 0.46))));
 const PRICE_MAX = 3_000_000;
 const PRICE_STEP = 50_000;
 
@@ -44,10 +45,10 @@ const pctOf = (v: number | null) => (v == null ? null : Math.round(v <= 1 ? v * 
 const usd = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const usdShort = (n: number) => (n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 2).replace(/\.?0+$/, "")}M` : `$${Math.round(n / 1000)}K`);
 
-/** Keep the map's focus clear of the docked panel: left on desktop, bottom on mobile. */
+/** Keep the map's focus clear of the docked panel: right on desktop, bottom on mobile. */
 function viewPadding(detailOpen: boolean) {
   if (typeof window === "undefined") return { top: 40, bottom: 40, left: 40, right: 40 };
-  if (window.innerWidth >= 768) return { top: 48, bottom: 48, left: PANEL_W + 32, right: 48 };
+  if (window.innerWidth >= 768) return { top: 48, bottom: 48, left: 48, right: panelWidth() + 32 };
   return { top: 72, bottom: Math.round(window.innerHeight * (detailOpen ? 0.5 : 0.3)), left: 24, right: 24 };
 }
 
@@ -279,8 +280,53 @@ export default function CandidateMap() {
   const isTest = loaded?.source === "fixture";
   const selectedListing = selectedPin ? listings.find((l) => l.pin === selectedPin) ?? null : null;
 
+  const resultLine = !loaded ? "Loading listings…" : loaded.connected ? `${shown.length.toLocaleString()} ${shown.length === 1 ? "home" : "homes"} that can have a DADU${zipSel.length ? ` in ${zipSel.join(", ")}` : " across Seattle"} · ${shown.filter((l) => l.tier === 3).length} top picks` : "No listings feed is connected yet.";
+
   return (
-    <div className="relative h-[calc(100dvh_-_var(--nav-h))] w-full overflow-hidden">
+    <div className="flex h-[calc(100dvh_-_var(--nav-h))] w-full flex-col overflow-hidden">
+      {/* Filter bar: search and filters in one row, like a home-search site. Scrolls sideways on phones. */}
+      <div className="relative z-20 shrink-0 border-b" style={{ background: "var(--card)", borderColor: "var(--hairline)" }}>
+        <div className="pa-scroll flex items-center gap-2 overflow-x-auto px-3 py-2.5 sm:px-4" role="toolbar" aria-label="Search and filters">
+          <form onSubmit={findAddress} className="shrink-0">
+            <label htmlFor="addr-input" className="sr-only">Find an address</label>
+            <div className="flex h-10 w-[min(72vw,300px)] items-center gap-2 rounded-xl px-3" style={{ boxShadow: "inset 0 0 0 1px var(--line-strong)", background: "var(--card)" }}>
+              <input id="addr-input" type="text" value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Address, Seattle" className="w-full bg-transparent text-[16px] outline-none sm:text-sm" autoComplete="off" />
+              {searching ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <button type="submit" aria-label="Search" className="-mr-1 flex h-8 w-8 items-center justify-center rounded-lg" style={{ color: "var(--ink)" }}><Search size={16} aria-hidden /></button>}
+            </div>
+          </form>
+          <div className="flex h-10 shrink-0 items-center rounded-xl pl-3" style={{ boxShadow: "inset 0 0 0 1px var(--line-strong)" }}>
+            <label htmlFor="zip-input" className="sr-only">ZIP codes</label>
+            <input id="zip-input" list="zip-list" value={zipInput} onChange={(e) => setZipInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && applyZips(zipInput)} onBlur={() => applyZips(zipInput)} placeholder="ZIP" className="w-[92px] bg-transparent text-[16px] outline-none sm:text-sm" inputMode="numeric" autoComplete="off" style={{ boxShadow: "none" }} />
+            {zipSel.length > 0 && <button type="button" className="px-2 text-xs font-semibold" style={{ color: "var(--green)" }} onClick={() => { setZipInput(""); setZipSel([]); setError(null); }}>All</button>}
+          </div>
+          <datalist id="zip-list">{allZips.map((z) => <option key={z} value={z} />)}</datalist>
+          <details className="relative shrink-0">
+            <summary className={`pa-chip list-none [&::-webkit-details-marker]:hidden ${maxPrice < PRICE_MAX ? "pa-chip-active" : ""}`} style={{ minHeight: 40 }}>
+              {maxPrice >= PRICE_MAX ? "Price" : `Up to ${usdShort(maxPrice)}`} <ChevronDown size={14} aria-hidden />
+            </summary>
+            <div className="fixed z-30 mt-2 w-[min(90vw,300px)] rounded-2xl p-4" style={{ background: "var(--card)", boxShadow: "var(--shadow-pop)" }}>
+              <label htmlFor="price-max" className="flex items-baseline justify-between text-xs font-semibold" style={{ color: "var(--ink)" }}>
+                <span>Max price</span>
+                <span className="tabular-nums">{maxPrice >= PRICE_MAX ? "Any" : usd(maxPrice)}</span>
+              </label>
+              <input id="price-max" type="range" min={0} max={PRICE_MAX} step={PRICE_STEP} value={maxPrice} onChange={(e) => setMaxPrice(Number(e.target.value))} className="mt-3 w-full" aria-valuetext={maxPrice >= PRICE_MAX ? "No maximum, up to $3M" : `Up to ${usd(maxPrice)}`} />
+              <div className="flex justify-between text-[11px]" style={{ color: "var(--slate)" }} aria-hidden><span>$0</span><span>$3M+</span></div>
+            </div>
+          </details>
+          <div className="flex shrink-0 gap-2" role="group" aria-label="Filter listings">
+            <Chip on={topOnly} onClick={() => setTopOnly((v) => !v)}>Top picks</Chip>
+            <Chip on={cornerOnly} onClick={() => setCornerOnly((v) => !v)}>Corner lot</Chip>
+            <Chip on={alleyOnly} onClick={() => setAlleyOnly((v) => !v)}>Alley access</Chip>
+          </div>
+          <span className="mx-1 h-6 w-px shrink-0" style={{ background: "var(--hairline)" }} aria-hidden />
+          <button type="button" className="pa-btn shrink-0" style={{ minHeight: 40 }} onClick={() => downloadListingsCsv(shown, zipSel)} disabled={!shown.length}>
+            <Download size={15} aria-hidden /> Export CSV
+          </button>
+        </div>
+        {error && <p role="alert" className="px-4 pb-2 text-xs" style={{ color: "var(--red)" }}>{error}</p>}
+      </div>
+
+      <div className="relative min-h-0 flex-1">
       <Map
         ref={mapRef}
         initialViewState={SEATTLE}
@@ -345,111 +391,93 @@ export default function CandidateMap() {
         ref={panelRef}
         tabIndex={-1}
         aria-label={detailOpen ? "Listing details" : "Listings"}
-        className="absolute inset-x-0 bottom-0 z-10 flex max-h-[56vh] flex-col overflow-hidden rounded-t-[18px] outline-none md:inset-y-0 md:left-0 md:right-auto md:max-h-none md:rounded-none"
-        style={{ background: "var(--bg)", boxShadow: "0 -8px 28px -10px rgba(23,36,29,.28)" }}
+        className="absolute inset-x-0 bottom-0 z-10 flex max-h-[58svh] flex-col overflow-hidden rounded-t-[18px] outline-none md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[clamp(400px,46vw,780px)] md:rounded-none md:border-l"
+        style={{ background: "var(--paper)", boxShadow: "0 -8px 28px -10px rgba(17,22,20,.25)", borderColor: "var(--hairline)" }}
       >
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full md:hidden" style={{ background: "var(--line-strong)" }} aria-hidden />
-        <div className="min-h-0 flex-1 overflow-y-auto md:w-[392px]">
+        <div className="pa-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {detailOpen ? (
             <LotPanel pin={selectedPin} lot={detail} error={detailError} listing={selectedListing} onBack={() => selectPin(null)} />
           ) : (
             <div className="flex flex-col">
-              <div className="p-5 pb-3">
-                <h1 className="pa-display text-xl" style={{ color: "var(--ink)" }}>Properties that can have a DADU</h1>
-                <p className="mt-1 text-sm" style={{ color: "var(--slate)" }} aria-live="polite">
-                  {!loaded ? "Loading listings…" : loaded.connected ? `${shown.length.toLocaleString()} for-sale ${shown.length === 1 ? "property" : "properties"} that can have a DADU${zipSel.length ? ` in ${zipSel.join(", ")}` : " across Seattle"}, ${shown.filter((l) => l.tier === 3).length} top picks` : "No listings feed is connected yet."}
-                </p>
+              <div className="px-4 pb-1 pt-4 sm:px-5">
+                <h1 className="pa-display text-xl" style={{ color: "var(--ink)" }}>Seattle homes that can have a DADU</h1>
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                  <p className="text-sm tabular-nums" style={{ color: "var(--slate)" }} aria-live="polite">{resultLine}</p>
+                  <label className="flex shrink-0 items-center gap-1 text-sm" style={{ color: "var(--slate)" }}>
+                    Sort:
+                    <select value={SORT_PRESETS.find((p) => p.sort.key === sort.key && p.sort.dir === sort.dir)?.id ?? ""} onChange={(e) => { const p = SORT_PRESETS.find((x) => x.id === e.target.value); if (p) setSort(p.sort); }} className="bg-transparent py-1 pr-1 text-sm font-semibold" style={{ color: "var(--green)", boxShadow: "none" }}>
+                      {!SORT_PRESETS.some((p) => p.sort.key === sort.key && p.sort.dir === sort.dir) && <option value="">Sorted by table</option>}
+                      {SORT_PRESETS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--slate)" }} aria-label="Grade key">
+                  {TIERS.map((t) => (
+                    <li key={t.id} className="flex items-center gap-1.5" title={t.note}><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: t.color }} />{t.label}</li>
+                  ))}
+                </ul>
                 {isTest && (
-                  <p className="mt-3 flex items-start gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>
+                  <p className="mt-3 flex items-start gap-2 rounded-xl px-3 py-2 text-xs" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>
                     <FlaskConical size={14} className="mt-px shrink-0" aria-hidden />
                     <span><strong>Sample data.</strong> These are test listings, not live. Live Redfin listings replace them once the feed is connected.</span>
                   </p>
                 )}
-
-                <div className="mt-4 flex gap-2">
-                  <label htmlFor="zip-input" className="sr-only">ZIP codes</label>
-                  <input id="zip-input" list="zip-list" value={zipInput} onChange={(e) => setZipInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && applyZips(zipInput)} onBlur={() => applyZips(zipInput)} placeholder="ZIP codes, like 98105" className="min-w-0 flex-1 px-3 py-2 text-sm" inputMode="numeric" autoComplete="off" />
-                  <button type="button" className="pa-btn pa-btn-sm" onClick={() => { setZipInput(""); setZipSel([]); setError(null); }} disabled={!zipSel.length}>All</button>
-                </div>
-                <datalist id="zip-list">{allZips.map((z) => <option key={z} value={z} />)}</datalist>
-
-                <form onSubmit={findAddress} className="mt-2">
-                  <label htmlFor="addr-input" className="sr-only">Find an address</label>
-                  <div className="pa-inset flex items-center gap-2 px-3" style={{ minHeight: 42 }}>
-                    <Search size={15} aria-hidden style={{ color: "var(--slate)" }} />
-                    <input id="addr-input" type="text" value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Find an address" className="w-full bg-transparent py-2 text-sm outline-none" autoComplete="off" />
-                    {searching && <Loader2 size={14} className="animate-spin" aria-hidden />}
-                  </div>
-                </form>
-
-                <div className="mt-4">
-                  <label htmlFor="price-max" className="flex items-baseline justify-between text-xs font-semibold" style={{ color: "var(--ink)" }}>
-                    <span>Price</span>
-                    <span className="tabular-nums">{maxPrice >= PRICE_MAX ? "$0 to $3M" : `$0 to ${usdShort(maxPrice)}`}</span>
-                  </label>
-                  <input id="price-max" type="range" min={0} max={PRICE_MAX} step={PRICE_STEP} value={maxPrice} onChange={(e) => setMaxPrice(Number(e.target.value))} className="mt-2 w-full" aria-valuetext={maxPrice >= PRICE_MAX ? "No maximum, up to $3M" : `Up to ${usd(maxPrice)}`} />
-                  <div className="flex justify-between text-[11px]" style={{ color: "var(--slate)" }} aria-hidden><span>$0</span><span>$3M</span></div>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Filter listings">
-                  <Chip on={topOnly} onClick={() => setTopOnly((v) => !v)}>Top picks</Chip>
-                  <Chip on={cornerOnly} onClick={() => setCornerOnly((v) => !v)}>Corner lot</Chip>
-                  <Chip on={alleyOnly} onClick={() => setAlleyOnly((v) => !v)}>Alley access</Chip>
-                </div>
-                <button type="button" className="pa-btn pa-btn-sm mt-3 inline-flex items-center gap-1.5" onClick={() => downloadListingsCsv(shown, zipSel)} disabled={!shown.length}>
-                  <Download size={14} aria-hidden /> Export {shown.length.toLocaleString()} to CSV
-                </button>
-                {error && <p role="alert" className="mt-3 text-xs" style={{ color: "var(--red)" }}>{error}</p>}
               </div>
 
-              <div className="flex items-center justify-between gap-3 border-t px-5 py-2.5" style={{ borderColor: "var(--hairline)" }}>
-                <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--slate)" }} aria-label="Grade key">
-                  {TIERS.map((t) => (
-                    <li key={t.id} className="flex items-center gap-1.5" title={t.note}><span aria-hidden className="h-2.5 w-2.5 rounded-[3px]" style={{ background: t.color }} />{t.label}</li>
-                  ))}
-                </ul>
-                <label className="flex shrink-0 items-center gap-1.5 text-xs" style={{ color: "var(--slate)" }}>
-                  <span className="sr-only">Sort listings</span>
-                  <select value={SORT_PRESETS.find((p) => p.sort.key === sort.key && p.sort.dir === sort.dir)?.id ?? ""} onChange={(e) => { const p = SORT_PRESETS.find((x) => x.id === e.target.value); if (p) setSort(p.sort); }} className="rounded-md bg-transparent py-1 pr-1 text-xs font-semibold" style={{ color: "var(--ink)" }}>
-                    {!SORT_PRESETS.some((p) => p.sort.key === sort.key && p.sort.dir === sort.dir) && <option value="">Sorted by table</option>}
-                    {SORT_PRESETS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-                  </select>
-                </label>
-              </div>
-
-              <ul className="flex flex-col">
-                {shown.map((l) => <ListingRow key={l.mlsId} l={l} onSelect={() => selectPin(l.pin)} />)}
+              <ul className="grid gap-4 p-4 sm:px-5 [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))]">
+                {shown.map((l) => <ListingCard key={l.mlsId} l={l} onSelect={() => selectPin(l.pin)} />)}
                 {loaded && loaded.connected && !shown.length && (
-                  <li className="px-5 py-8 text-sm" style={{ color: "var(--slate)" }}>No listings match. Raise the price limit or clear a filter.</li>
+                  <li className="col-span-full py-8 text-sm" style={{ color: "var(--slate)" }}>No listings match. Raise the price limit or clear a filter.</li>
                 )}
               </ul>
             </div>
           )}
         </div>
       </aside>
+      </div>
     </div>
   );
 }
 
-function ListingRow({ l, onSelect }: { l: MapListing; onSelect: () => void }) {
+/** A home card: photo first, then price, facts and address, with the DADU grade on the photo. */
+function ListingCard({ l, onSelect }: { l: MapListing; onSelect: () => void }) {
   const t = tierOf(l.tier);
+  const [photoOk, setPhotoOk] = useState(!!l.photo);
+  const facts = [l.beds != null ? `${l.beds} bd` : null, l.baths != null ? `${l.baths} ba` : null, l.sqft != null ? `${l.sqft.toLocaleString()} sqft` : null].filter(Boolean);
+  const extras = [l.daduSqft ? `DADU up to ${Math.round(l.daduSqft).toLocaleString()} sf` : null, l.alley ? "Alley" : null, l.corner ? "Corner" : null].filter(Boolean);
   return (
-    <li className="border-t" style={{ borderColor: "var(--hairline)" }}>
-      <button type="button" onClick={onSelect} className="flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-[var(--green-tint)]" aria-label={`${cleanAddress(l.address)}, ${usd(l.price)}, ${t.label}, score ${l.score}${l.daduSqft ? `, DADU up to ${Math.round(l.daduSqft)} square feet` : ""}`}>
-        <span className="pa-display flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base tabular-nums text-white" style={{ background: t.color }} aria-hidden>{l.score}</span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-baseline justify-between gap-2">
-            <span className="pa-display text-base tabular-nums" style={{ color: "var(--ink)" }}>{usd(l.price)}</span>
-            {l.daduSqft ? <span className="rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums" style={{ background: "var(--green-tint)", color: DADU_COLOR }}>DADU up to {Math.round(l.daduSqft).toLocaleString()} sf</span> : null}
+    <li className="min-w-0">
+      <button
+        type="button"
+        onClick={onSelect}
+        className="group block w-full overflow-hidden rounded-2xl text-left transition-shadow hover:shadow-[0_6px_20px_rgba(17,22,20,.14)]"
+        style={{ background: "var(--card)", boxShadow: "var(--shadow-raised)" }}
+        aria-label={`${cleanAddress(l.address)}, ${usd(l.price)}, ${t.label}, score ${l.score}${l.daduSqft ? `, DADU up to ${Math.round(l.daduSqft)} square feet` : ""}`}
+      >
+        <span className="relative block aspect-[16/10] overflow-hidden" style={{ background: `linear-gradient(135deg, ${t.color}22, ${t.color}10)` }}>
+          {photoOk && l.photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={l.photo} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" onError={() => setPhotoOk(false)} />
+          ) : (
+            <svg viewBox="0 0 160 100" className="absolute inset-0 h-full w-full" aria-hidden>
+              <rect x="20" y="14" width="120" height="72" rx="3" fill="none" stroke={t.color} strokeOpacity="0.55" strokeWidth="1.5" />
+              <path d="M44 62 L44 40 L60 28 L76 40 L76 62 Z" fill={t.color} fillOpacity="0.18" stroke={t.color} strokeOpacity="0.7" strokeWidth="1.5" />
+              <rect x="98" y="24" width="26" height="22" rx="1.5" fill="#E6C97E" stroke="#17241D" strokeOpacity="0.6" strokeWidth="1.2" />
+            </svg>
+          )}
+          <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-bold" style={{ background: "rgba(255,255,255,.94)", color: "var(--ink)" }}>
+            <span className="h-2 w-2 rounded-full" style={{ background: t.color }} aria-hidden />
+            {l.tier === 3 && <Star size={11} aria-hidden fill={t.color} color={t.color} />}
+            {t.label}
           </span>
-          <span className="block truncate text-sm" style={{ color: "var(--ink)" }}>{cleanAddress(l.address)}</span>
-          <span className="mt-0.5 flex items-center gap-2 text-xs tabular-nums" style={{ color: "var(--slate)" }}>
-            {l.beds != null && <span className="flex items-center gap-1"><BedDouble size={12} aria-hidden />{l.beds} bd</span>}
-            {l.baths != null && <span>{l.baths} ba</span>}
-            {l.sqft != null && <span>{l.sqft.toLocaleString()} sf</span>}
-            {l.corner && <span>Corner</span>}
-            {l.alley && <span>Alley</span>}
-          </span>
+          <span className="pa-display absolute right-2.5 top-2.5 flex h-9 w-9 items-center justify-center rounded-full text-sm tabular-nums text-white" style={{ background: t.color, boxShadow: "0 0 0 2px #fff" }} aria-hidden>{l.score}</span>
+        </span>
+        <span className="block px-3.5 pb-3.5 pt-3">
+          <span className="pa-display block text-[22px] leading-tight tabular-nums" style={{ color: "var(--ink)" }}>{usd(l.price)}</span>
+          {facts.length > 0 && <span className="mt-0.5 block text-sm tabular-nums" style={{ color: "var(--ink)" }}>{facts.join(" | ")}</span>}
+          <span className="block truncate text-sm" style={{ color: "var(--slate)" }}>{cleanAddress(l.address)}</span>
+          {extras.length > 0 && <span className="mt-1.5 block truncate text-xs font-semibold" style={{ color: DADU_COLOR }}>{extras.join(" · ")}</span>}
         </span>
       </button>
     </li>

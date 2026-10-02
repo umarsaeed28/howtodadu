@@ -256,13 +256,27 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     .sort((a, b) => b.area - a.area);
   const mainHouse = bldgBoxes[0] ?? null;
 
-  const initialDadu: Unit | null = fp
+  // Computed once per lot (the sheet is keyed by parcel): the search below is too heavy to repeat on every drag.
+  const [initialDadu] = useState<Unit | null>(() => fp
     ? (() => {
         const w = Math.max(MIN_SIDE_FT, Math.min(fp.suggestedWidth, lw - 2 * side));
-        const d = Math.max(MIN_SIDE_FT, Math.min(fp.suggestedDepth, ld - rear));
-        return { kind: "dadu", u: (lw - w) / 2, v: Math.max(0, ld - rear - d), w, d };
+        const d0 = Math.max(MIN_SIDE_FT, Math.min(fp.suggestedDepth, ld - rear));
+        // Start in open ground: rear first, centred first, shrinking the depth before giving up, and keeping clear of
+        // every existing building (5 ft from the house). Falls back to the plain rear-centre spot.
+        const clear = (u: number, v: number, dd: number) =>
+          bldgBoxes.every((b, i) => {
+            const gu = Math.max(0, b.u0 - (u + w), u - b.u1), gv = Math.max(0, b.v0 - (v + dd), v - b.v1);
+            return Math.hypot(gu, gv) >= (i === 0 ? HOUSE_SEPARATION_FT : 0.5);
+          });
+        const us: number[] = [];
+        for (let k = 0; side + k <= lw - side - w; k += 1) us.push(side + k);
+        us.sort((p, q) => Math.abs(p - (lw - w) / 2) - Math.abs(q - (lw - w) / 2));
+        for (let dd = d0; dd >= Math.min(d0, 15); dd -= 1)
+          for (let v = ld - rear - dd; v >= 0; v -= 1)
+            for (const u of us) if (clear(u, v, dd)) return { kind: "dadu", u, v, w, d: dd };
+        return { kind: "dadu", u: (lw - w) / 2, v: Math.max(0, ld - rear - d0), w, d: d0 };
       })()
-    : null;
+    : null);
   const [units, setUnits] = useState<Unit[]>(initialDadu ? [initialDadu] : []);
   const [stories, setStories] = useState<1 | 2>(canTwoStory ? 2 : 1);
   const [active, setActive] = useState<number | null>(null);
@@ -950,7 +964,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
       )}
       </div>
 
-      <div className="min-w-0 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto xl:overscroll-contain xl:pr-3">
+      <div className="min-w-0 xl:sticky xl:top-[186px] xl:max-h-[calc(100vh-200px)] xl:overflow-y-auto xl:overscroll-contain xl:pr-3">
       {units.length > 0 && (
         <div className="mt-3 flex flex-col gap-2 xl:mt-0" aria-live="polite">
           {units.map((x, idx) => {
