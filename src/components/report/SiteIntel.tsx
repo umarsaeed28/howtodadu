@@ -327,7 +327,6 @@ export default function SiteIntel({ row }: { row: FeasibilityTableRow }) {
       <ScoreFactors row={row} />
       <LotCharacter row={row} />
       <Coverage row={row} />
-      <HeightProfile row={row} />
       <Canopy row={row} />
       <EcaPanel row={row} />
       <NearbyAdus row={row} />

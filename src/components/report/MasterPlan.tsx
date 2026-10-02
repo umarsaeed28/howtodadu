@@ -117,6 +117,8 @@ type PlanProps = {
   terrain?: TerrainGrid | null;
   /** Filled with a function that reads the plan as it stands now (units where the user dragged them). */
   snapshotRef?: MutableRefObject<(() => PlanSnapshot) | null>;
+  /** Fired with the DADU's living area (sf) as drawn, so the page's build estimate and return follow the plan. Null when there is no DADU. */
+  onDaduChange?: (livingSf: number | null) => void;
 };
 
 /** DADU in lot-local feet: u across the street frontage, v from the street toward the rear. */
@@ -161,7 +163,7 @@ export default function MasterPlan(props: PlanProps) {
   return <PlanSheet key={props.pin ?? "lot"} {...props} lot={props.lot} />;
 }
 
-function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotRef }: PlanProps & { lot: LotGeometry }) {
+function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotRef, onDaduChange }: PlanProps & { lot: LotGeometry }) {
   /* ---- projection: lng/lat to feet, north up ---- */
   const lat0 = lot.rings.reduce((s, r) => s + r[1], 0) / lot.rings.length;
   const lng0 = lot.rings.reduce((s, r) => s + r[0], 0) / lot.rings.length;
@@ -491,6 +493,10 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   const daduExt = daduUnit ? extent(daduUnit) : null;
   const dadu: Pt[] | null = daduExt ? rect(daduExt.u, daduExt.v, daduExt.w, daduExt.d) : null;
   const daduConflict = daduIdx >= 0 && !checks[daduIdx].ok;
+  const daduLiving = daduIdx >= 0 ? Math.min(checks[daduIdx].living, maxLiving) : null;
+  useEffect(() => {
+    onDaduChange?.(daduLiving);
+  }, [daduLiving, onDaduChange]);
 
   /* ---- vehicle access: alley, corner, or the roomier side yard (same rule as the score) ---- */
   type AccessKind = "alley" | "corner" | "side" | "tight" | "blocked";
@@ -1088,7 +1094,6 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
           buildings={sectionBuildings}
           units={units.map((x) => { const e = extent(x); return { kind: x.kind, s0: e.v + SECTION_PAD, s1: e.v + e.d + SECTION_PAD, stories: x.plan ? x.plan.stories : x.kind === "dadu" ? stories : 1, cut: sectionU >= e.u - 0.01 && sectionU <= e.u + e.w + 0.01 }; })}
           maxHeight={fp?.maxHeight ?? null}
-          source={terrain?.source ?? ""}
         />
       )}
       </div>

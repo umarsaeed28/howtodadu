@@ -14,7 +14,7 @@ import MasterPlan, { type PlanSnapshot } from "./MasterPlan";
 import ReportEmailGate from "./ReportEmailGate";
 import { hasReportAccess } from "@/lib/report-access";
 import SiteIntel from "./SiteIntel";
-import { COST_PER_SF, COST_LABEL } from "@/lib/config/costs";
+import { COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
 import { calculatorHref } from "@/lib/calculator/inputs";
 import Link from "next/link";
 
@@ -86,8 +86,12 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-function Hero({ report, slim, listing }: { report: FeasibilityReport; slim: DashboardPropertySlim; listing: ReportListing | null }) {
+function Hero({ report, slim, listing, drawnSf }: { report: FeasibilityReport; slim: DashboardPropertySlim; listing: ReportListing | null; drawnSf: number | null }) {
   const s = report.summary;
+  // The cottage the estimate is for: the one drawn on the plan when there is one, else the largest the lot allows.
+  const estSf = drawnSf ?? s.max_buildable_sf?.value ?? null;
+  const estCost = estSf ? constructionEstimate(estSf) : null;
+  const asDrawn = drawnSf != null && s.max_buildable_sf != null && Math.round(drawnSf) !== Math.round(s.max_buildable_sf.value);
   const score = Math.round(s.score.value);
   const v = VERDICT_STYLE[s.verdict];
   const lot = report.property_facts.find((f) => /lot area/i.test(f.label));
@@ -96,17 +100,44 @@ function Hero({ report, slim, listing }: { report: FeasibilityReport; slim: Dash
     lot ? `${sf(lot.value)} lot` : null,
     slim.zoning ? `Zoned ${slim.zoning}` : null,
   ].filter((x): x is string => !!x);
+  const e = daduEconomics(estSf);
+  const roiPct = e ? Math.round(e.roi * 100) : null;
+  const money = (n: number) => (n < 0 ? "−" : "") + usd(Math.abs(n));
+  // The strip: price when the home is for sale, then what the cottage costs and returns. Numbers lead, one line each.
+  const tiles: { label: string; value: string; note?: string; tone?: "green" | "red"; extra?: React.ReactNode }[] = [];
+  if (listing)
+    tiles.push({
+      label: "List price",
+      value: usd(listing.price),
+      note: [listing.beds != null && `${listing.beds} bd`, listing.baths != null && `${listing.baths} ba`, listing.livingSqft != null && sf(listing.livingSqft), listing.daysOnMarket != null && `${listing.daysOnMarket} days on market`].filter(Boolean).join(" · "),
+      extra: (
+        <span className="flex flex-wrap items-center gap-2">
+          {listing.pending && <span className="rounded-md px-2 py-0.5 text-[11px] font-bold" style={{ background: "#FFF4D6", color: "#7A5A12" }}>Pending</span>}
+          <Link href={`/listing/${encodeURIComponent(listing.mlsId)}`} className="text-xs font-semibold no-underline" style={{ color: "var(--green)" }}>View the listing</Link>
+        </span>
+      ),
+    });
+  tiles.push({
+    label: "Build estimate",
+    value: estCost ? usd(estCost) : "None",
+    note: estSf && estCost ? `${sf(estSf)}${asDrawn ? " as drawn" : ""} × ${usd(COST_PER_SF)} per sf${asDrawn && s.max_buildable_sf ? ` · up to ${sf(s.max_buildable_sf.value)}` : ""}` : "No DADU room",
+  });
+  if (e) {
+    tiles.push({ label: "DADU resale value", value: usd(e.saleValue), note: `${usd(e.salePsf)} per sf · ${usd(e.allInCost)} all in` });
+    tiles.push({ label: "Profit", value: money(e.profit), note: `after ${usd(e.softCosts)} soft costs`, tone: e.profit >= 0 ? "green" : "red" });
+    tiles.push({ label: "ROI", value: `${roiPct}%`, note: "profit over all-in cost", tone: (roiPct ?? 0) >= 0 ? "green" : "red" });
+  }
+  if (listing && estCost) tiles.push({ label: "Price plus DADU build", value: usd(listing.price + estCost), note: "home and cottage together" });
+
   return (
-    <section aria-labelledby="rep-sum" id="rep-overview" className="mb-6 grid scroll-mt-[190px] gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
-          <p className="pa-display leading-none tabular-nums" style={{ color: "var(--ink)", fontSize: "clamp(44px, 7vw, 64px)" }} aria-label={`DADU score ${score} out of 100`}>
-            {score}
-            <span className="ml-1 text-2xl font-bold" style={{ color: "var(--slate)" }}>/100</span>
-          </p>
-          <span className="mb-1.5 inline-flex items-center rounded-lg px-2.5 py-1 text-sm font-bold" style={{ background: v.bg, color: v.fg }}>{s.verdict}</span>
-        </div>
-        <p className="mt-3 text-[17px] tabular-nums" style={{ color: "var(--ink)" }}>
+    <section aria-labelledby="rep-sum" id="rep-overview" className="mb-6 scroll-mt-[190px]">
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+        <p className="pa-display leading-none tabular-nums" style={{ color: "var(--ink)", fontSize: "clamp(44px, 7vw, 64px)" }} aria-label={`DADU score ${score} out of 100`}>
+          {score}
+          <span className="ml-1 text-2xl font-bold" style={{ color: "var(--slate)" }}>/100</span>
+        </p>
+        <span className="mb-1.5 inline-flex items-center rounded-lg px-2.5 py-1 text-sm font-bold" style={{ background: v.bg, color: v.fg }}>{s.verdict}</span>
+        <p className="mb-1.5 text-[17px] tabular-nums" style={{ color: "var(--ink)" }}>
           {facts.map((f, i) => (
             <span key={f}>
               {i > 0 && <span className="mx-2" style={{ color: "var(--line-strong)" }} aria-hidden>|</span>}
@@ -114,62 +145,31 @@ function Hero({ report, slim, listing }: { report: FeasibilityReport; slim: Dash
             </span>
           ))}
         </p>
-        <h2 id="rep-sum" className="mt-4 text-xl font-semibold leading-snug sm:text-2xl" style={{ color: "var(--ink)" }}>
-          {s.verdict === "Feasible" ? "This lot can take a backyard cottage." : s.verdict === "Conditional" ? "A backyard cottage could work here, with conditions." : "A backyard cottage will not work on this lot as it stands."}
-        </h2>
-        <p className="mt-2 max-w-2xl text-base leading-relaxed" style={{ color: "var(--slate)" }}>{s.headline} {slim.neighborhood ? `${slim.neighborhood}. ` : ""}This is the site and code check.</p>
       </div>
-      <aside className="pa-raised p-5" aria-label="Price and build estimate">
-        {listing && (
-          <div className="mb-4 border-b pb-4" style={{ borderColor: "var(--hairline)" }}>
-            <p className="flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--slate)" }}>
-              List price
-              {listing.pending && <span className="rounded-md px-2 py-0.5 text-[11px] font-bold" style={{ background: "#FFF4D6", color: "#7A5A12" }}>Pending</span>}
-            </p>
-            <p className="pa-display mt-1 text-3xl tabular-nums" style={{ color: "var(--ink)" }}>{usd(listing.price)}</p>
-            <p className="mt-1 text-xs tabular-nums" style={{ color: "var(--slate)" }}>
-              {[listing.beds != null && `${listing.beds} bd`, listing.baths != null && `${listing.baths} ba`, listing.livingSqft != null && `${sf(listing.livingSqft)}`, listing.daysOnMarket != null && `${listing.daysOnMarket} days on market`].filter(Boolean).join(" · ")}
-            </p>
-            {s.construction_cost_usd && (
-              <p className="mt-2 text-sm tabular-nums" style={{ color: "var(--ink)" }}>
-                Price plus DADU build: <strong>{usd(listing.price + s.construction_cost_usd.value)}</strong>
-              </p>
-            )}
-            <Link href={`/listing/${encodeURIComponent(listing.mlsId)}`} className="mt-2 inline-block text-xs font-semibold no-underline" style={{ color: "var(--green)" }}>View the listing</Link>
+      <h2 id="rep-sum" className="mt-3 text-xl font-semibold leading-snug sm:text-2xl" style={{ color: "var(--ink)" }}>
+        {s.verdict === "Feasible" ? "This lot can take a backyard cottage." : s.verdict === "Conditional" ? "A backyard cottage could work here, with conditions." : "A backyard cottage will not work on this lot as it stands."}
+      </h2>
+      <p className="mt-1 max-w-3xl text-base leading-relaxed" style={{ color: "var(--slate)" }}>{s.headline} {slim.neighborhood ? `${slim.neighborhood}. ` : ""}This is the site and code check.</p>
+
+      <dl className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6" aria-label="Price, cost and return">
+        {tiles.map((t) => (
+          <div key={t.label} className="pa-raised min-w-0 p-3 sm:p-4">
+            <dt className="text-xs" style={{ color: "var(--slate)" }}>{t.label}</dt>
+            <dd className="pa-display mt-1 truncate text-[22px] leading-tight tabular-nums" style={{ color: t.tone === "green" ? "#145A40" : t.tone === "red" ? "var(--red)" : "var(--ink)" }}>{t.value}</dd>
+            {t.note && <dd className="mt-0.5 text-xs leading-snug" style={{ color: "var(--slate)" }}>{t.note}</dd>}
+            {t.extra && <dd className="mt-1">{t.extra}</dd>}
           </div>
-        )}
-        <p className="text-sm font-semibold" style={{ color: "var(--slate)" }}>Build estimate</p>
-        <p className="pa-display mt-1 text-3xl tabular-nums" style={{ color: "var(--ink)" }}>{s.construction_cost_usd ? usd(s.construction_cost_usd.value) : "None"}</p>
-        {s.max_buildable_sf && s.construction_cost_usd && (
-          <p className="mt-1 text-xs tabular-nums" style={{ color: "var(--slate)" }}>
-            {sf(s.max_buildable_sf.value)} × {usd(COST_PER_SF)} per sf. {COST_LABEL}.
-          </p>
-        )}
-        {(() => {
-          const e = daduEconomics(s.max_buildable_sf?.value);
-          if (!e) return null;
-          const pct = Math.round(e.roi * 100);
-          return (
-            <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 border-t pt-4 text-sm tabular-nums" style={{ borderColor: "var(--hairline)" }} aria-label="DADU resale and return">
-              <dt style={{ color: "var(--slate)" }}>DADU resale value</dt>
-              <dd className="text-right font-semibold" style={{ color: "var(--ink)" }}>{usd(e.saleValue)} <span className="font-normal" style={{ color: "var(--slate)" }}>({usd(e.salePsf)}/sf)</span></dd>
-              <dt style={{ color: "var(--slate)" }}>All-in cost</dt>
-              <dd className="text-right font-semibold" style={{ color: "var(--ink)" }}>{usd(e.allInCost)} <span className="font-normal" style={{ color: "var(--slate)" }}>(+{usd(e.softCosts)} soft)</span></dd>
-              <dt style={{ color: "var(--slate)" }}>Profit</dt>
-              <dd className="text-right font-semibold" style={{ color: e.profit >= 0 ? "#145A40" : "var(--red)" }}>{e.profit < 0 ? "−" : ""}{usd(Math.abs(e.profit))}</dd>
-              <dt className="font-semibold" style={{ color: "var(--ink)" }}>ROI</dt>
-              <dd className="pa-display text-right text-xl" style={{ color: pct >= 0 ? "#145A40" : "var(--red)" }}>{pct}%</dd>
-              <dd className="col-span-2 text-xs" style={{ color: "var(--slate)" }}>{ECONOMICS_LABEL}</dd>
-            </dl>
-          );
-        })()}
-        <Link href={calculatorHref({ sf: s.max_buildable_sf?.value, address: slim.address })} className="pa-btn pa-btn-primary mt-4 w-full no-underline" style={{ minHeight: 44 }}>
+        ))}
+      </dl>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Link href={calculatorHref({ sf: estSf ?? undefined, address: slim.address })} className="pa-btn pa-btn-primary no-underline" style={{ minHeight: 40 }}>
           Estimate your return
         </Link>
-        <a href="#rep-plan" className="pa-btn mt-2 w-full no-underline" style={{ minHeight: 44 }}>
+        <a href="#rep-plan" className="pa-btn no-underline" style={{ minHeight: 40 }}>
           Open the master plan
         </a>
-      </aside>
+        {e && <p className="basis-full text-xs sm:basis-auto sm:pl-2" style={{ color: "var(--slate)" }}>{ECONOMICS_LABEL}</p>}
+      </div>
     </section>
   );
 }
@@ -200,7 +200,7 @@ function SectionTabs() {
   );
 }
 
-function ReportBody({ report, row, snapshotRef }: { report: FeasibilityReport; row: FeasibilityTableRow; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null> }) {
+function ReportBody({ report, row, snapshotRef, onDaduChange }: { report: FeasibilityReport; row: FeasibilityTableRow; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null>; onDaduChange: (sf: number | null) => void }) {
   return (
     <div className="flex flex-col gap-6">
       {/* The master plan breaks out of the page column to (nearly) the full screen width, so there is room to work. */}
@@ -213,6 +213,7 @@ function ReportBody({ report, row, snapshotRef }: { report: FeasibilityReport; r
           pin={row.result.parcel?.pin ?? null}
           terrain={row.result.terrain ?? null}
           snapshotRef={snapshotRef}
+          onDaduChange={onDaduChange}
         />
       </div>
 
@@ -363,6 +364,8 @@ export default function FeasibilityReportView({
     setUnlocked(hasReportAccess());
     setAccessChecked(true);
   }, []);
+  // The DADU as drawn on the plan: the build estimate and return follow it (the largest allowed size until it is drawn).
+  const [drawnSf, setDrawnSf] = useState<number | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   async function downloadPdf() {
@@ -443,9 +446,9 @@ export default function FeasibilityReportView({
         </div>
       )}
 
-      {report && <Hero report={report} slim={slim} listing={detailRow?.result.listing ?? null} />}
+      {report && <Hero report={report} slim={slim} listing={detailRow?.result.listing ?? null} drawnSf={drawnSf} />}
       {report && detailRow && <SectionTabs />}
-      {report && detailRow && <ReportBody report={report} row={detailRow} snapshotRef={snapshotRef} />}
+      {report && detailRow && <ReportBody report={report} row={detailRow} snapshotRef={snapshotRef} onDaduChange={setDrawnSf} />}
 
       <div className="mt-6">
         <Section id="rep-all" title="All property data">

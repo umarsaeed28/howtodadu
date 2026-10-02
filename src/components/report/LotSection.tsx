@@ -1,7 +1,6 @@
 "use client";
 
 import { GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT } from "@/lib/grade";
-import { useState } from "react";
 
 type Span = { s0: number; s1: number };
 
@@ -19,7 +18,6 @@ export default function LotSection({
   buildings,
   units,
   maxHeight,
-  source,
 }: {
   profile: { s: number; z: number | null }[];
   pad: number;
@@ -30,9 +28,7 @@ export default function LotSection({
   buildings: (Span & { main: boolean; key: number; cut: boolean })[];
   units: (Span & { kind: "dadu" | "aadu"; stories: 1 | 2; cut: boolean })[];
   maxHeight: number | null;
-  source: string;
 }) {
-  const [exaggerate, setExaggerate] = useState(false);
   const pts = profile.filter((p): p is { s: number; z: number } => p.z != null);
   if (pts.length < 2) return null;
 
@@ -64,7 +60,7 @@ export default function LotSection({
   });
   const dadu = blocks.find((b) => b.kind === "dadu") ?? null;
 
-  const ex = exaggerate ? 3 : 1;
+  const ex = 1; // true scale: heights and distances share one unit
   const zMin = Math.min(...pts.map((p) => p.z));
   const zTop = Math.max(...pts.map((p) => p.z), ...blocks.map((b) => (b.kind === "dadu" && maxHeight ? b.base + maxHeight : b.top)), ...existing.map((b) => b.top ?? b.base));
   const Y = (z: number) => -(z - zMin) * ex;
@@ -83,16 +79,7 @@ export default function LotSection({
 
   return (
     <div className="mt-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h4 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>Section A–A′ through the lot</h4>
-        <div className="flex items-center gap-1 text-xs" role="group" aria-label="Vertical scale">
-          {([false, true] as const).map((v) => (
-            <button key={String(v)} type="button" aria-pressed={exaggerate === v} onClick={() => setExaggerate(v)} className={`pa-chip ${exaggerate === v ? "pa-chip-active" : ""}`} style={{ minHeight: 28 }}>
-              {v ? "3× vertical" : "True scale"}
-            </button>
-          ))}
-        </div>
-      </div>
+      <h4 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>Section A–A′ through the lot</h4>
       <svg data-pdf-section viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="mt-2 w-full" role="img" aria-label={`Section A–A′ through the lot. The ground ${fall >= 0 ? "falls" : "rises"} ${Math.abs(fall).toFixed(1)} feet from the front lot line to the rear lot line.`} style={{ fontSize: fs, maxHeight: 280 }}>
         <defs>
           {/* earth: fine diagonal hatch under the cut ground line */}
@@ -200,7 +187,7 @@ export default function LotSection({
           <text x={fs * 0.55} y={0} textAnchor="middle" dominantBaseline="central" style={{ fontSize: fs * 0.5, fontWeight: 600, fill: "#17241D" }}>A</text>
           <text x={fs * 1.45} y={0} dominantBaseline="central" style={{ fontSize: fs * 0.55, fontWeight: 600, letterSpacing: "0.03em", fill: "#17241D" }}>Section A–A′</text>
         </g>
-        {!exaggerate && (
+        {(
           <g transform={`translate(${vb.x + vb.w - 26} ${bottom + fs * 1.1})`}>
             {[0, 1].map((k) => <rect key={k} x={k * 10} y={0} width={10} height={sw * 3} fill={k ? "#fff" : "#17241D"} stroke="#17241D" strokeWidth={sw * 0.5} />)}
             {[0, 10, 20].map((v) => <text key={v} x={v} y={-sw * 3} textAnchor="middle" style={{ fontSize: fs * 0.45, fill: "#17241D" }}>{v === 20 ? "20 ft" : v}</text>)}
@@ -229,9 +216,6 @@ export default function LotSection({
             : "Expect a stepped foundation and retaining walls, which add real cost. The score holds this lot to Fair at best."}
         </p>
       )}
-      <p className="mt-1 text-[11px]" style={{ color: "var(--slate)" }}>
-        Ground from {source || "lidar elevation"}, sampled along the section. Contours on the plan are every 2 ft, labelled every 10 ft. Building heights are not in the city data: the house is drawn at an assumed {HOUSE_HEIGHT_FT} ft, other buildings only where they sit, and unit heights are illustrative ({STORY_FT} ft a story) under the code height limit. Heavy lines and solid walls are cut by section line A–A′ on the plan; thin dashed outlines sit beyond it. The DADU floor is set at the high side of its ground, so on a slope the stippled foundation shows what the slope adds. Moves with the DADU.
-      </p>
     </div>
   );
 }
