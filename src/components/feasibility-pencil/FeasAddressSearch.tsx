@@ -10,11 +10,23 @@ interface AddressSuggestion {
   city: string;
   state: string;
   zip: string;
-  lat: number;
-  lng: number;
 }
 
-const DEBOUNCE_MS = 280;
+const DEBOUNCE_MS = 120;
+
+/** Bold the part of the street that matches what was typed, like a maps search box. */
+function Highlight({ text, query }: { text: string; query: string }) {
+  const q = query.trim().split(",")[0].trim();
+  const i = q ? text.toLowerCase().indexOf(q.toLowerCase()) : -1;
+  if (i < 0) return <span style={{ fontWeight: 600 }}>{text}</span>;
+  return (
+    <span>
+      {text.slice(0, i)}
+      <span style={{ fontWeight: 700 }}>{text.slice(i, i + q.length)}</span>
+      {text.slice(i + q.length)}
+    </span>
+  );
+}
 
 function isAbortError(err: unknown): boolean {
   return (
@@ -42,6 +54,8 @@ export default function FeasAddressSearch({
   const [fetching, setFetching] = useState(false);
   const [active, setActive] = useState(-1);
   const [mode, setMode] = useState<"suggest" | "recent">("recent");
+  const [noMatch, setNoMatch] = useState(false);
+  const [lastQuery, setLastQuery] = useState("");
 
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -74,8 +88,10 @@ export default function FeasAddressSearch({
       if (!res.ok) throw new Error("geocode failed");
       const data: AddressSuggestion[] = await res.json();
       setSuggestions(data);
-      setOpen(data.length > 0);
-      setActive(-1);
+      setLastQuery(q);
+      setNoMatch(data.length === 0 && q.length >= 5);
+      setOpen(data.length > 0 || q.length >= 5);
+      setActive(data.length > 0 ? 0 : -1);
     } catch (err) {
       if (isAbortError(err)) return;
       setSuggestions([]);
@@ -87,6 +103,7 @@ export default function FeasAddressSearch({
   function handleChange(val: string) {
     onChange(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    setNoMatch(false);
     if (val.trim().length < 3) {
       setSuggestions([]);
       setMode("recent");
@@ -115,13 +132,14 @@ export default function FeasAddressSearch({
   const list = mode === "suggest" ? suggestions.map((s) => s.formatted) : recent;
   const showPanel =
     open &&
-    (mode === "suggest" ? suggestions.length > 0 : recent.length > 0 && value.trim().length < 3);
+    (mode === "suggest" ? suggestions.length > 0 || noMatch : recent.length > 0 && value.trim().length < 3);
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
-      if (showPanel && active >= 0 && list[active]) {
+      // Like a maps search box: Enter takes the highlighted suggestion, which starts on the top match.
+      if (showPanel && list.length > 0) {
         e.preventDefault();
-        commit(list[active]);
+        commit(list[active >= 0 ? active : 0]);
       }
       // otherwise let the form submit with the raw value
       return;
@@ -186,7 +204,7 @@ export default function FeasAddressSearch({
           }}
           onKeyDown={handleKeyDown}
           placeholder="Enter a Seattle address"
-          className="w-full bg-transparent py-2 text-sm outline-none"
+          className="w-full bg-transparent py-2 text-[16px] outline-none sm:text-sm"
           style={{ color: "var(--ink)" }}
           autoComplete="off"
           role="combobox"
@@ -202,9 +220,14 @@ export default function FeasAddressSearch({
 
       {showPanel && (
         <div
-          className="pa-card absolute left-0 right-0 z-50 mt-2 overflow-hidden p-1"
+          className="pa-card absolute left-0 right-0 z-50 mt-2 overflow-hidden p-1 text-left"
           style={{ boxShadow: "var(--shadow-pop)" }}
         >
+          {mode === "suggest" && noMatch && suggestions.length === 0 && (
+            <p className="px-3 py-3 text-sm" style={{ color: "var(--slate)" }}>
+              No Seattle address matches. Check the house number and street, or press Check to try it as typed.
+            </p>
+          )}
           {mode === "recent" && (
             <p className="pa-eyebrow px-2.5 pb-1 pt-2" style={{ color: "var(--slate)" }}>
               Recent
@@ -226,18 +249,14 @@ export default function FeasAddressSearch({
                     aria-selected={i === active}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => commit(s.formatted)}
-                    className="flex cursor-pointer items-start gap-2.5 rounded-[5px] px-2.5 py-2.5 text-sm"
-                    style={{ background: i === active ? "var(--paper)" : "transparent" }}
+                    className="flex cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm"
+                    style={{ background: i === active ? "var(--green-tint)" : "transparent" }}
+                    onMouseEnter={() => setActive(i)}
                   >
                     <MapPin size={15} className="mt-0.5 shrink-0" aria-hidden style={{ color: "var(--green)" }} />
-                    <span className="leading-snug">
-                      <span style={{ color: "var(--ink)", fontWeight: 500 }}>{s.street}</span>
-                      {(s.city || s.state || s.zip) && (
-                        <span style={{ color: "var(--slate)" }}>
-                          {" · "}
-                          {[s.city, s.state, s.zip].filter(Boolean).join(", ")}
-                        </span>
-                      )}
+                    <span className="min-w-0 leading-snug">
+                      <span className="block truncate" style={{ color: "var(--ink)" }}><Highlight text={s.street} query={lastQuery} /></span>
+                      <span className="block text-xs" style={{ color: "var(--slate)" }}>{[s.city, s.state].filter(Boolean).join(", ")}{s.zip ? ` ${s.zip}` : ""}</span>
                     </span>
                   </li>
                 ))
@@ -249,7 +268,7 @@ export default function FeasAddressSearch({
                     aria-selected={i === active}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => commit(addr)}
-                    className="flex cursor-pointer items-start gap-2.5 rounded-[5px] px-2.5 py-2.5 text-sm"
+                    className="flex cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2.5 text-left text-sm"
                     style={{ background: i === active ? "var(--paper)" : "transparent" }}
                   >
                     <Clock size={15} className="mt-0.5 shrink-0" aria-hidden style={{ color: "var(--green)" }} />

@@ -589,7 +589,8 @@ export async function getFeasibilityForAddress(
     contours,
     parcel: p
       ? {
-          address: str(p.ADDRESS)?.replace(/\s+/g, " ") ?? null,
+          // Some parcels (condos, commercial) carry no street address in the city layer: show the one that was searched.
+          address: str(p.ADDRESS)?.replace(/\s+/g, " ") ?? (trimmed.split(",")[0].trim().toUpperCase() || null),
           pin: str(p.PIN),
           lotSqft: num(p.SQFTLOT),
           developableAreaSqft: num(p.LAND_NO_SHORE_SQFT),

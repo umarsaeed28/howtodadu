@@ -252,8 +252,9 @@ export default function CandidateMap() {
     if (q.length < 3) return;
     setSearching(true);
     try {
-      const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
-      const hit = ((await res.json()) as { lat: number; lng: number }[])[0];
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}&resolve=1`);
+      const top = ((await res.json()) as { lat: number | null; lng: number | null }[])[0];
+      const hit = top && top.lat != null && top.lng != null ? { lat: top.lat, lng: top.lng } : null;
       if (!hit) {
         setError("No Seattle address matched that search.");
         return;

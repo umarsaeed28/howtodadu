@@ -360,8 +360,22 @@ export default function FeasibilityPencil() {
         loading={singleLoading}
       />
 
+      {/* A new search while a report is open: show that it is working, and say so if it fails. */}
+      {selectedSlim && singleLoading && (
+        <div className="relative z-10 h-1 w-full overflow-hidden" role="progressbar" aria-label="Checking the new address" style={{ background: "var(--green-tint)" }}>
+          <div className="pa-progress-bar h-full w-1/3" style={{ background: "var(--green)" }} />
+        </div>
+      )}
       {selectedSlim ? (
-        <main className="mx-auto w-full max-w-[1500px] flex-1 px-4 py-6 md:px-6">
+        <main className="mx-auto w-full max-w-[1500px] flex-1 px-4 py-6 md:px-6" aria-busy={singleLoading || undefined}>
+          {errorBanner && (
+            <div role="alert" className="mb-4 rounded-xl px-4 py-3 text-sm" style={{ background: "var(--red-tint)", color: "var(--red)" }}>
+              {errorBanner}
+            </div>
+          )}
+          {singleLoading && (
+            <p className="mb-4 text-sm" style={{ color: "var(--slate)" }} aria-live="polite">Checking {singleAddress}…</p>
+          )}
           <FeasibilityReportView
             slim={selectedSlim}
             detailRow={detailRow}
