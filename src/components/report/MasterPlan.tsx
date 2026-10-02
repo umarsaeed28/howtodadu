@@ -49,6 +49,35 @@ function pointInPoly(p: Pt, poly: Pt[]): boolean {
   return inside;
 }
 
+const signedArea = (pts: Pt[]) => pts.reduce((s, p, i) => { const q = pts[(i + 1) % pts.length]; return s + p.x * q.y - q.x * p.y; }, 0) / 2;
+
+/** Keep the part of a polygon at least `dist` inside the line through `a` with inward unit normal `n` (Sutherland-Hodgman). */
+/** True when a point lies within `tol` feet of the polygon's outline (touching counts as inside). */
+function nearPoly(p: Pt, poly: Pt[], tol: number): boolean {
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const dx = b.x - a.x, dy = b.y - a.y, len2 = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
+    if (Math.hypot(a.x + t * dx - p.x, a.y + t * dy - p.y) <= tol) return true;
+  }
+  return false;
+}
+
+function clipInside(poly: Pt[], a: Pt, n: Pt, dist: number): Pt[] {
+  const f = (p: Pt) => (p.x - a.x) * n.x + (p.y - a.y) * n.y - dist;
+  const out: Pt[] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i], q = poly[(i + 1) % poly.length];
+    const fp = f(p), fq = f(q);
+    if (fp >= 0) out.push(p);
+    if ((fp >= 0) !== (fq >= 0)) {
+      const t = fp / (fp - fq);
+      out.push({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t });
+    }
+  }
+  return out;
+}
+
 const path = (pts: Pt[], close = true) =>
   pts.map((q, i) => `${i ? "L" : "M"}${q.x.toFixed(2)} ${q.y.toFixed(2)}`).join(" ") + (close ? " Z" : "");
 
@@ -172,6 +201,12 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     }
   };
   const rect = (u: number, v: number, w: number, d: number): Pt[] => [L(u, v), L(u + w, v), L(u + w, v + d), L(u, v + d)];
+  /** A unit's four corners on the plan, turned about its centre. */
+  function screenCorners(x: Unit): Pt[] {
+    const a = ((x.angle ?? 0) * Math.PI) / 180, ca = Math.cos(a), sa = Math.sin(a);
+    const cu = x.u + x.w / 2, cv = x.v + x.d / 2;
+    return ([[-x.w / 2, -x.d / 2], [x.w / 2, -x.d / 2], [x.w / 2, x.d / 2], [-x.w / 2, x.d / 2]] as const).map(([px, py]) => L(cu + px * ca - py * sa, cv + px * sa + py * ca));
+  }
 
   /* ---- existing structures on this lot ---- */
   const houses = (sitePlan?.buildings ?? [])
@@ -191,7 +226,22 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   const onAlley = !!feasibility?.hasAlley;
   const side = fp?.sideSetback ?? 5;
   const rear = onAlley ? 0 : fp?.rearSetback ?? 5; // a rear line on an alley needs no setback
-  const envelope = rect(side, 0, Math.max(0, lw - 2 * side), Math.max(0, ld - rear));
+  /* The buildable envelope follows the real lot lines: each edge is a front, side or rear line by which way it faces,
+     and the lot is cut back by that line's setback. Falls back to the bounding rectangle if the shape is degenerate. */
+  const frontDir: Pt = front === "N" ? { x: 0, y: -1 } : front === "S" ? { x: 0, y: 1 } : front === "W" ? { x: -1, y: 0 } : { x: 1, y: 0 };
+  const lotRing = lotPts.length > 3 && Math.hypot(lotPts[0].x - lotPts[lotPts.length - 1].x, lotPts[0].y - lotPts[lotPts.length - 1].y) < 0.01 ? lotPts.slice(0, -1) : lotPts;
+  const orient = signedArea(lotRing) > 0 ? 1 : -1;
+  const lotEdges = lotRing.map((a, i) => {
+    const b = lotRing[(i + 1) % lotRing.length];
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const n = { x: (-(b.y - a.y) / len) * orient, y: ((b.x - a.x) / len) * orient }; // inward unit normal
+    const facing = -(n.x * frontDir.x + n.y * frontDir.y); // +1 faces the street, -1 faces the rear
+    const kind: "front" | "side" | "rear" = facing > 0.6 ? "front" : facing < -0.6 ? "rear" : "side";
+    return { a, b, n, len, kind, setback: kind === "side" ? side : kind === "rear" ? rear : 0 };
+  });
+  const clipped = lotEdges.reduce((poly, e) => (e.setback > 0 && e.len > 1 && poly.length >= 3 ? clipInside(poly, e.a, e.n, e.setback) : poly), lotRing);
+  const polyEnvelope = clipped.length >= 3 && Math.abs(signedArea(clipped)) > 20;
+  const envelope = polyEnvelope ? clipped : rect(side, 0, Math.max(0, lw - 2 * side), Math.max(0, ld - rear));
   const maxLiving = fp?.maxAllowedSqft ?? 1000;
   const coverageLeft = report?.coverage?.availableSqft ?? null;
   const canTwoStory = fp?.stories === 2;
@@ -330,6 +380,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     const list: { ok: boolean; text: string }[] = [];
     if (x.plan && (ex.w > lw - 2 * side + 0.01 || ex.d > ld - rear + 0.01))
       list.push({ ok: false, text: "Too large for the buildable area behind the setbacks. Try turning it" });
+    else if (polyEnvelope && !screenCorners(x).every((q) => pointInPoly(q, envelope) || nearPoly(q, envelope, 0.6)))
+      list.push({ ok: false, text: "Crosses a setback. Drag it inside the green area" });
     else list.push({ ok: true, text: "Inside the lot setbacks" });
     if (x.plan) list.push({ ok: true, text: `Pre-approved design by ${x.plan.designer}` });
     if (hitsBuilding) list.push({ ok: false, text: "Overlaps an existing building" });
@@ -350,7 +402,6 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   const daduUnit = daduIdx >= 0 ? units[daduIdx] : null;
   const daduExt = daduUnit ? extent(daduUnit) : null;
   const dadu: Pt[] | null = daduExt ? rect(daduExt.u, daduExt.v, daduExt.w, daduExt.d) : null;
-  const daduV0 = daduExt?.v ?? 0;
   const daduConflict = daduIdx >= 0 && !checks[daduIdx].ok;
 
   /* ---- vehicle access: alley, corner, or the roomier side yard (same rule as the score) ---- */
@@ -361,7 +412,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   if (feasibility?.hasAlley) {
     // From the alley to the DADU's back edge, so the arrow does not cover its label.
     const um = daduUnit ? daduUnit.u + daduUnit.w / 2 : lw / 2;
-    access = { a: L(um, ld + 7), b: L(um, daduExt ? daduExt.v + daduExt.d + 0.5 : ld * 0.8), width: null, kind: "alley", label: "Alley access" };
+    access = { a: L(um, ld + 3), b: L(um, daduExt ? daduExt.v + daduExt.d + 0.5 : ld * 0.8), width: null, kind: "alley", label: "Alley access" };
   } else if (houseMinU != null && houseMaxU != null) {
     const left = houseMinU;
     const right = lw - houseMaxU;
@@ -371,7 +422,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     const u = useLeft ? left / 2 : houseMaxU + right / 2;
     const kind: AccessKind = width >= DRIVEWAY_FT ? "side" : width >= BLOCKED_BELOW_FT ? "tight" : "blocked";
     const label = kind === "side" ? `Driveway ${width.toFixed(1)}'` : kind === "tight" ? `${width.toFixed(1)}': confirm` : `No car access: ${width.toFixed(1)}'`;
-    if (drawn >= 1.5) access = { a: L(u, -6), b: L(u, Math.max(daduV0, houseMaxV)), width, kind: isCorner && kind === "blocked" ? "corner" : kind, label: isCorner && kind === "blocked" ? "Corner: use the side street" : label };
+    // From the front lot line to just past the back of the house: the stretch a car has to squeeze through.
+    if (drawn >= 1.5) access = { a: L(u, 1), b: L(u, Math.min(ld - 2, houseMaxV + 4)), width, kind: isCorner && kind === "blocked" ? "corner" : kind, label: isCorner && kind === "blocked" ? "Corner: use the side street" : label };
     else noSideYard = true;
   }
   const accessColor = (k: AccessKind) => (k === "blocked" ? "#B9573F" : k === "tight" ? "#B8862B" : "#145A40");
@@ -479,9 +531,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     return out;
   }
   const screenBox = (x: Unit) => {
-    const a = ((x.angle ?? 0) * Math.PI) / 180, ca = Math.cos(a), sa = Math.sin(a);
-    const cu = x.u + x.w / 2, cv = x.v + x.d / 2;
-    const pts = ([[-x.w / 2, -x.d / 2], [x.w / 2, -x.d / 2], [x.w / 2, x.d / 2], [-x.w / 2, x.d / 2]] as const).map(([px, py]) => L(cu + px * ca - py * sa, cv + px * sa + py * ca));
+    const pts = screenCorners(x);
     return { pts, x0: Math.min(...pts.map((q) => q.x)), x1: Math.max(...pts.map((q) => q.x)), y0: Math.min(...pts.map((q) => q.y)), y1: Math.max(...pts.map((q) => q.y)) };
   };
   /** The 5 ft separation a DADU keeps from the house, drawn as a dashed ring. */
@@ -489,11 +539,29 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
 
   /* ---- setback bands: the strip between each lot line and the envelope ---- */
   const setbackBands: { pts: Pt[]; label: string; at: Pt; vertical: boolean }[] = [];
-  if (side > 0) {
+  /** Hatched ring between the lot lines and the envelope, and one label per side, on the longest edge of each kind. */
+  const setbackRing = polyEnvelope ? `${path(lotRing)} ${path(envelope)}` : null;
+  const setbackLabels: { at: Pt; deg: number; label: string }[] = [];
+  if (polyEnvelope) {
+    const longest = (pick: (e: (typeof lotEdges)[number]) => boolean) => lotEdges.filter(pick).sort((p, q) => q.len - p.len)[0];
+    const across = (e: (typeof lotEdges)[number]) => (swap ? (e.a.y + e.b.y) / 2 - cy : (e.a.x + e.b.x) / 2 - cx);
+    const leftSide = longest((e) => e.kind === "side" && across(e) < 0);
+    const rightSide = longest((e) => e.kind === "side" && across(e) >= 0);
+    const rearEdge = longest((e) => e.kind === "rear");
+    for (const e of [leftSide, rightSide, rearEdge]) {
+      if (!e || e.setback <= 0 || e.len < 12) continue;
+      let deg = (Math.atan2(e.b.y - e.a.y, e.b.x - e.a.x) * 180) / Math.PI;
+      if (deg > 90) deg -= 180;
+      if (deg < -90) deg += 180;
+      const t = e.kind === "rear" ? 0.5 : 0.62;
+      setbackLabels.push({ at: { x: e.a.x + (e.b.x - e.a.x) * t + e.n.x * e.setback / 2, y: e.a.y + (e.b.y - e.a.y) * t + e.n.y * e.setback / 2 }, deg, label: `${e.setback}' ${e.kind} setback` });
+    }
+  }
+  if (!polyEnvelope && side > 0) {
     setbackBands.push({ pts: rect(0, 0, side, ld), label: `${side}' side setback`, at: L(side / 2, ld * 0.62), vertical: !swap });
     setbackBands.push({ pts: rect(lw - side, 0, side, ld), label: `${side}' side setback`, at: L(lw - side / 2, ld * 0.62), vertical: !swap });
   }
-  if (rear > 0) setbackBands.push({ pts: rect(side, ld - rear, Math.max(0, lw - 2 * side), rear), label: `${rear}' rear setback`, at: L(lw / 2, ld - rear / 2), vertical: swap });
+  if (!polyEnvelope && rear > 0) setbackBands.push({ pts: rect(side, ld - rear, Math.max(0, lw - 2 * side), rear), label: `${rear}' rear setback`, at: L(lw / 2, ld - rear / 2), vertical: swap });
 
   /* ---- viewBox ---- */
   const margin = 44;
@@ -627,6 +695,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
             <line x1="0" y1="0" x2="0" y2="4" stroke="#B9573F" strokeOpacity="0.35" strokeWidth={sw * 0.8} />
           </pattern>
         </defs>
+        {setbackRing && <path d={setbackRing} fillRule="evenodd" fill="url(#mp-setback)" stroke="#B9573F" strokeOpacity="0.5" strokeWidth={sw * 0.6} />}
         {setbackBands.map((b, i) => (
           <g key={`sb${i}`}>
             <path d={path(b.pts)} fill="url(#mp-setback)" stroke="#B9573F" strokeOpacity="0.5" strokeWidth={sw * 0.6} />
@@ -767,18 +836,18 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
         {access && (
           <g className="plat-fill" style={{ ["--d" as string]: "1.8s" }}>
             <defs>
-              <marker id="mp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <marker id="mp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
                 <path d="M0 0 L10 5 L0 10 Z" fill={accessColor(access.kind)} />
               </marker>
             </defs>
-            <line x1={access.a.x} y1={access.a.y} x2={access.b.x} y2={access.b.y} stroke={accessColor(access.kind)} strokeWidth={sw * 2.2} strokeDasharray={access.kind === "blocked" ? `${sw * 2} ${sw * 2}` : undefined} strokeLinecap="round" markerEnd={access.kind === "blocked" ? undefined : "url(#mp-arrow)"} />
+            <line x1={access.a.x} y1={access.a.y} x2={access.b.x} y2={access.b.y} stroke={accessColor(access.kind)} strokeOpacity="0.85" strokeWidth={sw * 1.1} strokeDasharray={`${sw * 3} ${sw * 2}`} strokeLinecap="round" markerEnd={access.kind === "blocked" ? undefined : "url(#mp-arrow)"} />
             {access.kind === "blocked" && (
               <g transform={`translate(${mid(access.a, access.b).x} ${mid(access.a, access.b).y})`} stroke="#B9573F" strokeWidth={sw * 2.2} strokeLinecap="round">
                 <line x1={-fs * 0.6} y1={-fs * 0.6} x2={fs * 0.6} y2={fs * 0.6} />
                 <line x1={-fs * 0.6} y1={fs * 0.6} x2={fs * 0.6} y2={-fs * 0.6} />
               </g>
             )}
-            <text x={(access.kind === "alley" ? access.a : mid(access.a, access.b)).x + fs * 0.9} y={(access.kind === "alley" ? access.a : mid(access.a, access.b)).y + fs * 0.3} stroke="#fff" strokeWidth={sw * 3} paintOrder="stroke" style={{ fontSize: fs * 0.8, fontWeight: 700, fill: accessColor(access.kind) }}>
+            <text x={(access.kind === "alley" ? access.a : mid(access.a, access.b)).x + fs * 0.9} y={(access.kind === "alley" ? access.a : mid(access.a, access.b)).y + fs * 0.3} stroke="#fff" strokeWidth={sw * 3} paintOrder="stroke" style={{ fontSize: fs * 0.6, fontWeight: 700, fill: accessColor(access.kind) }}>
               {access.label}
             </text>
           </g>
@@ -818,6 +887,11 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
           );
         })}
         {/* setback labels */}
+        {setbackLabels.map((b, i) => (
+          <text key={`sbp${i}`} x={b.at.x} y={b.at.y} dy={fs * 0.2} textAnchor="middle" transform={`rotate(${b.deg} ${b.at.x} ${b.at.y})`} stroke="#fff" strokeWidth={sw * 2.5} paintOrder="stroke" pointerEvents="none" style={{ fontSize: fs * 0.5, fontWeight: 700, fill: "#9A4632" }}>
+            {b.label}
+          </text>
+        ))}
         {setbackBands.map((b, i) => (
           <text key={`sbl${i}`} x={b.at.x} y={b.at.y} dy={fs * 0.25} textAnchor="middle" transform={b.vertical ? `rotate(-90 ${b.at.x} ${b.at.y})` : undefined} stroke="#fff" strokeWidth={sw * 2.5} paintOrder="stroke" pointerEvents="none" style={{ fontSize: fs * 0.55, fontWeight: 700, fill: "#9A4632" }}>
             {b.label}
