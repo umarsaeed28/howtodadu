@@ -22,7 +22,7 @@ import { isPending } from "@/lib/listings/status";
 import DaduSnapshot from "@/components/listing/DaduSnapshot";
 import { siteScoreFor } from "@/lib/server/site-score";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
-import { ECONOMICS_LABEL, daduEconomics } from "@/lib/dadu-value";
+import { daduEconomics } from "@/lib/dadu-value";
 import { GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT, gradeNote } from "@/lib/grade";
 
 export const dynamic = "force-dynamic";
@@ -313,7 +313,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
                   ))}
                 </dl>
               ) : <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>The engine found no DADU size for this lot, so there is no build estimate.</p>}
-                <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>{COST_LABEL}. {ECONOMICS_LABEL} Rent comps and past DADU sales need the live listings feed.</p>
+                <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>{COST_LABEL}. Rent comps and past DADU sales need the live listings feed.</p>
               </details>
             </section>
 

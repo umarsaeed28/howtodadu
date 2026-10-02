@@ -1,6 +1,6 @@
 "use client";
 
-import { ECONOMICS_LABEL, daduEconomics } from "@/lib/dadu-value";
+import { daduEconomics } from "@/lib/dadu-value";
 import type { ReportListing } from "@/lib/feasibility";
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { ArrowLeft, Download, Heart, Loader2, ExternalLink } from "lucide-react";
@@ -122,15 +122,6 @@ function Hero({ report, slim, listing, drawnSf }: { report: FeasibilityReport; s
           </div>
         ))}
       </dl>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Link href={calculatorHref({ sf: estSf ?? undefined, address: slim.address })} className="pa-btn pa-btn-primary no-underline" style={{ minHeight: 40 }}>
-          Estimate your return
-        </Link>
-        <a href="#rep-plan" className="pa-btn no-underline" style={{ minHeight: 40 }}>
-          Open the master plan
-        </a>
-        {e && <p className="basis-full text-xs sm:basis-auto sm:pl-2" style={{ color: "var(--slate)" }}>{ECONOMICS_LABEL}</p>}
-      </div>
     </section>
   );
 }
@@ -301,6 +292,11 @@ export default function FeasibilityReportView({
             <Heart size={15} aria-hidden fill={favorite ? "var(--flag)" : "none"} color={favorite ? "var(--flag)" : "var(--ink)"} />
             {favorite ? "Saved" : "Save"}
           </button>
+          {report && (
+            <Link href={calculatorHref({ sf: drawnSf ?? report.summary.max_buildable_sf?.value, address: slim.address })} className="pa-btn pa-btn-primary pa-btn-sm no-underline">
+              Estimate your return
+            </Link>
+          )}
         </div>
       </div>
 

@@ -1184,9 +1184,6 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
         <Key swatch={<i style={{ borderTop: "2px solid #145A40", height: 0, marginTop: 5 }} />}>Vehicle access route</Key>
         {hasSection && <Key swatch={<i style={{ borderTop: "1px dashed rgba(23,36,29,.45)", height: 0, marginTop: 5 }} />}>Section line A–A′</Key>}
       </figcaption>
-      <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>
-        {notes}
-      </p>
     </figure>
   );
 }
