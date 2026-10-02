@@ -9,6 +9,8 @@ import { toReport } from "@/lib/report/to-report";
 import { zillowUrl } from "@/lib/feasibility-verdict";
 import FeasPropertyDetails from "@/components/feasibility-pencil/FeasPropertyDetails";
 import MasterPlan, { type PlanSnapshot } from "./MasterPlan";
+import ReportEmailGate from "./ReportEmailGate";
+import { hasReportAccess } from "@/lib/report-access";
 import SiteIntel from "./SiteIntel";
 import { COST_PER_SF, COST_LABEL } from "@/lib/config/costs";
 import { calculatorHref } from "@/lib/calculator/inputs";
@@ -288,6 +290,15 @@ export default function FeasibilityReportView({
   }, [onBack]);
 
   const snapshotRef = useRef<(() => PlanSnapshot) | null>(null);
+  // Email wall: the report renders blurred until this browser has given an email once.
+  // Read after mount so the server render and the first client render agree.
+  const [unlocked, setUnlocked] = useState(false);
+  const [accessChecked, setAccessChecked] = useState(false);
+  const [justUnlocked, setJustUnlocked] = useState(false);
+  useEffect(() => {
+    setUnlocked(hasReportAccess());
+    setAccessChecked(true);
+  }, []);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   async function downloadPdf() {
@@ -337,7 +348,7 @@ export default function FeasibilityReportView({
             Zillow
             <ExternalLink size={14} aria-hidden />
           </a>
-          <button type="button" className="pa-btn pa-btn-sm" onClick={downloadPdf} disabled={!report || pdfBusy} aria-busy={pdfBusy}>
+          <button type="button" className="pa-btn pa-btn-sm" onClick={downloadPdf} disabled={!report || pdfBusy || !unlocked} aria-busy={pdfBusy} title={unlocked ? undefined : "Enter your email to download the PDF"}>
             {pdfBusy ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Download size={15} aria-hidden />}
             {pdfBusy ? "Making PDF…" : "Download PDF"}
           </button>
@@ -354,6 +365,13 @@ export default function FeasibilityReportView({
         </div>
       )}
 
+      <div className="relative">
+      <div
+        inert={!unlocked}
+        aria-hidden={!unlocked || undefined}
+        className={unlocked ? (justUnlocked ? "report-reveal" : undefined) : "pointer-events-none max-h-[1500px] select-none overflow-hidden"}
+        style={unlocked ? undefined : { filter: "blur(9px)", WebkitMaskImage: "linear-gradient(to bottom, #000 55%, transparent)", maskImage: "linear-gradient(to bottom, #000 55%, transparent)" }}
+      >
       {loading && !report && (
         <div className="grid gap-6 lg:grid-cols-2" aria-busy="true" aria-label="Building the report">
           <div className="pa-raised h-72 pa-skeleton" />
@@ -370,6 +388,16 @@ export default function FeasibilityReportView({
             <FeasPropertyDetails slim={slim} detailRow={detailRow} loading={loading} error={error} />
           </div>
         </Section>
+      </div>
+      </div>
+
+      {!unlocked && accessChecked && (
+        <div className="absolute inset-0 flex items-start justify-center px-2 pt-10 sm:pt-16">
+          <div className="sticky top-28 flex w-full justify-center">
+            <ReportEmailGate address={slim.streetLine || slim.address} onUnlock={() => { setUnlocked(true); setJustUnlocked(true); }} />
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

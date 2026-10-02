@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   }
 
   const b = body as { kind?: unknown; name?: unknown; message?: unknown; source?: unknown };
-  const kind = b.kind === "contact" ? "contact" : "newsletter";
+  const kind = b.kind === "contact" || b.kind === "report" ? b.kind : "newsletter";
   const text = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 
   // TODO: also add newsletter sign-ups to the email provider (Resend / ConvertKit "Daily Deals" audience).

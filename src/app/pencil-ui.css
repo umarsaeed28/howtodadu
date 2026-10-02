@@ -310,3 +310,15 @@
   background: var(--card) !important;
   box-shadow: 3px 3px 10px rgba(150, 168, 158, 0.24), -3px -3px 10px rgba(255, 255, 255, 0.8);
 }
+
+/* Report email wall: the report sharpens into view once unlocked ---------- */
+@keyframes report-reveal {
+  from { filter: blur(9px); opacity: 0.6; }
+  to { filter: blur(0); opacity: 1; }
+}
+.report-reveal {
+  animation: report-reveal 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .report-reveal { animation: none; }
+}
