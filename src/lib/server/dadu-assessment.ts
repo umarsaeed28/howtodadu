@@ -5,7 +5,7 @@ import { AnthropicLlm } from "@/lib/ai/llm";
 import { archival } from "@/lib/ai/memory";
 import { buildFacts, hoaExcluded, runAssessment } from "@/lib/ai/orchestrator";
 import type { Assessment } from "@/lib/ai/types";
-import { ragAvailable, ragSearch } from "./rag";
+import { knowledgeAvailable, knowledgeSearch } from "./rag";
 import { getAduniverseFacts } from "./aduniverse";
 import { planSite } from "@/lib/dadu-site-plan";
 import { ecaFlagsOf, scoreSite } from "@/lib/dadu-score";
@@ -25,7 +25,7 @@ export async function assessListing(l: RawListing, lot: Candidate | null, client
   const viaApi = pencilApiConfigured();
   const key = process.env.ANTHROPIC_API_KEY;
   if (!viaApi && !key) throw new Error("ANTHROPIC_API_KEY is not set.");
-  if (!viaApi && !ragAvailable()) throw new Error("The RAG knowledge base is not set up. Run the ingest in rag/.");
+  if (!viaApi && !knowledgeAvailable()) throw new Error("The knowledge base (rag/documents) is missing from this deployment.");
 
   const adu = lot ? await getAduniverseFacts(lot.pin) : null; // ADUniverse adds ADU counts, garage, basement and critical-area flags
   const plan = lot ? planSite({ lotSqft: lot.lotSqft, widthFt: adu?.raw.lotWidth ?? null, depthFt: adu?.raw.lotDepth ?? null, alley: lot.alley }) : null;
@@ -42,7 +42,7 @@ export async function assessListing(l: RawListing, lot: Candidate | null, client
   const hit = archival.get<Assessment>(memKey);
   if (hit) return { ...hit, cached: true };
 
-  const a = await runAssessment(l, lot, { llm: new AnthropicLlm(key!), search: (q, o) => ragSearch(q, o) }, { adu, planLines, site });
+  const a = await runAssessment(l, lot, { llm: new AnthropicLlm(key!), search: (q, o) => knowledgeSearch(q, o) }, { adu, planLines, site });
   archival.set(memKey, a);
   return a;
 }

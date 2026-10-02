@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { Passage } from "@/lib/ai/types";
+import { lexicalAvailable, lexicalSearch } from "./rag-lexical";
 
 const RAG_DIR = join(process.cwd(), "rag");
 const PY = join(RAG_DIR, ".venv", "bin", "python");
@@ -37,4 +38,23 @@ export function ragSearch(question: string, opts: { k?: number; hyde?: string; s
       }
     });
   });
+}
+
+/**
+ * The knowledge-base search the app uses: the local Python vector index when it is set up (development), otherwise the
+ * built-in BM25 search over the same documents, which ships with the site and runs on Vercel.
+ */
+export function knowledgeAvailable(): boolean {
+  return ragAvailable() || lexicalAvailable();
+}
+
+export async function knowledgeSearch(question: string, opts: { k?: number; hyde?: string; scope?: "rules" | "test" | "all" } = {}): Promise<Passage[]> {
+  if (ragAvailable()) {
+    try {
+      return await ragSearch(question, opts);
+    } catch {
+      /* fall through to the built-in search */
+    }
+  }
+  return lexicalSearch(question, opts);
 }
