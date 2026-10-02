@@ -69,6 +69,11 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   ].filter((x): x is string => !!x);
   const e = daduEconomics(estSf, undefined, { rehab, houseSqft });
   const roiPct = e ? Math.round(e.roi * 100) : null;
+  // Total ARV: the house at break-even (what it cost plus any rehab) or the user's own figure, plus the DADU's resale
+  // value. Shown as its own block beside the headline; the deal profit and ROI tiles use it too.
+  const breakEven = listing && e ? listing.price + e.rehabCost : null;
+  const houseArv = houseArvInput ?? breakEven;
+  const arv = listing && e && houseArv != null ? { total: houseArv + e.saleValue, house: houseArv, own: houseArvInput != null } : null;
   const money = (n: number) => (n < 0 ? "−" : "") + usd(Math.abs(n));
   // The strip: price when the home is for sale, then what the cottage costs and returns. Numbers lead, one line each.
   const tiles: { label: string; value: string; note?: string; tone?: "green" | "red"; extra?: React.ReactNode }[] = [];
@@ -91,14 +96,18 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   });
   if (e) {
     tiles.push({ label: "DADU resale value", value: usd(e.saleValue), note: `${usd(e.salePsf)} per sf · ${usd(e.allInCost)} all in` });
-    tiles.push({ label: "Profit", value: money(e.profit), note: e.rehabCost > 0 ? `after ${usd(e.softCosts)} soft costs and rehab` : `after ${usd(e.softCosts)} soft costs`, tone: e.profit >= 0 ? "green" : "red" });
-    tiles.push({ label: "ROI", value: `${roiPct}%`, note: "profit over all-in cost", tone: (roiPct ?? 0) >= 0 ? "green" : "red" });
+    if (arv && listing) {
+      // The whole deal: what it all sells for, less everything paid (the house, its rehab, the cottage and soft costs).
+      const cashIn = listing.price + e.rehabCost + e.buildCost + e.softCosts;
+      const profit = arv.total - cashIn;
+      const pct = Math.round((profit / cashIn) * 100);
+      tiles.push({ label: "Deal profit", value: money(profit), note: `${usd(arv.total)} ARV − ${usd(cashIn)} in (house${e.rehabCost > 0 ? ", rehab" : ""}, build, soft costs)`, tone: profit >= 0 ? "green" : "red" });
+      tiles.push({ label: "Deal ROI", value: `${pct}%`, note: "profit over everything paid", tone: pct >= 0 ? "green" : "red" });
+    } else {
+      tiles.push({ label: "Profit", value: money(e.profit), note: e.rehabCost > 0 ? `after ${usd(e.softCosts)} soft costs and rehab` : `after ${usd(e.softCosts)} soft costs`, tone: e.profit >= 0 ? "green" : "red" });
+      tiles.push({ label: "ROI", value: `${roiPct}%`, note: "profit over all-in cost", tone: (roiPct ?? 0) >= 0 ? "green" : "red" });
+    }
   }
-  // Total ARV: the house at break-even (what it cost plus any rehab) plus the DADU's resale value. Its own block, beside
-  // the headline, not a tile.
-  const breakEven = listing && e ? listing.price + e.rehabCost : null;
-  const houseArv = houseArvInput ?? breakEven;
-  const arv = listing && e && houseArv != null ? { total: houseArv + e.saleValue, house: houseArv, own: houseArvInput != null } : null;
 
   return (
     <section aria-labelledby="rep-sum" id="rep-overview" className="mb-6 scroll-mt-[190px]">
