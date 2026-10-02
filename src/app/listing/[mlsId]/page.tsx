@@ -15,6 +15,7 @@ import { computeBasis } from "@/lib/investor";
 import InvestorSnapshot from "@/components/listing/InvestorSnapshot";
 import ListingPhoto from "@/components/listing/ListingPhoto";
 import LotSketch from "@/components/listing/LotSketch";
+import SaveButton from "@/components/listing/SaveButton";
 import DaduSnapshot from "@/components/listing/DaduSnapshot";
 import { siteScoreFor } from "@/lib/server/site-score";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
@@ -122,9 +123,12 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
   return (
     <div className="pencil-app">
       <article className="mx-auto max-w-[1180px] px-4 pb-16 pt-5 md:px-6">
-        <Link href={`/?zip=${l.zip}`} className="pa-btn pa-btn-sm no-underline">
-          <ArrowLeft size={14} aria-hidden /> Back to the map
-        </Link>
+        <div className="flex items-center justify-between gap-2">
+          <Link href={`/?zip=${l.zip}`} className="pa-btn pa-btn-sm no-underline">
+            <ArrowLeft size={14} aria-hidden /> Back to the map
+          </Link>
+          <SaveButton item={{ mlsId: l.mlsId, address: street(l.address), price: l.listPrice, photo: photos[0] ?? null, score: site!.score }} />
+        </div>
 
         {/* Gallery: one large photo and four small, like a listing portal. Falls back to the lot from above. */}
         <div className="mt-4 grid gap-2 overflow-hidden rounded-2xl md:h-[360px] md:grid-cols-4 md:grid-rows-2">

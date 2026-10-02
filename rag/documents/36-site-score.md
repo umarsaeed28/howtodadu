@@ -18,7 +18,15 @@ Zoning outside single-family Neighborhood Residential is not covered by the guid
 - Layout fit, weight 20. Side by side on lots 50 ft or wider is best; staggered on deep lots at least 45 ft wide is next; single rear DADU on 40 to 49 ft lots; deep narrow lots risk a straight stack.
 - DADU size, weight 15. Scales from 300 sq ft up to 1,000 sq ft, the size the engine currently allows.
 - Slope and critical areas, weight 15. Steep slope lowers the score, and each critical-area flag (wetland, riparian corridor, landslide, flood-prone, peat, landfill) lowers it further.
-- Tree canopy, weight 20. Trees weigh heavily because Seattle's tree protection can shrink, move or rule out a DADU. Up to 10% canopy is open; 10 to 20% is light; 20 to 30% is moderate; 30 to 40% means an arborist report and placement limits; over 40% is heavy. Canopy over 40% also means the lot cannot be a top pick, and over 60% it is Fair at best.
+- Tree canopy, weight 20. Trees are measured one by one from the city's 2021 LiDAR tree crowns, including a neighbour's crown that hangs over the line. Each tree is sized from its crown and height: large (crown about 30 ft across or more, or 50 ft tall: usually a protected Tier 2 tree under SMC 25.11), medium (about 20 ft across, or 30 ft tall: Tier 3, removal needs review and replacement) or small. The question that decides it is open ground: the largest spot behind the house, at least 15 by 20 ft (300 sf), clear of the setbacks, 5 ft from the house, and clear of every medium and large crown. The side strips beside the house are not counted, because they carry the driveway.
+  - No 15 by 20 ft spot clear of large trees, even if medium trees came out: the lot fails.
+  - No open spot unless medium trees come out: the tree factor is near zero and the lot is Marginal at best.
+  - An open spot under 600 sf: Fair at best.
+  - Under 1,000 sf open with 4 or more medium or large trees: Fair at best; with 6 or more: Marginal.
+  - Otherwise the factor follows canopy (up to 10% open, 10 to 20% light, 20 to 30% moderate, 30 to 40% substantial, over 40% heavy), less 5 points for each medium or large tree. Canopy over 40% means no top pick, over 60% Fair at best.
+  - Garages and sheds do not block the site: a DADU often replaces or converts them. Only the house keeps its 5 ft gap.
+  - When the house itself leaves no 15 by 20 ft spot behind it, the search moves to the rest of the lot past the house's front wall (side yards included). If there is still none, that is a placement question, not a tree finding: the trees are scored on canopy and count, and the lot is Fair at best until a site visit confirms where a DADU goes.
+  - A lot whose trees have not been measured cannot be a top pick.
 
 ## Grades
 - Top pick: 93 and up. An interior lot tops out near 92, so a top pick in practice has alley or corner access.

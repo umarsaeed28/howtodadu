@@ -6,6 +6,7 @@
  * Keep the weights and bands in step with rag/documents/36-site-score.md (a test checks).
  */
 import { MIN_LOT_SQFT, planSite, type Layout } from "@/lib/dadu-site-plan";
+import { MIN_FOOTPRINT_SQFT, type TreeStats } from "@/lib/tree-analysis";
 
 /** A DADU smaller than this is not worth building. */
 export const MIN_DADU_SQFT = 300;
@@ -58,10 +59,12 @@ export interface ScoreInput {
   zoning: string | null;
   /** Monthly HOA dues. Null when unknown (the lot library has no HOA data). */
   hoaMonthly: number | null;
+  /** Tree-by-tree measurement from the 2021 LiDAR crowns (tree-analysis.ts). Null when not measured. */
+  trees?: TreeStats | null;
 }
 
 export interface Gate {
-  key: "hoa" | "area" | "adus" | "dadu" | "access" | "zoning";
+  key: "hoa" | "area" | "adus" | "dadu" | "access" | "zoning" | "trees";
   label: string;
   status: "pass" | "fail" | "unknown";
   note: string;
@@ -157,6 +160,43 @@ function treeFactor(canopy: number | null): { score: number; note: string } {
   return { score: 0, note: `Tree canopy ${c}%: dense. Protected trees may rule out a DADU entirely, so this lot is Fair at best.` };
 }
 
+/** Clear spot under this (but at least the minimum) means a tight fit: Fair at best. */
+export const TIGHT_CLEAR_SQFT = 600;
+/** Medium or large trees on the lot at which the grade is capped (Fair at best, then Marginal) when open ground is short. */
+export const TREES_FAIR_AT_BEST = 4;
+export const TREES_MARGINAL = 6;
+/** Open ground behind the house at which the tree count stops capping the grade: there is room to build around them. */
+export const ROOMY_CLEAR_SQFT = 1000;
+
+/** Measured trees: the open ground behind the house decides it, then how many medium and large trees there are. */
+/** True when the house itself leaves no 15 by 20 ft spot, so open ground says nothing about the trees. */
+const noRoomBeforeTrees = (t: TreeStats) => t.siteSqft != null && t.siteSqft < MIN_FOOTPRINT_SQFT;
+
+function measuredTreeFactor(t: TreeStats): { score: number; note: string; cap: number } {
+  const big = t.large + t.medium;
+  const count = `${t.large} large and ${t.medium} medium tree${big === 1 ? "" : "s"} reach the lot; canopy covers ${t.canopyPct}%`;
+  const where = t.site === "side" ? "past the front of the house" : "behind the house";
+  if (noRoomBeforeTrees(t)) {
+    // Not a tree finding: the house leaves no clear 15 by 20 ft rectangle. Score the trees on canopy and count, and keep
+    // the lot out of the top grades until someone confirms where a DADU goes.
+    const score = Math.max(0, (t.canopyPct <= 10 ? 100 : t.canopyPct <= 20 ? 85 : t.canopyPct <= 30 ? 65 : t.canopyPct <= 40 ? 45 : t.canopyPct <= 50 ? 30 : 15) - big * 5);
+    return { score, cap: GRADE_BANDS[1].min - 1, note: `${count}. The house leaves no clear 15 by 20 ft spot for a DADU in the city outlines, so placement needs a site visit.` };
+  }
+  if (t.clearSqft < MIN_FOOTPRINT_SQFT)
+    return { score: 5, cap: GRADE_BANDS[2].min - 1, note: `${count}. No open 15 by 20 ft spot ${where}: a DADU would mean removing medium trees, with tree review and replacement.` };
+  let score = t.canopyPct <= 10 ? 100 : t.canopyPct <= 20 ? 85 : t.canopyPct <= 30 ? 65 : t.canopyPct <= 40 ? 45 : t.canopyPct <= 50 ? 30 : 15;
+  score = Math.max(0, score - big * 5);
+  let cap = 100;
+  if (t.clearSqft < TIGHT_CLEAR_SQFT) { score = Math.min(score, 40); cap = GRADE_BANDS[1].min - 1; }
+  if (t.clearSqft < ROOMY_CLEAR_SQFT) {
+    if (big >= TREES_MARGINAL) cap = Math.min(cap, GRADE_BANDS[2].min - 1);
+    else if (big >= TREES_FAIR_AT_BEST) cap = Math.min(cap, GRADE_BANDS[1].min - 1);
+  }
+  if (t.canopyPct > CANOPY_FAIR_AT_BEST) cap = Math.min(cap, GRADE_BANDS[1].min - 1);
+  else if (t.canopyPct > CANOPY_NO_TOP_PICK) cap = Math.min(cap, GRADE_BANDS[0].min - 1);
+  return { score, cap, note: `${count}. The largest open spot ${where} is about ${t.clearSqft.toLocaleString("en-US")} sf.` };
+}
+
 export function scoreSite(i: ScoreInput): SiteScore {
   const w = i.widthFt != null ? Math.round(i.widthFt) : null;
   const d = i.depthFt != null ? Math.round(i.depthFt) : null;
@@ -189,6 +229,13 @@ export function scoreSite(i: ScoreInput): SiteScore {
   else if (side < BLOCKED_BELOW_FT) gates.splice(4, 0, { key: "access", label: "Vehicle access", status: "fail", note: `No vehicle access to the rear: no alley, not a corner, and the house leaves only ${Math.round(side)} ft on its wider side. A driveway needs ${DRIVEWAY_FT} ft.` });
   else if (side < DRIVEWAY_FT) gates.splice(4, 0, { key: "access", label: "Vehicle access", status: "unknown", note: `The roofline leaves about ${Math.round(side)} ft beside the house. Confirm on site that a ${DRIVEWAY_FT} ft driveway fits below the eaves.` });
   else gates.splice(4, 0, { key: "access", label: "Vehicle access", status: "pass", note: `The house leaves ${Math.round(side)} ft on one side for a driveway.` });
+  if (i.trees && !noRoomBeforeTrees(i.trees)) {
+    gates.push(
+      i.trees.clearSqftIfMediumRemoved < MIN_FOOTPRINT_SQFT
+        ? { key: "trees", label: "Room clear of large trees", status: "fail", note: `Large trees (likely protected) leave no 15 by 20 ft spot behind the house, even if smaller trees came out.` }
+        : { key: "trees", label: "Room clear of large trees", status: "pass", note: `A 15 by 20 ft spot behind the house stays clear of large trees.` }
+    );
+  }
   const eligible = !gates.some((g) => g.status === "fail");
 
   const plan = planSite({ lotSqft: i.lotSqft, widthFt: w, depthFt: d, alley: i.alley });
@@ -197,15 +244,18 @@ export function scoreSite(i: ScoreInput): SiteScore {
     layout: layoutFactor(plan.layout.kind === "none" ? "single_rear" : plan.layout.kind, w, d, plan.warning != null),
     size: sizeFactor(i.daduSqft ?? 0),
     site: siteFactor(pct(i.steepPct), i.ecaFlags),
-    trees: treeFactor(pct(i.canopyPct)),
+    trees: i.trees ? measuredTreeFactor(i.trees) : treeFactor(pct(i.canopyPct)),
   };
   const factors: Factor[] = (Object.keys(WEIGHTS) as FactorKey[]).map((k) => ({ key: k, name: FACTOR_NAMES[k], weight: WEIGHTS[k], score: parts[k].score, note: parts[k].note }));
   const raw = factors.reduce((s, f) => s + (f.score * f.weight) / 100, 0);
   // Access not measured: cannot be a top pick until someone confirms a driveway fits.
   const accessUnknown = !i.alley && !i.corner && (side == null || side < DRIVEWAY_FT);
   // Heavy canopy caps the grade: no top pick above 40%, Fair at best above 60%.
+  // Unmeasured trees cannot make a top pick: the parcel canopy figure alone has missed whole yards of trees.
   const canopy = pct(i.canopyPct);
-  const treeCap = canopy == null ? 100 : canopy > CANOPY_FAIR_AT_BEST ? GRADE_BANDS[1].min - 1 : canopy > CANOPY_NO_TOP_PICK ? GRADE_BANDS[0].min - 1 : 100;
+  const treeCap = i.trees
+    ? measuredTreeFactor(i.trees).cap
+    : canopy == null || canopy > CANOPY_FAIR_AT_BEST ? GRADE_BANDS[1].min - 1 : GRADE_BANDS[0].min - 1;
   const score = eligible ? Math.min(Math.round(clamp(raw)), accessUnknown ? GRADE_BANDS[0].min - 1 : 100, treeCap) : 0;
   const g = eligible ? gradeOf(score) : { tier: 0 as Tier, label: "Not eligible" };
   return { eligible, gates, factors, score, tier: g.tier, grade: g.label };

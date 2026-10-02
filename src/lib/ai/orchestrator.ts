@@ -107,7 +107,10 @@ export function buildFacts(l: RawListing, lot: Candidate | null, adu: Aduniverse
     rows.push(
       [`Lot: ${lot.lotSqft.toLocaleString("en-US")} sf, ${lot.lotType ?? "unknown"} lot, alley: ${lot.alley ? "yes" : "no"}, zoning ${lot.zoning}`, "city GIS"],
       [`Largest DADU the lot allows: ${lot.daduSqft ?? "none found"} sf. Site score ${lot.score} out of 100`, "city GIS"],
-      [`Tree canopy ${lot.canopyPct == null ? "unknown" : Math.round(lot.canopyPct <= 1 ? lot.canopyPct * 100 : lot.canopyPct)}%, steep slope: ${lot.steepPct ? "yes" : "none"}, ${lot.adusNearby} ADUs nearby`, "city GIS"]
+      lot.trees
+        ? [`Trees: ${lot.trees.large} large (likely protected) and ${lot.trees.medium} medium trees reach the lot; canopy covers ${lot.trees.canopyPct}%. Largest open spot behind the house clear of medium and large trees: ${lot.trees.clearSqft.toLocaleString("en-US")} sf (a DADU needs at least 300 sf); ${lot.trees.clearSqftIfMediumRemoved.toLocaleString("en-US")} sf if medium trees were removed`, "2021 LiDAR tree crowns"]
+        : [`Tree canopy ${lot.canopyPct == null ? "unknown" : Math.round(lot.canopyPct <= 1 ? lot.canopyPct * 100 : lot.canopyPct)}% (parcel figure, trees not measured one by one)`, "city GIS"],
+      [`Steep slope: ${lot.steepPct ? "yes" : "none"}, ${lot.adusNearby} ADUs nearby`, "city GIS"]
     );
   } else {
     rows.push(["Lot: not in the city lot library (not an eligible single-family NR lot, or the DADU engine found no room)", "city GIS"]);

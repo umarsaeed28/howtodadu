@@ -199,6 +199,25 @@ export function EcaPanel({ row }: { row: FeasibilityTableRow }) {
 
 /* ── Tree canopy ── */
 export function Canopy({ row }: { row: FeasibilityTableRow }) {
+  const ts = row.result.feasibility?.treeStats;
+  if (ts) {
+    const tight = ts.clearSqft < 300;
+    return (
+      <Card title="Trees" source="2021 LiDAR tree crowns, one by one">
+        <Bar value={ts.canopyPct} max={60} color={ts.canopyPct > 25 || tight ? "var(--amber)" : "var(--green)"} marker={25} />
+        <p className="text-sm" style={{ color: "var(--ink)" }}>
+          <span className="font-semibold tabular-nums">{ts.large}</span> large, <span className="font-semibold tabular-nums">{ts.medium}</span> medium and{" "}
+          <span className="font-semibold tabular-nums">{ts.small}</span> small trees reach the lot; <span className="font-semibold tabular-nums">{ts.canopyPct}%</span> canopy.
+        </p>
+        <p className="text-sm" style={{ color: tight ? "var(--amber)" : "var(--ink)" }}>
+          {tight
+            ? `No open 15 by 20 ft spot behind the house clears the medium and large trees${ts.clearSqftIfMediumRemoved >= 300 ? `; removing medium trees would open about ${ts.clearSqftIfMediumRemoved.toLocaleString("en-US")} sf` : ", and large trees block it even then"}.`
+            : `About ${ts.clearSqft.toLocaleString("en-US")} sf of open ground behind the house clears every medium and large tree.`}
+        </p>
+        <p className="text-xs" style={{ color: "var(--slate)" }}>Sizes are estimated from the crown and height: large is usually a protected tree (24 in trunk or more). Species and exact trunk size need an arborist.</p>
+      </Card>
+    );
+  }
   const v = toPercent(row.result.feasibility?.treeCanopyPercent);
   if (v == null) return null;
   const trees = row.result.sitePlan?.trees ?? [];

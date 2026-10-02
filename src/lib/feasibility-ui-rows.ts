@@ -87,7 +87,7 @@ export function buildFeasibilityOverviewGroups(
   });
 
   const constraintRows: OverviewRow[] = [
-    { label: "Tree canopy", value: treeCanopyConstraintValue(f?.treeCanopyPercent ?? null) },
+    { label: "Tree canopy", value: f?.treeStats ? `${f.treeStats.canopyPct}% (${f.treeStats.large} large, ${f.treeStats.medium} medium trees)` : treeCanopyConstraintValue(f?.treeCanopyPercent ?? null) },
     { label: "Steep slope", value: pct(f?.steepSlopePercent ?? null) },
     { label: "Wetland area", value: pct(f?.wetlandPercent ?? null) },
     {

@@ -6,6 +6,7 @@ import {
   num,
   str,
 } from "@/lib/geo-helpers";
+import { analyzeTrees, streetAxis, treeSize } from "@/lib/tree-analysis";
 import type {
   FeasibilityResult,
   SitePlanData,
@@ -293,12 +294,27 @@ async function queryBuildings(
   }
 }
 
+/** Distance in feet from a point to the nearest lot line (lng/lat ring). */
+function crownGapFt(lng: number, lat: number, ring: number[][]): number {
+  const ftLat = 364567, ftLng = ftLat * Math.cos((lat * Math.PI) / 180);
+  let d = Infinity;
+  for (let i = 0; i < ring.length - 1; i++) {
+    const ax = (ring[i][0] - lng) * ftLng, ay = (ring[i][1] - lat) * ftLat;
+    const bx = (ring[i + 1][0] - lng) * ftLng, by = (ring[i + 1][1] - lat) * ftLat;
+    const dx = bx - ax, dy = by - ay;
+    const t = dx || dy ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / (dx * dx + dy * dy))) : 0;
+    d = Math.min(d, Math.hypot(ax + t * dx, ay + t * dy));
+  }
+  return d;
+}
+
 async function queryTrees(
   bbox: [number, number, number, number],
   parcelRings: number[][]
 ): Promise<SitePlanTree[]> {
   const [xmin, ymin, xmax, ymax] = bbox;
-  const pad = 0.0001;
+  // Wide enough to catch a neighbour's crown that overhangs the line (the largest crowns reach about 40 ft).
+  const pad = 0.00025;
   const env = `${xmin - pad},${ymin - pad},${xmax + pad},${ymax + pad}`;
   const params = new URLSearchParams({
     geometry: env,
@@ -339,12 +355,17 @@ async function queryTrees(
       } else {
         continue;
       }
-      if (!pointInPolygon(cx, cy, parcelRings)) continue;
+      const r = radiusFt || 3;
+      const onLot = pointInPolygon(cx, cy, parcelRings);
+      // Keep the lot's own trees and any neighbour's crown that reaches over the line.
+      if (!onLot && crownGapFt(cx, cy, parcelRings) >= r) continue;
       const heightFt = num(f.attributes?.Hgt_Q98);
       trees.push({
         centroid: [cx, cy],
-        radiusFt: radiusFt || 3,
+        radiusFt: r,
         heightFt: heightFt ?? undefined,
+        size: treeSize({ r, h: heightFt }),
+        onLot,
       });
     }
     return trees;
@@ -583,6 +604,14 @@ export async function getFeasibilityForAddress(
       : null;
 
   if (feasibilityMerged) feasibilityMerged.sideClearanceFt = clearance?.maxFt ?? null;
+  // Trees, one by one: the score reads these, not the coarse parcel canopy figure.
+  if (feasibilityMerged && parcelRings)
+    feasibilityMerged.treeStats = analyzeTrees(
+      parcelRings as [number, number][],
+      buildings.filter((b) => !subjectPin || !b.pin || b.pin === subjectPin).map((b) => b.rings as [number, number][]),
+      trees.map((t) => ({ lng: t.centroid[0], lat: t.centroid[1], r: t.radiusFt, h: t.heightFt ?? null })),
+      streetAxis(p ? str(p.ADDRESS) : trimmed)
+    );
 
   const data: FeasibilityResult = {
     coordinates: coords,

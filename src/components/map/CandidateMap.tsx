@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Map, Source, Layer, Marker, NavigationControl, type MapRef, type MapLayerMouseEvent } from "react-map-gl/maplibre";
-import { ArrowLeft, ArrowRight, Calculator, ChevronDown, Download, FlaskConical, Loader2, Search, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calculator, ChevronDown, Download, FlaskConical, Heart, Loader2, Search, Star } from "lucide-react";
 import type { Candidate } from "@/lib/server/candidates";
 import type { MapListing } from "@/app/api/map-listings/route";
 import { COST_LABEL, COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
 import { calculatorHref } from "@/lib/calculator/inputs";
 import { downloadListingsCsv } from "@/lib/listings-csv";
+import SaveButton from "@/components/listing/SaveButton";
+import { useSavedListings } from "@/hooks/useSavedListings";
 
 const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE ?? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const SEATTLE = { longitude: -122.335, latitude: 47.62, zoom: 10.6 };
@@ -68,6 +70,8 @@ export default function CandidateMap() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX);
   const [topOnly, setTopOnly] = useState(false);
+  const [savedOnly, setSavedOnly] = useState(false);
+  const { saved, isSaved } = useSavedListings();
   const [cornerOnly, setCornerOnly] = useState(false);
   const [alleyOnly, setAlleyOnly] = useState(false);
   const [sort, setSort] = useState<Sort>({ key: "score", dir: "desc" });
@@ -126,14 +130,14 @@ export default function CandidateMap() {
 
   /* ---- what is on the map right now ---- */
   const shown = useMemo(() => {
-    const rows = listings.filter((l) => l.price <= maxPrice && (!topOnly || l.tier === 3) && (!cornerOnly || l.corner) && (!alleyOnly || l.alley));
+    const rows = listings.filter((l) => (!savedOnly || isSaved(l.mlsId)) && l.price <= maxPrice && (!topOnly || l.tier === 3) && (!cornerOnly || l.corner) && (!alleyOnly || l.alley));
     const m = sort.dir === "asc" ? 1 : -1;
     return [...rows].sort((a, b) => {
       const x = sortValue(a, sort.key), y = sortValue(b, sort.key);
       const c = typeof x === "string" ? x.localeCompare(y as string) : (x as number) - (y as number);
       return c * m || a.price - b.price;
     });
-  }, [listings, maxPrice, topOnly, cornerOnly, alleyOnly, sort]);
+  }, [listings, maxPrice, topOnly, cornerOnly, alleyOnly, sort, savedOnly, isSaved]);
 
   const byPin = useMemo(() => new globalThis.Map(shown.map((l) => [l.pin, l])), [shown]);
   const shapesColored = useMemo<GeoJSON.FeatureCollection | null>(() => {
@@ -404,7 +408,10 @@ export default function CandidateMap() {
               <div className="px-4 pb-1 pt-4 sm:px-5">
                 <h1 className="pa-display text-xl" style={{ color: "var(--ink)" }}>Seattle homes that can have a DADU</h1>
                 <div className="mt-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                  <p className="text-sm tabular-nums" style={{ color: "var(--slate)" }} aria-live="polite">{resultLine}</p>
+                  <p className="text-sm tabular-nums" style={{ color: "var(--slate)" }} aria-live="polite">{savedOnly ? `${shown.length} saved ${shown.length === 1 ? "home" : "homes"}` : resultLine}</p>
+                  <button type="button" onClick={() => setSavedOnly((v) => !v)} aria-pressed={savedOnly} className="pa-btn pa-btn-sm" style={savedOnly ? { background: "#FBE9E5", borderColor: "#E7B3A8", color: "#9C2F1F" } : undefined}>
+                    <Heart size={13} aria-hidden fill={saved.length ? "#C2412D" : "none"} color={saved.length ? "#C2412D" : "currentColor"} /> Saved ({saved.length})
+                  </button>
                   <label className="flex shrink-0 items-center gap-1 text-sm" style={{ color: "var(--slate)" }}>
                     Sort:
                     <select value={SORT_PRESETS.find((p) => p.sort.key === sort.key && p.sort.dir === sort.dir)?.id ?? ""} onChange={(e) => { const p = SORT_PRESETS.find((x) => x.id === e.target.value); if (p) setSort(p.sort); }} className="bg-transparent py-1 pr-1 text-sm font-semibold" style={{ color: "var(--green)", boxShadow: "none" }}>
@@ -427,6 +434,12 @@ export default function CandidateMap() {
               </div>
 
               <ul className="grid gap-4 p-4 sm:px-5 [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))]">
+                {savedOnly && shown.length === 0 && (
+                  <li className="col-span-full rounded-2xl p-5 text-sm" style={{ background: "var(--card)", color: "var(--slate)" }}>
+                    No saved homes yet. Tap the heart on a home to keep it here for this visit.{" "}
+                    <button type="button" className="font-semibold underline" style={{ color: "var(--green)" }} onClick={() => setSavedOnly(false)}>Show all homes</button>
+                  </li>
+                )}
                 {shown.map((l) => <ListingCard key={l.mlsId} l={l} onSelect={() => selectPin(l.pin)} />)}
                 {loaded && loaded.connected && !shown.length && (
                   <li className="col-span-full py-8 text-sm" style={{ color: "var(--slate)" }}>No listings match. Raise the price limit or clear a filter.</li>
@@ -448,7 +461,10 @@ function ListingCard({ l, onSelect }: { l: MapListing; onSelect: () => void }) {
   const facts = [l.beds != null ? `${l.beds} bd` : null, l.baths != null ? `${l.baths} ba` : null, l.sqft != null ? `${l.sqft.toLocaleString()} sqft` : null].filter(Boolean);
   const extras = [l.daduSqft ? `DADU up to ${Math.round(l.daduSqft).toLocaleString()} sf` : null, l.alley ? "Alley" : null, l.corner ? "Corner" : null].filter(Boolean);
   return (
-    <li className="min-w-0">
+    <li className="relative min-w-0">
+      <span className="absolute right-2.5 top-14 z-[1]">
+        <SaveButton variant="overlay" item={{ mlsId: l.mlsId, address: cleanAddress(l.address), price: l.price, photo: l.photo, score: l.score }} />
+      </span>
       <button
         type="button"
         onClick={onSelect}
@@ -521,6 +537,7 @@ function LotPanel({ pin, lot, error, listing, onBack }: { pin: string | null; lo
             {lot.corner && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(23,36,29,.08)", color: "var(--ink)" }}>Corner lot</span>}
             {lot.alley && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(46,92,110,.12)", color: "#2E5C6E" }}>Alley</span>}
             {listing?.test && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>Sample data</span>}
+            {listing && <span className="ml-auto"><SaveButton item={{ mlsId: listing.mlsId, address: cleanAddress(listing.address), price: listing.price, photo: listing.photo, score: lot.score }} /></span>}
           </div>
 
           <div className="pa-raised mt-5 flex items-center gap-4 p-4">
@@ -548,7 +565,12 @@ function LotPanel({ pin, lot, error, listing, onBack }: { pin: string | null; lo
 
           <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
             <Fact k="Lot type" v={lot.lotType ? titleCase(lot.lotType) : "n/a"} />
-            <Fact k="Tree canopy" v={canopy != null ? `${canopy}%` : "n/a"} />
+            {lot.trees ? (
+              <>
+                <Fact k="Trees" v={`${lot.trees.large} large, ${lot.trees.medium} medium (${lot.trees.canopyPct}% canopy)`} />
+                <Fact k="Open ground" v={lot.trees.clearSqft >= 300 ? `${lot.trees.clearSqft.toLocaleString()} sf behind the house` : "None clear of trees"} />
+              </>
+            ) : <Fact k="Tree canopy" v={canopy != null ? `${canopy}%` : "n/a"} />}
             <Fact k="Steep slope" v={steep ? `${steep}% of lot` : "None"} />
             <Fact k="ADUs nearby" v={String(lot.adusNearby)} />
           </dl>

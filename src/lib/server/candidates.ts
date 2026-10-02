@@ -16,9 +16,11 @@ import type { FeasibilityResult, ParcelData } from "@/lib/feasibility";
 import { str, num } from "@/lib/geo-helpers";
 import { factorsToFeasibilityData } from "./factors-map";
 import { sideClearance, type Ring } from "@/lib/side-clearance";
+import { analyzeTrees, streetAxis, type Crown, type TreeStats } from "@/lib/tree-analysis";
 
 const ARCGIS = "https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services";
 const FACTORS_URL = `${ARCGIS}/ADUniverse_feasibility_factors/FeatureServer/0/query`;
+const TREES_URL = `${ARCGIS}/TreeCrowns_2021_Seattle/FeatureServer/0/query`;
 const PARCEL_GEO_URL = `${ARCGIS}/PARCEL_GEO/FeatureServer/0/query`;
 const BUILDINGS_URL = `${ARCGIS}/Building_Outlines_2023/FeatureServer/0/query`;
 
@@ -62,6 +64,8 @@ export interface Candidate {
   existingAdus: number | null;
   /** Room the house leaves on its wider side, feet (2023 building outlines). Null when not measured. */
   sideClearanceFt: number | null;
+  /** Trees measured one by one from the 2021 LiDAR crowns. Null when not measured (older library files). */
+  trees?: TreeStats | null;
 }
 
 export interface CandidatePage {
@@ -109,13 +113,14 @@ interface RawFeature {
 }
 
 /** `sideClearanceFt`: room the house leaves on its wider side, measured from building outlines (null if unmeasured). */
-export function toCandidate(f: RawFeature, parcelRow: EligibleParcel, sideClearanceFt: number | null = null): Candidate | null {
+export function toCandidate(f: RawFeature, parcelRow: EligibleParcel, sideClearanceFt: number | null = null, trees: TreeStats | null = null): Candidate | null {
   const a = f.attributes;
   const c = f.centroid;
   const { pin, address, zoning, lotSqft } = parcelRow;
   if (!c) return null;
   const feasibility = factorsToFeasibilityData(a);
   feasibility.sideClearanceFt = sideClearanceFt;
+  feasibility.treeStats = trees;
   if ((feasibility.totalADU ?? 0) >= MAX_ADUS_PER_LOT) return null; // already at the ADU cap
   const parcel: ParcelData = {
     address: address || null,
@@ -174,6 +179,7 @@ export function toCandidate(f: RawFeature, parcelRow: EligibleParcel, sideCleara
     lotDepth: feasibility.lotDepth,
     existingAdus: feasibility.totalADU,
     sideClearanceFt,
+    trees: trees ? { ...trees, clearSpot: null } : null,
   };
 }
 
@@ -275,9 +281,73 @@ export async function fetchBuildingsByPin(pins: Set<string>, onPage?: (done: num
   return out;
 }
 
+/** Every 2021 LiDAR tree crown in Seattle (about 970,000), as a grid index for lookups by area. */
+export interface CrownIndex {
+  near(lng0: number, lat0: number, lng1: number, lat1: number): Crown[];
+  size: number;
+}
+const CROWN_CELL = 0.001; // degrees, about 360 ft by 250 ft
+
+export async function fetchTreeCrowns(onPage?: (done: number, total: number) => void): Promise<CrownIndex> {
+  // Page by OBJECTID range, not offset: deep offsets on this layer take about 40 s a page, id ranges under 1 s.
+  const stat = await fetch(`${TREES_URL}?${new URLSearchParams({ where: "1=1", outStatistics: JSON.stringify([{ statisticType: "max", onStatisticField: "OBJECTID", outStatisticFieldName: "mx" }]), f: "json" })}`).then((r) => r.json());
+  const maxId = Number(stat?.features?.[0]?.attributes?.mx ?? stat?.features?.[0]?.attributes?.MX);
+  if (!Number.isFinite(maxId)) throw new Error("Could not read the tree crown id range");
+  const offsets: number[] = [];
+  for (let o = 0; o <= maxId; o += PAGE_LIMIT) offsets.push(o);
+  const grid = new Map<string, Crown[]>();
+  let size = 0, done = 0;
+  await runPool(offsets, async (o) => {
+    const r = await arcgisPage(TREES_URL, {
+      where: `OBJECTID > ${o} AND OBJECTID <= ${o + PAGE_LIMIT}`,
+      outFields: "Hgt_Q98,Radius,Shape__Area",
+      returnGeometry: "false",
+      returnCentroid: "true",
+      outSR: "4326",
+      resultRecordCount: String(PAGE_LIMIT),
+      f: "json",
+    });
+    if (r.error) throw new Error(`Tree crowns page ${o}: ${r.error}`);
+    for (const f of r.features) {
+      const c = f.centroid;
+      if (!c) continue;
+      const area = num(f.attributes.Shape__Area);
+      const rad = area && area > 0 ? Math.sqrt(area / Math.PI) : num(f.attributes.Radius) ?? 3;
+      const key = `${Math.floor(c.x / CROWN_CELL)},${Math.floor(c.y / CROWN_CELL)}`;
+      const list = grid.get(key) ?? [];
+      list.push({ lng: c.x, lat: c.y, r: rad, h: num(f.attributes.Hgt_Q98) });
+      grid.set(key, list);
+      size++;
+    }
+    done += 1;
+    onPage?.(done, offsets.length);
+  }, 6);
+  return {
+    size,
+    near(lng0, lat0, lng1, lat1) {
+      const out: Crown[] = [];
+      for (let i = Math.floor(lng0 / CROWN_CELL); i <= Math.floor(lng1 / CROWN_CELL); i++)
+        for (let j = Math.floor(lat0 / CROWN_CELL); j <= Math.floor(lat1 / CROWN_CELL); j++)
+          for (const c of grid.get(`${i},${j}`) ?? []) if (c.lng >= lng0 && c.lng <= lng1 && c.lat >= lat0 && c.lat <= lat1) out.push(c);
+      return out;
+    },
+  };
+}
+
+/** Measure one lot's trees: crowns within 45 ft of the lot (to catch overhang), the house, and the street side. */
+export function treesForLot(ring: Ring, houses: Ring[], crowns: CrownIndex, address: string | null): TreeStats {
+  const xs = ring.map((p) => p[0]), ys = ring.map((p) => p[1]);
+  const padLat = 45 / 364567, padLng = padLat / Math.cos((ys[0] * Math.PI) / 180);
+  const near = crowns.near(Math.min(...xs) - padLng, Math.min(...ys) - padLat, Math.max(...xs) + padLng, Math.max(...ys) + padLat);
+  const stats = analyzeTrees(ring as [number, number][], houses as [number, number][][], near, streetAxis(address));
+  delete stats.clearSpot; // only the report draws it
+  return stats;
+}
+
 export async function fetchAllCandidates(onPage?: (stage: string, done: number, total: number) => void): Promise<Candidate[]> {
   const eligible = await fetchEligibleParcels((d, t) => onPage?.("parcels", d, t));
   const buildings = await fetchBuildingsByPin(new Set(eligible.keys()), (d, t) => onPage?.("buildings", d, t));
+  const crowns = await fetchTreeCrowns((d, t) => onPage?.("tree crowns", d, t));
   const total = await pagedCount(FACTORS_URL, "1=1");
   const offsets: number[] = [];
   for (let o = 0; o < total; o += PAGE_LIMIT) offsets.push(o);
@@ -304,7 +374,8 @@ export async function fetchAllCandidates(onPage?: (stage: string, done: number, 
       if (!pin || !row || seen.has(pin)) continue;
       const ring = f.geometry?.rings?.[0] as Ring | undefined;
       const clear = ring ? sideClearance(ring, buildings.get(pin) ?? []) : null;
-      const c = toCandidate(f, row, clear?.maxFt ?? null);
+      const trees = ring ? treesForLot(ring, buildings.get(pin) ?? [], crowns, row.address) : null;
+      const c = toCandidate(f, row, clear?.maxFt ?? null, trees);
       if (c) {
         seen.add(pin);
         out.push(c);

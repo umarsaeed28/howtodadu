@@ -31,6 +31,16 @@ export interface LotLibraryFile {
     lotDepth?: (number | null)[];
     existingAdus?: (number | null)[];
     sideClearanceFt?: (number | null)[];
+    /** Trees measured from the 2021 LiDAR crowns (tree-analysis.ts). Null where not measured. */
+    treeLarge?: (number | null)[];
+    treeMedium?: (number | null)[];
+    treeSmall?: (number | null)[];
+    treeCanopyPct?: (number | null)[];
+    clearSqft?: (number | null)[];
+    clearSqftIfMediumRemoved?: (number | null)[];
+    /** Room for a DADU before trees (sf), and 1 when it had to look past the house's front wall instead of behind it. */
+    siteSqft?: (number | null)[];
+    siteSide?: (number | null)[];
   };
 }
 
@@ -64,6 +74,14 @@ export function encodeLibrary(rows: Candidate[], source: string, now = new Date(
       lotDepth: rows.map((r) => r.lotDepth),
       existingAdus: rows.map((r) => r.existingAdus),
       sideClearanceFt: rows.map((r) => r.sideClearanceFt),
+      treeLarge: rows.map((r) => r.trees?.large ?? null),
+      treeMedium: rows.map((r) => r.trees?.medium ?? null),
+      treeSmall: rows.map((r) => r.trees?.small ?? null),
+      treeCanopyPct: rows.map((r) => r.trees?.canopyPct ?? null),
+      clearSqft: rows.map((r) => r.trees?.clearSqft ?? null),
+      clearSqftIfMediumRemoved: rows.map((r) => r.trees?.clearSqftIfMediumRemoved ?? null),
+      siteSqft: rows.map((r) => r.trees?.siteSqft ?? null),
+      siteSide: rows.map((r) => (r.trees?.site == null ? null : r.trees.site === "side" ? 1 : 0)),
     },
   };
 }
@@ -96,6 +114,10 @@ export function decodeLibrary(f: LotLibraryFile, zips?: string[] | null): Candid
       lotDepth: c.lotDepth?.[i] ?? null,
       existingAdus: c.existingAdus?.[i] ?? null,
       sideClearanceFt: c.sideClearanceFt?.[i] ?? null,
+      trees:
+        c.clearSqft?.[i] != null
+          ? { large: c.treeLarge![i] ?? 0, medium: c.treeMedium![i] ?? 0, small: c.treeSmall![i] ?? 0, canopyPct: c.treeCanopyPct![i] ?? 0, clearSqft: c.clearSqft[i]!, clearSqftIfMediumRemoved: c.clearSqftIfMediumRemoved![i] ?? 0, ...(c.siteSqft?.[i] != null ? { siteSqft: c.siteSqft[i]!, site: c.siteSide?.[i] === 1 ? ("side" as const) : ("behind" as const) } : {}) }
+          : null,
     });
   }
   return out;

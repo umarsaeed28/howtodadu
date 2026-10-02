@@ -89,7 +89,11 @@ export function toReport(row: FeasibilityTableRow, now: Date = new Date()): Feas
   pushFact("Lot depth", f?.lotDepth, "ft", "ADUniverse feasibility factors");
   pushFact("Building area", f?.totalBuildingSqft, "sf", "Building_Outlines_2023");
   pushFact("Lot coverage", toPercent(f?.lotCoveragePercent), "%", "ADUniverse feasibility factors");
-  pushFact("Tree canopy", toPercent(f?.treeCanopyPercent), "%", "Seattle canopy data");
+  if (f?.treeStats) {
+    pushFact("Tree canopy", f.treeStats.canopyPct, "%", "2021 LiDAR tree crowns");
+    pushFact("Medium and large trees", f.treeStats.medium + f.treeStats.large, "", "2021 LiDAR tree crowns");
+    pushFact("Open ground behind the house", f.treeStats.clearSqft, "sf", "2021 LiDAR tree crowns");
+  } else pushFact("Tree canopy", toPercent(f?.treeCanopyPercent), "%", "Seattle canopy data");
 
   const scenarios: FeasibilityReport["scenarios"] = [];
   const addScenario = (

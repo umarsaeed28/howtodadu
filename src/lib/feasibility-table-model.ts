@@ -89,6 +89,7 @@ export function siteScoreFor(result: FeasibilityResult, report: ADUReport, hoaMo
     sideClearanceFt: f?.sideClearanceFt ?? null,
     zoning: parcelZoningLabel(result.parcel),
     hoaMonthly,
+    trees: f?.treeStats ?? null,
   });
 }
 
@@ -108,15 +109,19 @@ function keyInsightFrom(report: ADUReport, signals: DealSignals): string {
 function summarySentence(
   report: ADUReport,
   signals: DealSignals,
-  combined: number
+  combined: number,
+  site?: SiteScore
 ): string {
   const { label: verdictLabel } = verdictFromCombined(combined);
   const lot = signals.siteOverview.lotSizeSqft;
   const lotPart =
     lot > 0 ? `~${lot.toLocaleString()} sq ft lot` : "Lot size from city records";
   const zone = report.stats.find((s) => s.label === "Zoning")?.value ?? "—";
-  const riskHint =
-    signals.risks.length > 0
+  // Trees that hold the score down come first: they are the reason the number is low.
+  const trees = site?.factors.find((f) => f.key === "trees");
+  const riskHint = trees && trees.score <= 40
+    ? `Watch the trees: ${trees.note.charAt(0).toLowerCase()}${trees.note.slice(1)}`
+    : signals.risks.length > 0
       ? `Watch: ${signals.risks[0].toLowerCase()}.`
       : "Few major flags from city data.";
   return `${verdictLabel}. ${lotPart}, ${zone}. ${riskHint}`;
@@ -218,7 +223,7 @@ export function buildFeasibilityTableRow(
     keyInsight: keyInsightFrom(report, signals),
     verdict,
     verdictLabel,
-    summarySentence: summarySentence(report, signals, daduScore),
+    summarySentence: summarySentence(report, signals, daduScore, siteScore),
     result,
     report,
     signals,

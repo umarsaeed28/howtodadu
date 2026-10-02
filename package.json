@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:lots": "tsx scripts/build-lot-library.ts",
+    "check:scores": "tsx scripts/check-scores.ts",
     "build:alleys": "tsx scripts/build-alleys.ts",
     "eval": "tsx scripts/eval.ts",
     "smoke": "node scripts/smoke.mjs",

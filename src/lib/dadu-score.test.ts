@@ -16,6 +16,8 @@ const base: ScoreInput = {
   zoning: "NR3",
   hoaMonthly: 0,
 };
+/** An open, measured lot: no medium or large trees and plenty of clear ground behind the house. */
+const openTrees = { large: 0, medium: 0, small: 1, canopyPct: 5, clearSqft: 1500, clearSqftIfMediumRemoved: 1500 };
 const f = (s: ReturnType<typeof scoreSite>, k: keyof typeof WEIGHTS) => s.factors.find((x) => x.key === k)!.score;
 
 describe("gates", () => {
@@ -81,10 +83,10 @@ describe("factors follow the team guide", () => {
   });
   it("heavy canopy caps the grade", () => {
     const best = { ...base, alley: true, widthFt: 60, depthFt: 140, daduSqft: 1000, steepPct: 0 };
-    expect(scoreSite({ ...best, canopyPct: 5 }).grade).toBe("Top pick");
+    expect(scoreSite({ ...best, canopyPct: 5, trees: openTrees }).grade).toBe("Top pick");
     expect(scoreSite({ ...best, canopyPct: 45 }).score).toBeLessThanOrEqual(92);
     expect(scoreSite({ ...best, canopyPct: 65 }).score).toBeLessThanOrEqual(81);
-    expect(scoreSite({ ...best, canopyPct: 45 }).score).toBeLessThan(scoreSite({ ...best, canopyPct: 15 }).score - 10);
+    expect(scoreSite({ ...best, trees: { ...openTrees, canopyPct: 45 } }).score).toBeLessThan(scoreSite({ ...best, trees: { ...openTrees, canopyPct: 15 } }).score - 10);
   });
   it("2722 NE Blakeley St (40 x 139 ft, no alley, 880 sf DADU, flat) lands in the high 60s, not 84", () => {
     const s = scoreSite({ ...base, widthFt: 40, depthFt: 139, daduSqft: 880, canopyPct: 0.2 });
@@ -92,9 +94,50 @@ describe("factors follow the team guide", () => {
     expect(s.score).toBeLessThanOrEqual(70);
   });
   it("a wide alley lot with a full-size DADU is a top pick", () => {
-    const s = scoreSite({ ...base, alley: true, widthFt: 50, depthFt: 120, daduSqft: 1000 });
+    const s = scoreSite({ ...base, alley: true, widthFt: 50, depthFt: 120, daduSqft: 1000, trees: openTrees });
     expect(s.score).toBe(100);
     expect(s.grade).toBe("Top pick");
+  });
+});
+
+describe("measured trees (2021 LiDAR crowns)", () => {
+  const great = { ...base, alley: true, widthFt: 60, depthFt: 140, daduSqft: 1000 };
+  it("9612 55th Ave S: 1 large and 7 medium trees, only 272 sf open behind the house, scored 90 before; now Marginal and hidden", () => {
+    const s = scoreSite({ ...great, canopyPct: 0.2, trees: { large: 1, medium: 7, small: 2, canopyPct: 32, clearSqft: 272, clearSqftIfMediumRemoved: 1656 } });
+    expect(s.eligible).toBe(true);
+    expect(s.score).toBeLessThan(70);
+    expect(s.grade).toBe("Marginal");
+    expect(f(s, "trees")).toBeLessThanOrEqual(10);
+  });
+  it("large trees that leave no 15 x 20 ft spot even with smaller trees removed fail the lot", () => {
+    const s = scoreSite({ ...great, trees: { large: 3, medium: 0, small: 0, canopyPct: 55, clearSqft: 0, clearSqftIfMediumRemoved: 120 } });
+    expect(s.eligible).toBe(false);
+    expect(s.gates.find((g) => g.key === "trees")!.status).toBe("fail");
+  });
+  it("a tight clear spot (under 600 sf) is Fair at best", () => {
+    expect(scoreSite({ ...great, trees: { ...openTrees, clearSqft: 450 } }).score).toBeLessThanOrEqual(81);
+  });
+  it("with under 1,000 sf open, four medium or large trees cap at Fair and six at Marginal", () => {
+    expect(scoreSite({ ...great, trees: { ...openTrees, clearSqft: 800, medium: 4, canopyPct: 20 } }).score).toBeLessThanOrEqual(81);
+    expect(scoreSite({ ...great, trees: { ...openTrees, clearSqft: 800, medium: 6, canopyPct: 20 } }).score).toBeLessThan(70);
+  });
+  it("522 NE 127th St: 4 large and 2 medium trees but 1,590 sf open behind the house is Fair, not hidden and not Good", () => {
+    const s = scoreSite({ ...base, widthFt: 90, depthFt: 121, daduSqft: 1000, sideClearanceFt: 28, lotSqft: 10870, trees: { large: 4, medium: 2, small: 6, canopyPct: 33, clearSqft: 1590, clearSqftIfMediumRemoved: 1590 } });
+    expect(s.grade).toBe("Fair");
+    expect(s.score).toBeGreaterThanOrEqual(75);
+  });
+  it("each medium or large tree costs the tree factor 5 points", () => {
+    expect(f(scoreSite({ ...great, trees: { ...openTrees, canopyPct: 15, medium: 2 } }), "trees")).toBe(75);
+  });
+  it("when the house, not the trees, leaves no 15 x 20 ft spot, the trees gate does not fail it; it is Fair at best", () => {
+    const s = scoreSite({ ...great, trees: { large: 1, medium: 0, small: 0, canopyPct: 8, clearSqft: 0, clearSqftIfMediumRemoved: 0, siteSqft: 120, site: "side" } });
+    expect(s.eligible).toBe(true);
+    expect(s.gates.find((g) => g.key === "trees")).toBeUndefined();
+    expect(s.score).toBeLessThanOrEqual(81);
+  });
+  it("unmeasured trees can never be a top pick, whatever the canopy figure says", () => {
+    expect(scoreSite({ ...great, canopyPct: 0.05 }).score).toBeLessThanOrEqual(92);
+    expect(scoreSite({ ...great, canopyPct: null }).score).toBeLessThanOrEqual(81);
   });
 });
 

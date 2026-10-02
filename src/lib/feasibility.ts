@@ -1,3 +1,4 @@
+import type { TreeSize, TreeStats } from "@/lib/tree-analysis";
 import type { TerrainGrid } from "@/lib/terrain";
 /**
  * Prefer detailed zoning code (e.g. NR3) over legacy assessor bucket (e.g. SF 5000 from ZONELUT).
@@ -84,6 +85,8 @@ export interface FeasibilityData {
    * Null when not measured. A car can reach the back of a lot with no alley only if this is at least 10 ft.
    */
   sideClearanceFt?: number | null;
+  /** Tree-by-tree measurement from the 2021 LiDAR crowns: counts by size, canopy, open ground behind the house. */
+  treeStats?: TreeStats | null;
 }
 
 /** Defaults for merging GIS-only ECA hits when the feasibility factors layer is missing. */
@@ -163,6 +166,10 @@ export interface SitePlanTree {
   heightFt?: number;
   /** Whether in DADU buildable zone (potential removal) */
   inDADUZone?: boolean;
+  /** Estimated size class from crown and height (tree-analysis.ts): large ~ Tier 2, medium ~ Tier 3. */
+  size?: TreeSize;
+  /** False for a neighbour's tree whose crown overhangs the lot line. */
+  onLot?: boolean;
   /** Whether SDCI protected (extra caution) */
   protected?: boolean;
 }

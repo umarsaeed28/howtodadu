@@ -8,6 +8,7 @@ import type { ADUReport } from "@/lib/adu-analysis";
 import { calculatorHref } from "@/lib/calculator/inputs";
 import { contourLines, profile, type TerrainGrid } from "@/lib/terrain";
 import { lotRotation, turn, unturn } from "@/lib/lot-orientation";
+import { MIN_FOOTPRINT_SQFT, treeSize } from "@/lib/tree-analysis";
 import LotSection from "./LotSection";
 import { PlanPicker, PlacedPlanCard, type PlanFit } from "./PlanPicker";
 import { PREAPPROVED_PLANS, type PreApprovedPlan } from "@/lib/preapproved-dadus";
@@ -272,17 +273,25 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
         const d0 = Math.max(MIN_SIDE_FT, Math.min(fp.suggestedDepth, ld - rear));
         // Start in open ground: rear first, centred first, shrinking the depth before giving up, and keeping clear of
         // every existing building (5 ft from the house). Falls back to the plain rear-centre spot.
-        const clear = (u: number, v: number, dd: number) =>
+        // Medium and large tree crowns in lot-local feet: the first pass keeps clear of them too.
+        const crowns = (sitePlan?.trees ?? [])
+          .filter((t) => (t.size ?? treeSize({ r: t.radiusFt, h: t.heightFt ?? null })) !== "small")
+          .map((t) => ({ ...toLocal(proj(t.centroid[0], t.centroid[1])), r: t.radiusFt }));
+        const clear = (u: number, v: number, dd: number, avoidTrees: boolean) =>
           bldgBoxes.every((b, i) => {
             const gu = Math.max(0, b.u0 - (u + w), u - b.u1), gv = Math.max(0, b.v0 - (v + dd), v - b.v1);
             return Math.hypot(gu, gv) >= (i === 0 ? HOUSE_SEPARATION_FT : 0.5);
-          });
+          }) &&
+          (!avoidTrees || crowns.every((c) => Math.hypot(Math.max(0, u - c.u, c.u - (u + w)), Math.max(0, v - c.v, c.v - (v + dd))) >= c.r));
         const us: number[] = [];
         for (let k = 0; side + k <= lw - side - w; k += 1) us.push(side + k);
         us.sort((p, q) => Math.abs(p - (lw - w) / 2) - Math.abs(q - (lw - w) / 2));
-        for (let dd = d0; dd >= Math.min(d0, 15); dd -= 1)
-          for (let v = ld - rear - dd; v >= 0; v -= 1)
-            for (const u of us) if (clear(u, v, dd)) return { kind: "dadu", u, v, w, d: dd };
+        // Pass 1: behind the house and clear of trees (the same open ground the score measures). Pass 2: the old rule.
+        const behind = houseMaxV ? houseMaxV + HOUSE_SEPARATION_FT : 0;
+        for (const avoidTrees of [true, false])
+          for (let dd = d0; dd >= Math.min(d0, 15); dd -= 1)
+            for (let v = ld - rear - dd; v >= (avoidTrees ? behind : 0); v -= 1)
+              for (const u of us) if (clear(u, v, dd, avoidTrees)) return { kind: "dadu", u, v, w, d: dd };
         return { kind: "dadu", u: (lw - w) / 2, v: Math.max(0, ld - rear - d0), w, d: d0 };
       })()
     : null);
@@ -394,6 +403,11 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
 
 
   /** Rule checks per unit. A DADU keeps 5 ft from the house; an attached ADU must join it. */
+  // Medium and large crowns: building under one means removing or working around a tree that needs review.
+  const bigCrowns = (sitePlan?.trees ?? [])
+    .map((t) => ({ c: proj(t.centroid[0], t.centroid[1]), r: t.radiusFt, size: t.size ?? treeSize({ r: t.radiusFt, h: t.heightFt ?? null }) }))
+    .filter((t) => t.size !== "small");
+  const crownsUnder = (poly: Pt[]) => bigCrowns.filter((t) => pointInPoly(t.c, poly) || nearPoly(t.c, poly, t.r));
   const checks = units.map((x) => {
     const footprint = Math.round(x.w * x.d);
     const living = x.plan ? x.plan.sqft : x.kind === "dadu" ? footprint * stories : footprint;
@@ -408,6 +422,11 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     else list.push({ ok: true, text: "Inside the lot setbacks" });
     if (x.plan) list.push({ ok: true, text: `Pre-approved design by ${x.plan.designer}` });
     if (hitsBuilding) list.push({ ok: false, text: "Overlaps an existing building" });
+    const under = crownsUnder(screenCorners(x));
+    if (under.length) {
+      const nL = under.filter((t) => t.size === "large").length, nM = under.length - nL;
+      list.push({ ok: false, text: `Under ${[nL && `${nL} large`, nM && `${nM} medium`].filter(Boolean).join(" and ")} tree crown${under.length === 1 ? "" : "s"}: ${nL ? "large trees are likely protected" : "removal needs a tree review and replacement"}` });
+    } else if (bigCrowns.length) list.push({ ok: true, text: "Clear of medium and large tree crowns" });
     if (x.kind === "dadu" && !hitsBuilding && houseGap != null)
       list.push(houseGap < HOUSE_SEPARATION_FT ? { ok: false, text: `${houseGap.toFixed(1)} ft from the house; a DADU needs ${HOUSE_SEPARATION_FT} ft` } : { ok: true, text: `${houseGap.toFixed(0)} ft from the house (${HOUSE_SEPARATION_FT} ft needed)` });
     if (x.kind === "aadu" && !hitsBuilding && houseGap != null)
@@ -460,8 +479,16 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   /* ---- trees ---- */
   const pad = 14;
   const trees = (sitePlan?.trees ?? [])
-    .map((t) => ({ c: proj(t.centroid[0], t.centroid[1]), r: t.radiusFt, flag: !!t.inDADUZone }))
-    .filter((t) => t.c.x > x0 - pad && t.c.x < x1 + pad && t.c.y > y0 - pad && t.c.y < y1 + pad);
+    .map((t) => ({ c: proj(t.centroid[0], t.centroid[1]), r: t.radiusFt, size: t.size ?? treeSize({ r: t.radiusFt, h: t.heightFt ?? null }) }))
+    .filter((t) => t.c.x > x0 - t.r - pad && t.c.x < x1 + t.r + pad && t.c.y > y0 - t.r - pad && t.c.y < y1 + t.r + pad);
+  const treeStats = feasibility?.treeStats ?? null;
+  // The biggest spot behind the house that keeps clear of medium and large crowns (none when it is under 300 sf).
+  const clearSpot = treeStats?.clearSpot && treeStats.clearSqft >= MIN_FOOTPRINT_SQFT ? treeStats.clearSpot.map(([lng, lat]) => proj(lng, lat)) : null;
+  const TREE_STYLE = {
+    large: { stroke: "#1F5E3B", fill: "rgba(31,94,59,0.16)", width: 1.6, dash: false },
+    medium: { stroke: "#3F8A5E", fill: "rgba(63,138,94,0.10)", width: 1.1, dash: true },
+    small: { stroke: "#8DB89C", fill: "none", width: 0.8, dash: true },
+  } as const;
 
   /* ---- drag and resize ---- */
   const localAt = (e: React.PointerEvent): { u: number; v: number } | null => {
@@ -637,7 +664,9 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     noSideYard && " The house leaves no usable side yard for an access path, so none is drawn.",
     !streets.length && " No street geometry returned, so the street side is assumed south.",
   ].filter(Boolean).join("");
+  const ts = feasibility?.treeStats;
   const warnings = [
+    ts && ts.clearSqft < MIN_FOOTPRINT_SQFT && `Trees: ${ts.large} large and ${ts.medium} medium trees reach this lot, and no open 15 by 20 ft spot behind the house clears them. A DADU here means removing trees, with a tree review and replacement${ts.clearSqftIfMediumRemoved < MIN_FOOTPRINT_SQFT ? "; even then, large trees leave no room" : ""}.`,
     overCoverage && `Together the new footprints (${totalFootprint.toLocaleString("en-US")} sf) are over the ${Math.round(coverageLeft ?? 0).toLocaleString("en-US")} sf of lot coverage left.`,
     overAduCap && `A lot can have 2 ADUs. This one already has ${existingAdus}, so you can add ${Math.max(0, 2 - existingAdus)} more.`,
   ].filter((w): w is string => !!w);
@@ -751,13 +780,21 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
 
         {/* trees with drip lines */}
         <g className="plat-fill" style={{ ["--d" as string]: "1.4s" }}>
-          {trees.map((t, i) => (
-            <g key={i}>
-              <circle cx={t.c.x} cy={t.c.y} r={t.r} fill="none" stroke={t.flag ? "#B9573F" : "#4E9A6B"} strokeWidth={sw} strokeDasharray={`${sw * 2.5} ${sw * 2.5}`} />
-              <circle cx={t.c.x} cy={t.c.y} r={sw * 1.6} fill={t.flag ? "#B9573F" : "#4E9A6B"} />
-            </g>
-          ))}
+          {[...trees].sort((a, b) => a.r - b.r).reverse().map((t, i) => {
+            const st = TREE_STYLE[t.size];
+            return (
+              <g key={i}>
+                <circle cx={t.c.x} cy={t.c.y} r={t.r} fill={st.fill} stroke={st.stroke} strokeWidth={sw * st.width} strokeDasharray={st.dash ? `${sw * 2.5} ${sw * 2.5}` : undefined} />
+                <circle cx={t.c.x} cy={t.c.y} r={sw * (t.size === "large" ? 2.2 : 1.6)} fill={st.stroke} />
+              </g>
+            );
+          })}
         </g>
+        {clearSpot && (
+          <g pointerEvents="none">
+            <path d={path(clearSpot)} fill="none" stroke="#2E5C6E" strokeWidth={sw * 1.2} strokeDasharray={`${sw} ${sw * 1.5}`} />
+          </g>
+        )}
 
         {/* 5 ft separation a DADU keeps from the house */}
         {separation && (
@@ -1056,7 +1093,10 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
         {separation && <Key swatch={<i style={{ border: "1px dashed #B9573F" }} />}>{HOUSE_SEPARATION_FT} ft from the house</Key>}
         <Key swatch={<i style={{ background: "repeating-linear-gradient(-45deg,#B9573F55 0 1px,transparent 1px 4px)", border: "1px solid #B9573F88" }} />}>Setback{onAlley ? " (none on the alley)" : ""}</Key>
         <Key swatch={<i style={{ background: "repeating-linear-gradient(45deg,#17241D66 0 1px,transparent 1px 4px)", border: "1px solid #17241D" }} />}>Existing structure</Key>
-        <Key swatch={<i style={{ border: "1px dashed #4E9A6B", borderRadius: "50%" }} />}>Tree drip line</Key>
+        <Key swatch={<i style={{ background: "rgba(31,94,59,0.16)", border: "1.5px solid #1F5E3B", borderRadius: "50%" }} />}>Large tree (likely protected)</Key>
+        <Key swatch={<i style={{ background: "rgba(63,138,94,0.10)", border: "1px dashed #3F8A5E", borderRadius: "50%" }} />}>Medium tree (removal needs replacement)</Key>
+        <Key swatch={<i style={{ border: "1px dashed #8DB89C", borderRadius: "50%" }} />}>Small tree</Key>
+        {clearSpot && <Key swatch={<i style={{ border: "1.5px dotted #2E5C6E" }} />}>Open ground clear of trees ({treeStats!.clearSqft.toLocaleString("en-US")} sf)</Key>}
         <Key swatch={<i style={{ background: "#CFD9D3" }} />}>Street</Key>
         <Key swatch={<i style={{ background: "#D9CDB4", border: "1px solid #A8957A" }} />}>Alley</Key>
         <Key swatch={<i style={{ borderTop: "2px solid #145A40", height: 0, marginTop: 5 }} />}>Vehicle access route</Key>
