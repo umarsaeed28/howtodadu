@@ -88,11 +88,17 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   });
   if (e) {
     tiles.push({ label: "DADU resale value", value: usd(e.saleValue), note: `${usd(e.salePsf)} per sf · ${usd(e.allInCost)} all in` });
-    if (e.rehabCost > 0) tiles.push({ label: `${REHAB_LABELS[e.rehab]} of the house`, value: usd(e.rehabCost), note: `${Math.round(houseSqft ?? 0).toLocaleString()} sf × $${e.rehabRate} per sf` });
     tiles.push({ label: "Profit", value: money(e.profit), note: e.rehabCost > 0 ? `after ${usd(e.softCosts)} soft costs and rehab` : `after ${usd(e.softCosts)} soft costs`, tone: e.profit >= 0 ? "green" : "red" });
     tiles.push({ label: "ROI", value: `${roiPct}%`, note: "profit over all-in cost", tone: (roiPct ?? 0) >= 0 ? "green" : "red" });
   }
-  if (listing && estCost) tiles.push({ label: e && e.rehabCost > 0 ? "Price, rehab and DADU build" : "Price plus DADU build", value: usd(listing.price + estCost + (e?.rehabCost ?? 0)), note: "home and cottage together" });
+  // With a rehab picked, the house is assumed to break even (worth what it cost plus the work), so the total ARV is
+  // that plus the DADU's resale value. Without one, the plain price-plus-build figure.
+  if (listing && estCost)
+    tiles.push(
+      e && e.rehabCost > 0
+        ? { label: "Total ARV", value: usd(listing.price + e.rehabCost + e.saleValue), note: `house ${usd(listing.price + e.rehabCost)} at break-even (${REHAB_LABELS[e.rehab].toLowerCase()} ${usd(e.rehabCost)}) + DADU ${usd(e.saleValue)}` }
+        : { label: "Price plus DADU build", value: usd(listing.price + estCost), note: "home and cottage together" }
+    );
 
   return (
     <section aria-labelledby="rep-sum" id="rep-overview" className="mb-6 scroll-mt-[190px]">

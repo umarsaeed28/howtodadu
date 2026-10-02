@@ -14,8 +14,10 @@ export default function InvestorRoi({ daduSqft, houseSqft, listPrice }: { daduSq
   const tiles: [string, string, string, string?][] = [
     ["DADU ROI", `${Math.round(e.roi * 100)}%`, `${usd(e.profit)} profit on ${usd(e.allInCost)} all in`, e.profit >= 0 ? "#145A40" : "var(--red)"],
     ["DADU resale value", usd(e.saleValue), `${e.sf.toLocaleString()} sf × ${usd(e.salePsf)} per sf`],
-    ...(e.rehabCost > 0 ? [[`${REHAB_LABELS[e.rehab]} of the house`, usd(e.rehabCost), `${Math.round(houseSqft ?? 0).toLocaleString()} sf × $${e.rehabRate} per sf`] as [string, string, string]] : []),
-    [e.rehabCost > 0 ? "Price, rehab and DADU" : "Price plus DADU", usd(listPrice + e.buildCost + e.rehabCost), `${usd(listPrice)} + ${usd(e.buildCost)} build${e.rehabCost > 0 ? ` + ${usd(e.rehabCost)} rehab` : ""}`],
+    // With a rehab picked the house is assumed to break even (price plus the work), and the total ARV adds the DADU's resale value.
+    e.rehabCost > 0
+      ? ["Total ARV", usd(listPrice + e.rehabCost + e.saleValue), `house ${usd(listPrice + e.rehabCost)} at break-even (${REHAB_LABELS[e.rehab].toLowerCase()} ${usd(e.rehabCost)}) + DADU ${usd(e.saleValue)}`]
+      : ["Price plus DADU", usd(listPrice + e.buildCost), `${usd(listPrice)} + ${usd(e.buildCost)} build`],
   ];
   return (
     <div>
