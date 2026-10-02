@@ -3,7 +3,7 @@
 -- this database is a no-op after this file. RLS is on with no policies: only the server-side secret key
 -- (Next.js API routes) and the Postgres connection string (Python service) can read or write.
 
-create extension if not exists vector;
+create extension if not exists vector with schema extensions;  -- Supabase keeps extensions out of public
 
 -- Knowledge base (Pencil API): jina-embeddings-v3, 1024 dims.
 create table if not exists rag_documents (
