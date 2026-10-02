@@ -119,6 +119,9 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
           ))}
         </div>
 
+        {photos[0]?.includes("kingcounty.gov") || photos[0]?.includes("blue.kingcounty.com") ? (
+          <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>House photos from the King County Assessor&apos;s public property record. They can be a few years old.</p>
+        ) : null}
         <nav aria-label="Listing sections" className="sticky top-[var(--nav-h,64px)] z-20 -mx-4 mt-4 border-b px-4 md:-mx-6 md:px-6" style={{ background: "var(--paper)", borderColor: "var(--hairline)" }}>
           <ul className="pa-scroll flex gap-1 overflow-x-auto py-1">
             {([["overview", "Overview"], ...(lot ? [["dadu-h", "DADU potential"]] : []), ...(plan && lot ? [["plan-h", "Site plan"]] : []), ["inv-h", "Investor view"], ["facts-h", "Home facts"], ...(d.priceHistory.length ? [["ph-h", "Price history"]] : []), ...(d.schools.length ? [["sch-h", "Schools"]] : [])] as [string, string][]).map(([id, label]) => (

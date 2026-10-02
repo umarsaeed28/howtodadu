@@ -21,7 +21,6 @@ const cache: Record<string, any> = existsSync(CACHE) ? JSON.parse(readFileSync(C
 
 const norm = (a: string) => a.toLowerCase().replace(/\bne\b/g, "ne").replace(/(\d)(st|nd|rd|th)\b/g, "$1").replace(/[^a-z0-9]+/g, " ").trim();
 const slug = (a: string, mls: string) => `${a.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${mls.slice(-4)}`;
-const photos = (mls: string) => (/^\d+$/.test(mls) ? [1, 2, 3, 4, 5].map((i) => `https://ssl.cdn-redfin.com/photo/1/bigphoto/${mls.slice(-3)}/${mls}_${i}.jpg`) : []);
 const pct = (v: number | null | undefined) => (v == null ? null : Math.round(v <= 1 ? v * 100 : v));
 const isUnit = (a: string) => /#|\b\d+\s[A-Z]\s\d|\bHouse [A-Z]\b/.test(a);
 const stripUnit = (a: string) => a.replace(/\s*#.*$/, "").replace(/\sHouse [A-Z]\b/, "").replace(/^(\d+)\s[A-Z]\s/, "$1 ");
@@ -42,6 +41,21 @@ async function gisFor(address: string) {
     nearbyAdus: (feasibility.nearbyDADU ?? 0) + (feasibility.nearbyAADU ?? 0), score: row?.daduScore ?? null,
     daduSqft: report?.daduFootprint?.buildableSqft ?? null, daduMaxAllowedSqft: report?.daduFootprint?.maxAllowedSqft ?? null,
   });
+}
+
+/** House photos from the King County Assessor's public property record (eRealProperty), by parcel number. Cached. */
+const KC = "https://blue.kingcounty.com/Assessor/eRealProperty";
+async function assessorPhotos(pin: string | null | undefined): Promise<string[]> {
+  if (!pin) return [];
+  try {
+    const res = await fetch(`${KC}/Detail.aspx?ParcelNbr=${pin}`, { headers: { "User-Agent": "Mozilla/5.0 (Pencil dataset build)" }, signal: AbortSignal.timeout(20000) });
+    if (!res.ok) return [];
+    // Only the building photos ("Current Picture"); the record also links floor-plan sketches.
+    const ids = [...new Set([...(await res.text()).matchAll(/<img[^>]*_CurrentImage"[^>]*src="MediaHandler\.aspx\?Media=(\d+)"/g)].map((m) => m[1]))];
+    return ids.slice(0, 6).map((id) => `${KC}/MediaHandler.aspx?Media=${id}`);
+  } catch {
+    return [];
+  }
 }
 
 /** Deterministic label. HOA known and above zero wins; unknown HOA can never produce "candidate". */
@@ -77,6 +91,11 @@ async function main() {
   await Promise.all(Array.from({ length: 4 }, async () => { for (let p = queue.shift(); p; p = queue.shift()) { try { await gisFor(p.address); } catch (e) { cache[stripUnit(p.address)] = { error: e instanceof Error ? e.message.slice(0, 80) : "failed" }; } } }));
   writeFileSync(CACHE, JSON.stringify(cache));
 
+  // Assessor house photos, four at a time, once per parcel (kept in the GIS cache).
+  const needPhotos = [...new Set(merged.map((p) => stripUnit(p.address)))].filter((q) => cache[q]?.pin && !cache[q].photos);
+  await Promise.all(Array.from({ length: 4 }, async () => { for (let q = needPhotos.shift(); q; q = needPhotos.shift()) cache[q].photos = await assessorPhotos(cache[q].pin); }));
+  writeFileSync(CACHE, JSON.stringify(cache));
+
   rmSync("rag/documents/test-listings", { recursive: true, force: true });
   mkdirSync("rag/documents/test-listings", { recursive: true });
   const out: Hand[] = [];
@@ -90,7 +109,8 @@ async function main() {
     const dup = rows.filter((r) => norm(r.address) === norm(p.address)).length > 1;
     if (dup) conflicts.push("The same address appears under more than one MLS number in the export.");
     const id = `test-${p.mls}`;
-    const rec = { ...p, id, zip: g.zip ?? "98105", lat: g.lat ?? null, lng: g.lng ?? null, photos: photos(String(p.mls)), gis: g, label, why, conflicts, dataKind: "test", source: p.sources.join(" + "), retrievedAt: raw.retrievedAt };
+    const pics: string[] = g.photos?.length ? g.photos : [];
+    const rec = { ...p, id, zip: g.zip ?? "98105", lat: g.lat ?? null, lng: g.lng ?? null, photos: pics, gis: g, label, why, conflicts, dataKind: "test", source: p.sources.join(" + "), retrievedAt: raw.retrievedAt };
     out.push(rec);
 
     const hoa = p.hoaMonthly;
@@ -120,9 +140,9 @@ ${conflicts.length ? `\n## Conflicts to confirm\n${conflicts.map((c) => `- ${c}`
     fixture.push({
       mlsId: id, address: `${stripUnit(p.address)}, Seattle, WA ${rec.zip}`, city: "Seattle", zip: rec.zip, lat: g.lat, lng: g.lng, listPrice: p.price,
       lotSqft: p.lotSqft ?? g.cityLotSqft ?? 0, livingSqft: p.sqft, yearBuilt: p.yearBuilt, beds: p.beds, baths: p.baths, daysOnMarket: p.daysOnMarket,
-      status: String(p.status).toLowerCase().replace(/\s+/g, "_").replace("for_sale", "active"), photos: p.redfinUrl ? photos(String(p.mls)) : [], listingUrl: p.redfinUrl,
+      status: String(p.status).toLowerCase().replace(/\s+/g, "_").replace("for_sale", "active"), photos: pics, listingUrl: p.redfinUrl,
       propertyType: p.type, hoaMonthly: hoa, updatedAt: `${raw.retrievedAt}T00:00:00Z`,
-      detail: p.summary ? { description: p.summary, photos: photos(String(p.mls)), propertyType: p.type, hoaMonthly: hoa, priceHistory: [], taxHistory: [], schools: (p.schools ?? []).map((s: any) => ({ name: s.name, rating: s.rating, level: s.level })), scores: p.scores ?? {} } : undefined, // eslint-disable-line @typescript-eslint/no-explicit-any
+      detail: p.summary ? { description: p.summary, photos: pics, propertyType: p.type, hoaMonthly: hoa, priceHistory: [], taxHistory: [], schools: (p.schools ?? []).map((s: any) => ({ name: s.name, rating: s.rating, level: s.level })), scores: p.scores ?? {} } : undefined, // eslint-disable-line @typescript-eslint/no-explicit-any
     });
   }
   const counts: Record<string, number> = {};
