@@ -3,7 +3,7 @@
 import { ECONOMICS_LABEL, daduEconomics } from "@/lib/dadu-value";
 import type { ReportListing } from "@/lib/feasibility";
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { ArrowLeft, Download, Heart, Loader2, ExternalLink, ShieldAlert, ShieldCheck, CircleHelp } from "lucide-react";
+import { ArrowLeft, Download, Heart, Loader2, ExternalLink } from "lucide-react";
 import type { DashboardPropertySlim } from "@/lib/dashboard-normalize";
 import type { FeasibilityTableRow } from "@/lib/feasibility-table-model";
 import type { FeasibilityReport } from "../../../packages/schema/src";
@@ -14,21 +14,14 @@ import MasterPlan, { type PlanSnapshot } from "./MasterPlan";
 import ReportEmailGate from "./ReportEmailGate";
 import { hasReportAccess } from "@/lib/report-access";
 import SiteIntel from "./SiteIntel";
+import { ConstraintsGrid, FactsStrip, RisksList, ScenariosGrid, VerifyStrip } from "./ReportSections";
 import { COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
 import { calculatorHref } from "@/lib/calculator/inputs";
 import Link from "next/link";
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString()}`;
 const sf = (n: number) => `${Math.round(n).toLocaleString()} sf`;
-const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-const SCENARIO_NAMES: Record<string, string> = {
-  single_dadu: "One backyard cottage",
-  two_dadus: "Two backyard cottages",
-  aadu_plus_dadu: "Attached unit plus cottage",
-  nr_middle_housing: "Middle housing (4 to 6 homes)",
-  unit_lot_subdivision: "Unit lot subdivision",
-};
 
 const VERDICT_STYLE: Record<string, { bg: string; fg: string }> = {
   Feasible: { bg: "var(--green-tint)", fg: "var(--green)" },
@@ -36,21 +29,6 @@ const VERDICT_STYLE: Record<string, { bg: string; fg: string }> = {
   "Not feasible": { bg: "var(--red-tint)", fg: "var(--red)" },
 };
 
-function VerdictChip({ verdict }: { verdict: string | null }) {
-  if (!verdict) {
-    return (
-      <span className="pa-verdict px-2.5 py-1 text-xs" style={{ background: "transparent", color: "var(--slate)", boxShadow: "inset 2px 2px 5px rgba(150, 168, 158,.5), inset -2px -2px 5px rgba(255,255,255,.9)" }}>
-        Not scored yet
-      </span>
-    );
-  }
-  const s = VERDICT_STYLE[verdict];
-  return (
-    <span className="pa-verdict px-3 py-1 text-sm" style={{ background: s.bg, color: s.fg }}>
-      {verdict}
-    </span>
-  );
-}
 
 function Section({ id, title, children, hint }: { id: string; title: string; children: React.ReactNode; hint?: string }) {
   return (
@@ -68,23 +46,6 @@ function Section({ id, title, children, hint }: { id: string; title: string; chi
   );
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="pa-inset px-4 py-3">
-      <p className="text-xs font-semibold" style={{ color: "var(--slate)" }}>
-        {label}
-      </p>
-      <p className="pa-display mt-1 text-lg tabular-nums sm:text-xl" style={{ color: "var(--ink)" }}>
-        {value}
-      </p>
-      {sub && (
-        <p className="mt-0.5 text-xs" style={{ color: "var(--slate)" }}>
-          {sub}
-        </p>
-      )}
-    </div>
-  );
-}
 
 function Hero({ report, slim, listing, drawnSf }: { report: FeasibilityReport; slim: DashboardPropertySlim; listing: ReportListing | null; drawnSf: number | null }) {
   const s = report.summary;
@@ -181,7 +142,7 @@ const SECTION_TABS = [
   ["rep-intel", "Site intelligence"],
   ["rep-scen", "Scenarios"],
   ["rep-risks", "Risks"],
-  ["rep-cite", "Code"],
+  ["rep-cite", "Before you buy"],
   ["rep-all", "All data"],
 ] as const;
 
@@ -219,111 +180,28 @@ function ReportBody({ report, row, snapshotRef, onDaduChange }: { report: Feasib
 
       <div className="flex flex-col gap-6">
         <Section id="rep-facts" title="Property facts">
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {report.property_facts.map((f) => (
-              <Stat
-                key={f.label}
-                label={f.label}
-                value={f.unit === "%" ? `${Math.round(f.value)}%` : f.unit === "sf" ? sf(f.value) : `${Math.round(f.value)} ${f.unit}`}
-                sub={f.provenance ? f.provenance.source_layer : undefined}
-              />
-            ))}
-          </dl>
+          <FactsStrip report={report} />
         </Section>
 
         <Section id="rep-intel" title="Site intelligence" hint="What the city and county data say about this lot, with the source under each card.">
           <SiteIntel row={row} />
         </Section>
 
-        <Section id="rep-scen" title="Scenarios" hint="Only the single cottage has a score today. The others show what is allowed, not a verdict.">
-          <ul className="flex flex-col gap-3">
-            {report.scenarios.map((sc) => (
-              <li key={sc.id} className="pa-inset flex flex-col gap-2 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h4 className="font-semibold" style={{ color: "var(--ink)" }}>
-                    {SCENARIO_NAMES[sc.id]}
-                  </h4>
-                  <VerdictChip verdict={sc.verdict} />
-                </div>
-                <p className="text-sm" style={{ color: "var(--slate)" }}>
-                  {sc.note}
-                </p>
-                <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm tabular-nums" style={{ color: "var(--ink)" }}>
-                  {sc.units != null && <span>{sc.units} {sc.units === 1 ? "home" : "homes"}</span>}
-                  {sc.max_buildable_sf && <span>{sf(sc.max_buildable_sf.value)}</span>}
-                  {sc.construction_cost_usd && <span>{usd(sc.construction_cost_usd.value)} construction only</span>}
-                </div>
-              </li>
-            ))}
-          </ul>
+        <Section id="rep-scen" title="Scenarios" hint="Only the single cottage has a score today. The others show what the lot allows.">
+          <ScenariosGrid report={report} />
         </Section>
 
-        <Section id="rep-constraints" title="Site constraints">
-          <ul className="flex flex-col gap-2.5">
-            {report.site_constraints.map((c) => (
-              <li key={c.label} className="flex gap-3 text-sm">
-                <ShieldCheck size={18} aria-hidden className="mt-0.5 shrink-0" style={{ color: "var(--green)" }} />
-                <span>
-                  <span className="font-semibold" style={{ color: "var(--ink)" }}>{c.label}</span>
-                  <span style={{ color: "var(--slate)" }}> {c.detail}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
+        <Section id="rep-constraints" title="Site checks">
+          <ConstraintsGrid row={row} />
         </Section>
 
         <Section id="rep-risks" title="Ranked risks" hint="Hard prohibitions come first.">
-          <ol className="flex flex-col gap-2.5">
-            {report.risks.map((r) => (
-              <li key={r.rank} className="flex gap-3 text-sm">
-                <ShieldAlert size={18} aria-hidden className="mt-0.5 shrink-0" style={{ color: r.hard_prohibition ? "var(--red)" : "var(--amber)" }} />
-                <span style={{ color: "var(--ink)" }}>
-                  {r.title}
-                  {r.hard_prohibition && (
-                    <span className="ml-2 font-semibold" style={{ color: "var(--red)" }}>Blocks the project</span>
-                  )}
-                  {r.citations.length === 0 && (
-                    <span className="ml-2 inline-flex items-center gap-1 text-xs" style={{ color: "var(--slate)" }}>
-                      <CircleHelp size={12} aria-hidden /> unverified
-                    </span>
-                  )}
-                </span>
-              </li>
-            ))}
-            {report.risks.length === 0 && <li className="text-sm" style={{ color: "var(--slate)" }}>No risks flagged.</li>}
-          </ol>
+          <RisksList report={report} />
         </Section>
 
-        <Section id="rep-cite" title="Code citations" hint="Current Seattle code wins over ADUniverse. Citations stay unverified until they are checked against the code text.">
-          <ul className="flex flex-col gap-2 text-sm">
-            {report.citations.map((c) => (
-              <li key={c.section} className="flex items-center justify-between gap-3">
-                <span style={{ color: "var(--ink)" }}>{c.section}</span>
-                <span className="pa-verdict px-2.5 py-0.5 text-xs" style={{ background: c.status === "verified" ? "var(--green-tint)" : "var(--amber-tint)", color: c.status === "verified" ? "var(--green)" : "var(--amber)" }}>
-                  {c.status === "verified" ? `Verified ${c.effective_from ?? ""}` : "Unverified"}
-                </span>
-              </li>
-            ))}
-          </ul>
+        <Section id="rep-cite" title="Before you buy">
+          <VerifyStrip report={report} />
         </Section>
-
-        <Section id="rep-survey" title="Survey required" hint="Nothing in public data can settle these.">
-          <ul className="list-disc pl-5 text-sm" style={{ color: "var(--slate)" }}>
-            {report.survey_required.map((g) => (
-              <li key={g}>{g}</li>
-            ))}
-          </ul>
-        </Section>
-
-        <footer className="px-1 text-xs" style={{ color: "var(--slate)" }}>
-          <p className="font-semibold" style={{ color: "var(--ink)" }}>Data sources</p>
-          <ul className="mt-1 space-y-0.5">
-            {report.data_pulled.map((d) => (
-              <li key={d.layer}>{d.layer}, queried {day(d.provenance.pulled_at)}</li>
-            ))}
-          </ul>
-          <p className="mt-2">Preliminary estimate. Not a permit or legal opinion. Cost is construction only, estimated at {usd(COST_PER_SF)} per buildable sf.</p>
-        </footer>
       </div>
     </div>
   );

@@ -100,11 +100,7 @@ export function LotCharacter({ row }: { row: FeasibilityTableRow }) {
           {f?.lotWidth && f?.lotDepth && <p className="tabular-nums">{Math.round(f.lotWidth)} × {Math.round(f.lotDepth)} ft</p>}
         </div>
       </div>
-      {ratio != null && (
-        <p className="text-xs" style={{ color: "var(--slate)" }}>
-          {ratio >= 0.9 ? "Regular shape" : "Irregular shape"}: the lot fills {Math.round(ratio * 100)}% of its bounding rectangle.
-        </p>
-      )}
+      {ratio != null && <p className="text-xs" style={{ color: "var(--slate)" }}>{ratio >= 0.9 ? "Regular" : "Irregular"} shape · fills {Math.round(ratio * 100)}% of its box</p>}
     </Card>
   );
 }
@@ -121,7 +117,7 @@ export function Coverage({ row }: { row: FeasibilityTableRow }) {
         <span>Limit {fmt(c.maxSqft)} sf</span>
       </div>
       <p className="text-sm" style={{ color: "var(--ink)" }}>
-        <span className="font-semibold tabular-nums">{fmt(c.availableSqft)} sf</span> of coverage left for new building.
+        <span className="pa-display text-xl tabular-nums">{fmt(c.availableSqft)} sf</span> <span style={{ color: "var(--slate)" }}>left to build on</span>
       </p>
     </Card>
   );
@@ -205,16 +201,19 @@ export function Canopy({ row }: { row: FeasibilityTableRow }) {
     return (
       <Card title="Trees" source="2021 LiDAR tree crowns, one by one">
         <Bar value={ts.canopyPct} max={60} color={ts.canopyPct > 25 || tight ? "var(--amber)" : "var(--green)"} marker={25} />
-        <p className="text-sm" style={{ color: "var(--ink)" }}>
-          <span className="font-semibold tabular-nums">{ts.large}</span> large, <span className="font-semibold tabular-nums">{ts.medium}</span> medium and{" "}
-          <span className="font-semibold tabular-nums">{ts.small}</span> small trees reach the lot; <span className="font-semibold tabular-nums">{ts.canopyPct}%</span> canopy.
-        </p>
+        <div className="grid grid-cols-4 gap-2 text-center">
+          {([[ts.large, "large", "#2F6B49"], [ts.medium, "medium", "#4F9068"], [ts.small, "small", "#9CC2A8"], [ts.canopyPct, "% canopy", "var(--ink)"]] as [number, string, string][]).map(([n, label, color]) => (
+            <div key={label} className="rounded-lg py-2" style={{ background: "rgba(23,36,29,.04)" }}>
+              <p className="pa-display text-xl tabular-nums" style={{ color }}>{n}</p>
+              <p className="text-[11px]" style={{ color: "var(--slate)" }}>{label}</p>
+            </div>
+          ))}
+        </div>
         <p className="text-sm" style={{ color: tight ? "var(--amber)" : "var(--ink)" }}>
-          {tight
-            ? `No open 15 by 20 ft spot behind the house clears the medium and large trees${ts.clearSqftIfMediumRemoved >= 300 ? `; removing medium trees would open about ${ts.clearSqftIfMediumRemoved.toLocaleString("en-US")} sf` : ", and large trees block it even then"}.`
-            : `About ${ts.clearSqft.toLocaleString("en-US")} sf of open ground behind the house clears every medium and large tree.`}
+          {tight ? "No 15 × 20 ft spot clears the medium and large trees" : <><span className="font-semibold tabular-nums">{ts.clearSqft.toLocaleString("en-US")} sf</span> open behind the house, clear of medium and large trees</>}
+          {tight && ts.clearSqftIfMediumRemoved >= 300 ? `; removing medium trees opens ~${ts.clearSqftIfMediumRemoved.toLocaleString("en-US")} sf` : ""}.
         </p>
-        <p className="text-xs" style={{ color: "var(--slate)" }}>Sizes are estimated from the crown and height: large is usually a protected tree (24 in trunk or more). Species and exact trunk size need an arborist.</p>
+        <p className="text-[11px]" style={{ color: "var(--slate)" }}>Large ≈ protected (24 in trunk+). Sizes from crown and height; an arborist confirms.</p>
       </Card>
     );
   }
@@ -267,7 +266,7 @@ export function NearbyAdus({ row }: { row: FeasibilityTableRow }) {
         {marks.map((m) => (
           <li key={m.label} className="flex items-center gap-2">
             <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: m.color }} />
-            {m.label}: {fmt(m.d!)} ft away (distance only, direction not shown)
+            {m.label}: {fmt(m.d!)} ft
           </li>
         ))}
       </ul>
