@@ -10,6 +10,24 @@ export interface Usage {
   cacheRead: number;
 }
 
+/**
+ * List prices in USD per million tokens (input, output, cache read). Open models on a free tier cost 0.
+ * Keep in step with the providers' price pages; unknown models count as 0 and are flagged in the trace.
+ */
+const PRICES: [RegExp, { input: number; output: number; cacheRead: number }][] = [
+  [/claude-haiku-4-5/, { input: 1, output: 5, cacheRead: 0.1 }],
+  [/claude-sonnet-5-5|claude-sonnet-5\b/, { input: 2, output: 10, cacheRead: 0.2 }],
+  [/claude-opus-5-5/, { input: 4, output: 20, cacheRead: 0.2 }],
+  [/claude-sonnet-4-6/, { input: 3, output: 15, cacheRead: 0.3 }],
+];
+
+/** Dollar cost of one call. Models without a listed price (free-tier open models) cost 0. */
+export function costOf(u: Usage): number {
+  const p = PRICES.find(([re]) => re.test(u.model))?.[1];
+  if (!p) return 0;
+  return (u.input * p.input + u.output * p.output + u.cacheRead * p.cacheRead) / 1_000_000;
+}
+
 export class RunMeter {
   readonly calls: Usage[] = [];
   constructor(readonly limit: number) {}
@@ -18,6 +36,10 @@ export class RunMeter {
   }
   get total(): number {
     return this.calls.reduce((s, u) => s + u.input + u.output, 0);
+  }
+  /** Dollars spent in this run, at list prices. */
+  get costUsd(): number {
+    return this.calls.reduce((s, u) => s + costOf(u), 0);
   }
   /** Tokens still available in this run. */
   get left(): number {

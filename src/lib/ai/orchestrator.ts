@@ -282,5 +282,5 @@ export async function runAssessment(l: RawListing, lot: Candidate | null, deps: 
   ];
   const confirm = [...(analysis.confirm ?? []), ...extraConfirm].slice(0, 6);
   const headline = kept.length ? analysis.headline : "Data unavailable in retrieved sources. None of the model's findings could be tied to a source.";
-  return { verdict, headline, findings: kept, confirm, unavailable, citations, text: render({ headline, findings: kept, confirm, unavailable }), models: [...st.models], trace: st.trace, score, tokens: meter.total };
+  return { verdict, headline, findings: kept, confirm, unavailable, citations, text: render({ headline, findings: kept, confirm, unavailable }), models: [...st.models], trace: st.trace, score, tokens: meter.total, costUsd: Math.round(meter.costUsd * 1e6) / 1e6 };
 }

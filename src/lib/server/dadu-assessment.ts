@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 import type { Candidate } from "@/lib/server/candidates";
 import type { RawListing } from "@/lib/listings";
-import { AnthropicLlm } from "@/lib/ai/llm";
+import { llmFor } from "@/lib/ai/llm";
+import { RunMeter, dailyBudget } from "@/lib/ai/usage";
+import { AGENTS } from "@/lib/ai/agents.config";
 import { archival } from "@/lib/ai/memory";
 import { buildFacts, hoaExcluded, runAssessment } from "@/lib/ai/orchestrator";
 import type { Assessment } from "@/lib/ai/types";
@@ -42,7 +44,13 @@ export async function assessListing(l: RawListing, lot: Candidate | null, client
   const hit = archival.get<Assessment>(memKey);
   if (hit) return { ...hit, cached: true };
 
-  const a = await runAssessment(l, lot, { llm: new AnthropicLlm(key!), search: (q, o) => knowledgeSearch(q, o) }, { adu, planLines, site });
+  // One meter per run (tokens and dollars), each tier routed to its configured model, and the day's budget enforced.
+  const meter = new RunMeter(AGENTS.budget.perRunMaxTokens);
+  const onUsage = (u: Parameters<RunMeter["add"]>[0]) => meter.add(u);
+  const models = { small: llmFor("small", key, onUsage), mid: llmFor("mid", key, onUsage), large: llmFor("large", key, onUsage) };
+  const dailyLeft = AGENTS.budget.dailyMaxTokens - (await dailyBudget.used());
+  const a = await runAssessment(l, lot, { models, meter, dailyLeft, search: (q, o) => knowledgeSearch(q, o) }, { adu, planLines, site });
+  await dailyBudget.add(meter.total);
   archival.set(memKey, a);
   return a;
 }

@@ -87,6 +87,8 @@ export interface Assessment {
   score: ScoreDecision | null;
   /** Input + output tokens this run used (0 when no model ran). */
   tokens?: number;
+  /** Dollars this run cost at list prices (0 when no paid model ran). */
+  costUsd?: number;
   cached?: boolean;
 }
 

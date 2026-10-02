@@ -9,6 +9,35 @@ export const REASONING_MODEL = AGENTS.tiers.large.model;
 
 type OnUsage = (u: Usage) => void;
 
+/** A JSON schema reduced to what structured outputs accept: closed objects, no numeric or length limits. */
+function strictSchema(schema: unknown): Record<string, unknown> {
+  const walk = (n: unknown): unknown => {
+    if (Array.isArray(n)) return n.map(walk);
+    if (!n || typeof n !== "object") return n;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(n as Record<string, unknown>)) {
+      if (["minimum", "maximum", "maxItems", "minLength", "maxLength", "exclusiveMinimum", "exclusiveMaximum"].includes(k)) continue;
+      if (k === "minItems" && typeof v === "number" && v > 1) continue;
+      out[k] = walk(v);
+    }
+    if (out.type === "object") {
+      out.additionalProperties = false;
+      // These models think internally; asking them to write their reasoning out trips the reasoning-extraction safeguard.
+      if (out.properties && typeof out.properties === "object" && "reasoning" in (out.properties as object)) {
+        const { reasoning: _drop, ...rest } = out.properties as Record<string, unknown>;
+        void _drop;
+        out.properties = rest;
+        if (Array.isArray(out.required)) out.required = (out.required as string[]).filter((r) => r !== "reasoning");
+      }
+    }
+    return out;
+  };
+  return walk(schema) as Record<string, unknown>;
+}
+
+/** Models where thinking is always on, sampling parameters are fixed, and forced tool_choice is rejected. */
+export const isThinkingAlwaysOn = (model: string) => /claude-(sonnet-5-5|opus-5-5|fable-5-1|mythos-5-1)/.test(model);
+
 export class AnthropicLlm implements Llm {
   private client: Anthropic;
   constructor(apiKey: string, private onUsage?: OnUsage) {
@@ -25,8 +54,24 @@ export class AnthropicLlm implements Llm {
     this.onUsage({ model, input: (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0), output: u.output_tokens ?? 0, cacheRead: u.cache_read_input_tokens ?? 0 });
   }
 
-  /** Structured output: the model must call one tool whose input is the schema. No free-text parsing. */
+  /** Structured output with no free-text parsing: forced tool use, or JSON-schema output on models that reject forcing. */
   async json<T>(req: LlmJsonRequest): Promise<T> {
+    if (isThinkingAlwaysOn(req.model)) {
+      // Sonnet 5.5 / Opus 5.5 / Fable 5.1: no forced tool_choice and no custom temperature, so use structured outputs.
+      // The schema is reduced to what structured outputs accept; the validate step still enforces the dropped limits.
+      const msg = await this.client.messages.create({
+        model: req.model,
+        max_tokens: req.maxTokens + 3000, // room for the model's own (low-effort) thinking
+        output_config: { effort: "low", format: { type: "json_schema", schema: strictSchema(req.schema) } },
+        system: this.system(req.system),
+        messages: [{ role: "user", content: req.user }],
+      });
+      this.record(req.model, msg.usage);
+      if (msg.stop_reason === "refusal") throw new Error(`The model declined this request (${msg.stop_details?.category ?? "no category"}).`);
+      const text = msg.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+      if (!text.trim()) throw new Error(`The model returned no structured result (stop: ${msg.stop_reason}).`);
+      return JSON.parse(text) as T;
+    }
     const msg = await this.client.messages.create({
       model: req.model,
       max_tokens: req.maxTokens,
@@ -43,7 +88,14 @@ export class AnthropicLlm implements Llm {
   }
 
   async text(req: { model: string; system: string; user: string; maxTokens: number; temperature?: number }): Promise<string> {
-    const msg = await this.client.messages.create({ model: req.model, max_tokens: req.maxTokens, temperature: req.temperature ?? 0, system: this.system(req.system), messages: [{ role: "user", content: req.user }] });
+    const modern = isThinkingAlwaysOn(req.model);
+    const msg = await this.client.messages.create({
+      model: req.model,
+      max_tokens: modern ? req.maxTokens + 3000 : req.maxTokens,
+      ...(modern ? { output_config: { effort: "low" as const } } : { temperature: req.temperature ?? 0 }),
+      system: this.system(req.system),
+      messages: [{ role: "user", content: req.user }],
+    });
     this.record(req.model, msg.usage);
     return msg.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
   }
