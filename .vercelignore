@@ -1,0 +1,11 @@
+# Never upload secrets or local-only folders from CLI deploys
+.env*
+!.env.credentials.example
+.next
+node_modules
+rag/.venv
+rag/storage
+services/api/.venv
+fde/.venv
+**/__pycache__
+**/.pytest_cache
