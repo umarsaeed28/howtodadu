@@ -31,7 +31,7 @@ export default function Field({
       <label htmlFor={id} className="mb-1 block text-xs font-semibold" style={{ color: "var(--ink)" }}>
         {label}
       </label>
-      <div className="pa-inset flex items-center gap-1.5 px-3" style={{ minHeight: 42, outline: error ? "2px solid var(--red)" : undefined }}>
+      <div className="pa-inset flex items-center gap-1.5 px-3" data-invalid={error ? "" : undefined} style={{ minHeight: 44 }}>
         {prefix && <span className="text-sm" style={{ color: "var(--slate)" }}>{prefix}</span>}
         <input
           id={id}

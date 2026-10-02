@@ -60,7 +60,7 @@
 }
 
 /* Focus floor: visible green ring, 2px offset ------------------------------ */
-.pencil-app :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+.pencil-app :where(a, button, [tabindex]):focus-visible {
   outline: 2px solid #145A40;
   outline-offset: 2px;
   border-radius: 10px;
@@ -310,9 +310,25 @@
   background: #F5F7F6 !important;
   box-shadow: inset 0 0 0 1px var(--hairline);
 }
+/* Text fields: one soft focus halo on the field itself (no outline rings, never two at once). */
+.pencil-app :where(input, select, textarea):focus-visible {
+  outline: none;
+}
+.pencil-app :where(input[type="text"], input[type="search"], input[type="email"], input[type="number"], select, textarea):not(.bg-transparent):focus {
+  outline: none;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--green), 0 0 0 4px rgba(31, 122, 85, 0.14);
+}
+.pa-inset {
+  transition: box-shadow 0.15s ease, background-color 0.15s ease;
+}
 .pa-inset:focus-within {
-  outline: 2px solid #145A40;
-  outline-offset: 2px;
+  outline: none;
+  background: #fff !important;
+  box-shadow: inset 0 0 0 1.5px var(--green), 0 0 0 4px rgba(31, 122, 85, 0.14);
+}
+.pa-inset[data-invalid] {
+  box-shadow: inset 0 0 0 1.5px var(--red), 0 0 0 4px rgba(169, 71, 58, 0.12);
 }
 .pa-raised {
   border: 0 !important;
