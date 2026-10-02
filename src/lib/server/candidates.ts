@@ -66,6 +66,8 @@ export interface Candidate {
   sideClearanceFt: number | null;
   /** Trees measured one by one from the 2021 LiDAR crowns. Null when not measured (older library files). */
   trees?: TreeStats | null;
+  /** Share of the lot under buildings, 0 to 100: 2023 building outlines, else ADUniverse. Null when unknown. */
+  coveragePct?: number | null;
 }
 
 export interface CandidatePage {
@@ -113,7 +115,7 @@ interface RawFeature {
 }
 
 /** `sideClearanceFt`: room the house leaves on its wider side, measured from building outlines (null if unmeasured). */
-export function toCandidate(f: RawFeature, parcelRow: EligibleParcel, sideClearanceFt: number | null = null, trees: TreeStats | null = null): Candidate | null {
+export function toCandidate(f: RawFeature, parcelRow: EligibleParcel, sideClearanceFt: number | null = null, trees: TreeStats | null = null, builtSqft: number | null = null): Candidate | null {
   const a = f.attributes;
   const c = f.centroid;
   const { pin, address, zoning, lotSqft } = parcelRow;
@@ -180,7 +182,23 @@ export function toCandidate(f: RawFeature, parcelRow: EligibleParcel, sideCleara
     existingAdus: feasibility.totalADU,
     sideClearanceFt,
     trees: trees ? { ...trees, clearSpot: null } : null,
+    coveragePct:
+      builtSqft != null && lotSqft > 0
+        ? Math.round((builtSqft / lotSqft) * 1000) / 10
+        : feasibility.lotCoveragePercent == null ? null : Math.round((feasibility.lotCoveragePercent <= 1 ? feasibility.lotCoveragePercent * 100 : feasibility.lotCoveragePercent) * 10) / 10,
   };
+}
+
+/** Area of a lng/lat ring in square feet (shoelace on a local flat projection; fine at lot scale). */
+export function ringAreaSqft(ring: Ring): number {
+  if (ring.length < 3) return 0;
+  const lat0 = ring[0][1], ftLat = 364567, ftLng = ftLat * Math.cos((lat0 * Math.PI) / 180);
+  let a = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const p = ring[i], q = ring[(i + 1) % ring.length];
+    a += (p[0] * ftLng) * (q[1] * ftLat) - (q[0] * ftLng) * (p[1] * ftLat);
+  }
+  return Math.abs(a) / 2;
 }
 
 async function arcgisPage(url: string, params: Record<string, string>): Promise<{ features: RawFeature[]; error?: string }> {
@@ -375,7 +393,9 @@ export async function fetchAllCandidates(onPage?: (stage: string, done: number, 
       const ring = f.geometry?.rings?.[0] as Ring | undefined;
       const clear = ring ? sideClearance(ring, buildings.get(pin) ?? []) : null;
       const trees = ring ? treesForLot(ring, buildings.get(pin) ?? [], crowns, row.address) : null;
-      const c = toCandidate(f, row, clear?.maxFt ?? null, trees);
+      const outlines = buildings.get(pin);
+      const builtSqft = outlines?.length ? outlines.reduce((s, r) => s + ringAreaSqft(r), 0) : null;
+      const c = toCandidate(f, row, clear?.maxFt ?? null, trees, builtSqft);
       if (c) {
         seen.add(pin);
         out.push(c);

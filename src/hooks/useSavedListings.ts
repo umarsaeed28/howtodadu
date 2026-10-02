@@ -7,11 +7,20 @@ import { useCallback, useSyncExternalStore } from "react";
  * between pages, and clears when the tab is closed. No account needed. Every component reading it stays in step.
  */
 export interface SavedListing {
+  /** The listing id, or `pin-<PIN>` for an off-market lot. */
   mlsId: string;
   address: string;
+  /** List price; 0 for off-market. */
   price: number;
   photo: string | null;
   score: number;
+  /** On the market (a listing) or off (a lot in the buy box). Older saves have no value and are on-market. */
+  market?: "on" | "off";
+  pin?: string;
+  tier?: number;
+  lotSqft?: number | null;
+  daduSqft?: number | null;
+  daysOnMarket?: number | null;
   savedAt: string;
 }
 

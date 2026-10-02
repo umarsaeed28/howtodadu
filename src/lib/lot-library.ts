@@ -41,6 +41,8 @@ export interface LotLibraryFile {
     /** Room for a DADU before trees (sf), and 1 when it had to look past the house's front wall instead of behind it. */
     siteSqft?: (number | null)[];
     siteSide?: (number | null)[];
+    /** Share of the lot under buildings, percent. */
+    coveragePct?: (number | null)[];
   };
 }
 
@@ -82,6 +84,7 @@ export function encodeLibrary(rows: Candidate[], source: string, now = new Date(
       clearSqftIfMediumRemoved: rows.map((r) => r.trees?.clearSqftIfMediumRemoved ?? null),
       siteSqft: rows.map((r) => r.trees?.siteSqft ?? null),
       siteSide: rows.map((r) => (r.trees?.site == null ? null : r.trees.site === "side" ? 1 : 0)),
+      coveragePct: rows.map((r) => r.coveragePct ?? null),
     },
   };
 }
@@ -114,6 +117,7 @@ export function decodeLibrary(f: LotLibraryFile, zips?: string[] | null): Candid
       lotDepth: c.lotDepth?.[i] ?? null,
       existingAdus: c.existingAdus?.[i] ?? null,
       sideClearanceFt: c.sideClearanceFt?.[i] ?? null,
+      coveragePct: c.coveragePct?.[i] ?? null,
       trees:
         c.clearSqft?.[i] != null
           ? { large: c.treeLarge![i] ?? 0, medium: c.treeMedium![i] ?? 0, small: c.treeSmall![i] ?? 0, canopyPct: c.treeCanopyPct![i] ?? 0, clearSqft: c.clearSqft[i]!, clearSqftIfMediumRemoved: c.clearSqftIfMediumRemoved![i] ?? 0, ...(c.siteSqft?.[i] != null ? { siteSqft: c.siteSqft[i]!, site: c.siteSide?.[i] === 1 ? ("side" as const) : ("behind" as const) } : {}) }

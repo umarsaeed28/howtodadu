@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    // Agent worktrees live under .claude/worktrees; their copies of the tests are not this checkout's.
+    exclude: ["**/node_modules/**", "**/.claude/**", "**/.next/**"],
   },
   resolve: {
     alias: {

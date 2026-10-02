@@ -27,6 +27,7 @@ const lot = (o: Partial<Candidate> = {}): Candidate => ({
   adusNearby: 3,
   daduSqft: 1000,
   trees: null,
+  coveragePct: 18.5,
   ...o,
 });
 

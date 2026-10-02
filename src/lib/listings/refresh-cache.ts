@@ -16,7 +16,7 @@ interface Entry<T> {
  * upstream calls. If a pull fails, the last good value is served. Stored in Supabase (`listing_cache`) when it is
  * configured, so every serverless instance shares one copy; otherwise in a file in the OS temp dir.
  */
-export function createCache<T>(name: string, pull: () => Promise<T>) {
+export function createCache<T>(name: string, pull: () => Promise<T>, maxAgeMs = REFRESH_MS) {
   const file = join(tmpdir(), `pencil-${name}.json`);
   let mem: Entry<T> | null = null;
   let inflight: Promise<Entry<T>> | null = null;
@@ -75,12 +75,12 @@ export function createCache<T>(name: string, pull: () => Promise<T>) {
     /** The value and when it was pulled. Pulls first if nothing is cached or the cache is over 12 hours old. */
     async get(force = false): Promise<{ value: T; fetchedAt: number }> {
       mem ??= fromDisk();
-      if (!force && mem && Date.now() - mem.fetchedAt < REFRESH_MS) return mem;
+      if (!force && mem && Date.now() - mem.fetchedAt < maxAgeMs) return mem;
       // Another instance may already have pulled: use the shared copy before going upstream.
       if (!force) {
         const shared = await fromDb();
         if (shared && (!mem || shared.fetchedAt > mem.fetchedAt)) mem = shared;
-        if (mem && Date.now() - mem.fetchedAt < REFRESH_MS) return mem;
+        if (mem && Date.now() - mem.fetchedAt < maxAgeMs) return mem;
       }
       try {
         return await refresh();

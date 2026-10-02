@@ -4,16 +4,18 @@ import { FixtureListingsProvider } from "./fixture";
 import { MlsGridProvider } from "./mlsgrid";
 import { SparkProvider } from "./spark";
 import { RedfinProvider } from "./redfin";
+import { DealMachineProvider } from "./dealmachine";
 
 export type { ListingQuery, RawListing, ListingsProvider } from "./provider";
 
-export type ProviderName = "none" | "fixture" | "flex" | "mlsgrid" | "redfin";
+export type ProviderName = "none" | "fixture" | "flex" | "mlsgrid" | "redfin" | "dealmachine";
 
-/** Active provider name. LISTINGS_PROVIDER=none|fixture|flex|mlsgrid, default none. */
+/** Active provider name. LISTINGS_PROVIDER=none|fixture|flex|mlsgrid|redfin|dealmachine, default none. */
 export function listingsProviderName(): ProviderName {
   const which = (process.env.LISTINGS_PROVIDER ?? "none").toLowerCase();
   if (which === "flex" || which === "spark") return "flex";
   if (which === "redfin") return "redfin";
+  if (which === "dealmachine") return "dealmachine";
   if (which === "mlsgrid") return "mlsgrid";
   if (which === "fixture") return "fixture";
   return "none";
@@ -26,7 +28,9 @@ export function getListingsProvider(): ListingsProvider {
   const name = listingsProviderName();
   if (provider && providerFor === name) return provider;
   provider =
-    name === "redfin"
+    name === "dealmachine"
+      ? new DealMachineProvider()
+      : name === "redfin"
       ? new RedfinProvider()
       : name === "flex"
       ? new SparkProvider()
@@ -42,5 +46,5 @@ export function getListingsProvider(): ListingsProvider {
 /** True when a real MLS feed (not the empty default) is configured. */
 export function listingsConnected(): boolean {
   const n = listingsProviderName();
-  return n === "redfin" || n === "flex" || n === "mlsgrid" || n === "fixture";
+  return n === "dealmachine" || n === "redfin" || n === "flex" || n === "mlsgrid" || n === "fixture";
 }

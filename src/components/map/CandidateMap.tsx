@@ -8,9 +8,10 @@ import type { Candidate } from "@/lib/server/candidates";
 import type { MapListing } from "@/app/api/map-listings/route";
 import { COST_LABEL, COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
 import { calculatorHref } from "@/lib/calculator/inputs";
-import { downloadListingsCsv } from "@/lib/listings-csv";
+import { downloadListingsCsv, downloadSavedCsv } from "@/lib/listings-csv";
 import SaveButton from "@/components/listing/SaveButton";
 import { useSavedListings } from "@/hooks/useSavedListings";
+import { gradeOf } from "@/lib/dadu-score";
 
 const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE ?? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const SEATTLE = { longitude: -122.335, latitude: 47.62, zoom: 10.6 };
@@ -71,6 +72,9 @@ export default function CandidateMap() {
   const [maxPrice, setMaxPrice] = useState(PRICE_MAX);
   const [topOnly, setTopOnly] = useState(false);
   const [savedOnly, setSavedOnly] = useState(false);
+  // Off-market lots (the buy box, not listed) show as dots only when this is on. Remembered for the browser session.
+  const [offOn, setOffOn] = useState(() => { try { return typeof window !== "undefined" && sessionStorage.getItem("pencil-offmarket") === "1"; } catch { return false; } });
+  const [offLots, setOffLots] = useState<OffMarketLots | null>(null);
   const { saved, isSaved } = useSavedListings();
   const [cornerOnly, setCornerOnly] = useState(false);
   const [alleyOnly, setAlleyOnly] = useState(false);
@@ -101,6 +105,31 @@ export default function CandidateMap() {
     return () => ctl.abort();
   }, [zipSel]);
 
+  /* ---- off-market dots: fetched the first time the switch is turned on ---- */
+  useEffect(() => {
+    try { sessionStorage.setItem("pencil-offmarket", offOn ? "1" : "0"); } catch { /* private mode */ }
+    if (!offOn || offLots) return;
+    const ctl = new AbortController();
+    fetch("/api/offmarket", { signal: ctl.signal })
+      .then((r) => r.json())
+      .then((d) => setOffLots(d.lots ?? null))
+      .catch((e) => { if (!(e instanceof DOMException && e.name === "AbortError")) setError("Could not load off-market lots."); });
+    return () => ctl.abort();
+  }, [offOn, offLots]);
+  const offGeo = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!offOn || !offLots) return null;
+    const zips = zipSel.length ? new Set(zipSel) : null;
+    const features: GeoJSON.Feature[] = [];
+    for (let i = 0; i < offLots.count; i++) {
+      if (zips && !(offLots.zip[i] && zips.has(offLots.zip[i]!))) continue;
+      if (topOnly && offLots.tier[i] !== 3) continue;
+      if (cornerOnly && !(offLots.flags[i] & 1)) continue;
+      if (alleyOnly && !(offLots.flags[i] & 2)) continue;
+      features.push({ type: "Feature", geometry: { type: "Point", coordinates: [offLots.lng[i], offLots.lat[i]] }, properties: { pin: offLots.pin[i], tier: offLots.tier[i] } });
+    }
+    return { type: "FeatureCollection", features };
+  }, [offOn, offLots, zipSel, topOnly, cornerOnly, alleyOnly]);
+
   /* ---- outlines for the lots that have a listing (not the whole city) ---- */
   useEffect(() => {
     const pins = [...new Set(listings.map((l) => l.pin))];
@@ -130,7 +159,7 @@ export default function CandidateMap() {
 
   /* ---- what is on the map right now ---- */
   const shown = useMemo(() => {
-    const rows = listings.filter((l) => (!savedOnly || isSaved(l.mlsId)) && l.price <= maxPrice && (!topOnly || l.tier === 3) && (!cornerOnly || l.corner) && (!alleyOnly || l.alley));
+    const rows = listings.filter((l) => (!savedOnly || isSaved(l.mlsId)) && (maxPrice >= PRICE_MAX || l.price <= maxPrice) && (!topOnly || l.tier === 3) && (!cornerOnly || l.corner) && (!alleyOnly || l.alley));
     const m = sort.dir === "asc" ? 1 : -1;
     return [...rows].sort((a, b) => {
       const x = sortValue(a, sort.key), y = sortValue(b, sort.key);
@@ -324,8 +353,15 @@ export default function CandidateMap() {
             <Chip on={alleyOnly} onClick={() => setAlleyOnly((v) => !v)}>Alley access</Chip>
           </div>
           <span className="mx-1 h-6 w-px shrink-0" style={{ background: "var(--hairline)" }} aria-hidden />
-          <button type="button" className="pa-btn shrink-0" style={{ minHeight: 40 }} onClick={() => downloadListingsCsv(shown, zipSel)} disabled={!shown.length}>
-            <Download size={15} aria-hidden /> Export CSV
+          <button type="button" role="switch" aria-checked={offOn} onClick={() => setOffOn((v) => !v)} className={`pa-chip shrink-0 ${offOn ? "pa-chip-active" : ""}`} style={{ minHeight: 36 }} title="Show lots in the buy box that are not for sale">
+            <span aria-hidden className="relative inline-block h-4 w-7 rounded-full transition-colors" style={{ background: offOn ? "var(--green)" : "var(--line-strong)" }}>
+              <span className="absolute top-0.5 h-3 w-3 rounded-full bg-white transition-[left]" style={{ left: offOn ? 14 : 2 }} />
+            </span>
+            Off-market{offOn && offGeo ? ` (${offGeo.features.length.toLocaleString()})` : ""}
+          </button>
+          <span className="mx-1 h-6 w-px shrink-0" style={{ background: "var(--hairline)" }} aria-hidden />
+          <button type="button" className="pa-btn shrink-0" style={{ minHeight: 40 }} onClick={() => (savedOnly ? downloadSavedCsv(saved, listings) : downloadListingsCsv(shown, zipSel))} disabled={savedOnly ? !saved.length : !shown.length}>
+            <Download size={15} aria-hidden /> {savedOnly ? "Export saved" : "Export CSV"}
           </button>
         </div>
         {error && <p role="alert" className="px-4 pb-2 text-xs" style={{ color: "var(--red)" }}>{error}</p>}
@@ -349,7 +385,7 @@ export default function CandidateMap() {
           }
         }}
         onClick={onClick}
-        interactiveLayerIds={["lot-fill"]}
+        interactiveLayerIds={offGeo ? ["lot-fill", "offmarket-dots"] : ["lot-fill"]}
         attributionControl={{ compact: true }}
         style={{ width: "100%", height: "100%" }}
       >
@@ -359,6 +395,22 @@ export default function CandidateMap() {
           <Source id="lot-shapes" type="geojson" data={shapesColored}>
             <Layer id="lot-fill" type="fill" paint={{ "fill-color": fill, "fill-opacity": 0.5 }} />
             <Layer id="lot-outline" type="line" paint={{ "line-color": ring, "line-width": ["case", ["==", ["get", "pin"], selectedPin ?? ""], 3.5, 1.5] }} />
+          </Source>
+        )}
+
+        {offGeo && (
+          <Source id="offmarket" type="geojson" data={offGeo}>
+            <Layer
+              id="offmarket-dots"
+              type="circle"
+              paint={{
+                "circle-color": ["match", ["get", "tier"], 3, TIERS[0].color, 2, TIERS[1].color, 1, TIERS[2].color, TIERS[3].color],
+                "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 2, 13, 3.5, 16, 6],
+                "circle-stroke-color": ["case", ["==", ["get", "pin"], selectedPin ?? ""], "#17241D", "#ffffff"],
+                "circle-stroke-width": ["case", ["==", ["get", "pin"], selectedPin ?? ""], 2.5, 0.75],
+                "circle-opacity": 0.9,
+              }}
+            />
           </Source>
         )}
 
@@ -408,7 +460,7 @@ export default function CandidateMap() {
               <div className="px-4 pb-1 pt-4 sm:px-5">
                 <h1 className="pa-display text-xl" style={{ color: "var(--ink)" }}>Seattle homes that can have a DADU</h1>
                 <div className="mt-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                  <p className="text-sm tabular-nums" style={{ color: "var(--slate)" }} aria-live="polite">{savedOnly ? `${shown.length} saved ${shown.length === 1 ? "home" : "homes"}` : resultLine}</p>
+                  <p className="text-sm tabular-nums" style={{ color: "var(--slate)" }} aria-live="polite">{savedOnly ? `${saved.length} saved ${saved.length === 1 ? "home" : "homes"}${saved.some((x) => x.market === "off") ? ` (${saved.filter((x) => x.market === "off").length} off market)` : ""}` : resultLine}</p>
                   <button type="button" onClick={() => setSavedOnly((v) => !v)} aria-pressed={savedOnly} className="pa-btn pa-btn-sm" style={savedOnly ? { background: "#FBE9E5", borderColor: "#E7B3A8", color: "#9C2F1F" } : undefined}>
                     <Heart size={13} aria-hidden fill={saved.length ? "#C2412D" : "none"} color={saved.length ? "#C2412D" : "currentColor"} /> Saved ({saved.length})
                   </button>
@@ -434,14 +486,34 @@ export default function CandidateMap() {
               </div>
 
               <ul className="grid gap-4 p-4 sm:px-5 [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))]">
-                {savedOnly && shown.length === 0 && (
+                {savedOnly && saved.length === 0 && (
                   <li className="col-span-full rounded-2xl p-5 text-sm" style={{ background: "var(--card)", color: "var(--slate)" }}>
                     No saved homes yet. Tap the heart on a home to keep it here for this visit.{" "}
                     <button type="button" className="font-semibold underline" style={{ color: "var(--green)" }} onClick={() => setSavedOnly(false)}>Show all homes</button>
                   </li>
                 )}
                 {shown.map((l) => <ListingCard key={l.mlsId} l={l} onSelect={() => selectPin(l.pin)} />)}
-                {loaded && loaded.connected && !shown.length && (
+                {savedOnly && saved.filter((x) => x.market === "off" || !listings.some((l) => l.mlsId === x.mlsId)).map((x) => {
+                  const t = tierOf(x.tier ?? gradeOf(x.score).tier);
+                  const status = x.market === "off" ? "Off market" : "No longer listed";
+                  return (
+                    <li key={x.mlsId} className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => (x.pin ? selectPin(x.pin) : window.location.assign(`/feasibility?address=${encodeURIComponent(`${x.address}, Seattle, WA`)}`))}
+                        className="flex w-full items-center gap-3 rounded-2xl p-3.5 text-left"
+                        style={{ background: "var(--card)", boxShadow: "var(--shadow-raised)" }}
+                      >
+                        <span className="pa-display flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm tabular-nums text-white" style={{ background: t.color }} aria-hidden>{x.score}</span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold" style={{ color: "var(--ink)" }}>{x.address}</span>
+                          <span className="block text-xs" style={{ color: "var(--slate)" }}>{status} · {t.label}{x.daduSqft ? ` · DADU up to ${Math.round(x.daduSqft).toLocaleString()} sf` : ""}</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+                {loaded && loaded.connected && !shown.length && !savedOnly && (
                   <li className="col-span-full py-8 text-sm" style={{ color: "var(--slate)" }}>No listings match. Raise the price limit or clear a filter.</li>
                 )}
               </ul>
@@ -463,7 +535,7 @@ function ListingCard({ l, onSelect }: { l: MapListing; onSelect: () => void }) {
   return (
     <li className="relative min-w-0">
       <span className="absolute right-2.5 top-14 z-[1]">
-        <SaveButton variant="overlay" item={{ mlsId: l.mlsId, address: cleanAddress(l.address), price: l.price, photo: l.photo, score: l.score }} />
+        <SaveButton variant="overlay" item={{ mlsId: l.mlsId, address: cleanAddress(l.address), price: l.price, photo: l.photo, score: l.score, market: "on", pin: l.pin, tier: l.tier, lotSqft: l.lotSqft, daduSqft: l.daduSqft, daysOnMarket: l.daysOnMarket }} />
       </span>
       <button
         type="button"
@@ -537,7 +609,16 @@ function LotPanel({ pin, lot, error, listing, onBack }: { pin: string | null; lo
             {lot.corner && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(23,36,29,.08)", color: "var(--ink)" }}>Corner lot</span>}
             {lot.alley && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(46,92,110,.12)", color: "#2E5C6E" }}>Alley</span>}
             {listing?.test && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>Sample data</span>}
-            {listing && <span className="ml-auto"><SaveButton item={{ mlsId: listing.mlsId, address: cleanAddress(listing.address), price: listing.price, photo: listing.photo, score: lot.score }} /></span>}
+            {!listing && <span className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: "rgba(23,36,29,.08)", color: "var(--ink)" }}>Off market</span>}
+            <span className="ml-auto">
+              <SaveButton
+                item={
+                  listing
+                    ? { mlsId: listing.mlsId, address: cleanAddress(listing.address), price: listing.price, photo: listing.photo, score: lot.score, market: "on", pin: lot.pin, tier: lot.tier, lotSqft: listing.lotSqft, daduSqft: lot.daduSqft, daysOnMarket: listing.daysOnMarket }
+                    : { mlsId: `pin-${lot.pin}`, address: cleanAddress(lot.address), price: 0, photo: null, score: lot.score, market: "off", pin: lot.pin, tier: lot.tier, lotSqft: lot.lotSqft, daduSqft: lot.daduSqft }
+                }
+              />
+            </span>
           </div>
 
           <div className="pa-raised mt-5 flex items-center gap-4 p-4">
@@ -578,6 +659,19 @@ function LotPanel({ pin, lot, error, listing, onBack }: { pin: string | null; lo
       )}
     </div>
   );
+}
+
+/** Columnar off-market lots from /api/offmarket. */
+interface OffMarketLots {
+  count: number;
+  pin: string[];
+  lat: number[];
+  lng: number[];
+  score: number[];
+  tier: number[];
+  flags: number[];
+  zip: (string | null)[];
+  address: string[];
 }
 
 function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {

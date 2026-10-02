@@ -2,6 +2,7 @@ import { readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { decodeLibrary, makeLotFinder, zipCounts, type LotLibraryFile } from "@/lib/lot-library";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
+import { inBuyBox } from "@/lib/buy-box";
 import type { Candidate } from "./candidates";
 
 const FILE = join(process.cwd(), "data", "lot-library.json");
@@ -95,4 +96,25 @@ const streetKey = (a: string) => a.split(",")[0].toUpperCase().replace(/\s+\d{5}
 export function findLotForListing(address: string, lat: number, lng: number): Candidate | null {
   const near = findNearestLot(lat, lng, 60);
   return near && streetKey(near.address) === streetKey(address) ? near : null;
+}
+
+/** Every lot in the buy box (buy-box.ts) that is not in `exclude` (the pins on the market now): the off-market dots. */
+export function getOffMarketLots(exclude: Set<string>): (SlimLots & { address: string[] }) | null {
+  const l = load();
+  if (!l) return null;
+  const all = (l.all ??= decodeLibrary(l.file));
+  const out = { count: 0, pin: [] as string[], lat: [] as number[], lng: [] as number[], score: [] as number[], tier: [] as number[], flags: [] as number[], zip: [] as (string | null)[], address: [] as string[] };
+  for (const c of all) {
+    if (exclude.has(c.pin) || !inBuyBox({ zoning: c.zoning, lotSqft: c.lotSqft, coveragePct: c.coveragePct, existingAdus: c.existingAdus, score: c.score })) continue;
+    out.pin.push(c.pin);
+    out.lat.push(c.lat);
+    out.lng.push(c.lng);
+    out.score.push(c.score);
+    out.tier.push(c.tier);
+    out.flags.push((c.corner ? 1 : 0) | (c.alley ? 2 : 0));
+    out.zip.push(c.zip);
+    out.address.push(c.address);
+  }
+  out.count = out.pin.length;
+  return out;
 }
