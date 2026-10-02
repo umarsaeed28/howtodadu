@@ -323,7 +323,6 @@ export function HomeAndValue({ row }: { row: FeasibilityTableRow }) {
 export default function SiteIntel({ row }: { row: FeasibilityTableRow }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <ScoreFactors row={row} />
       <LotCharacter row={row} />
       <Coverage row={row} />
       <Canopy row={row} />
