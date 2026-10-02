@@ -62,6 +62,8 @@ export interface TreeStats {
   siteSqft?: number;
   /** Where that spot was looked for: behind the house, or (when the house leaves none) past its front wall, side yards included. */
   site?: "behind" | "side";
+  /** The DADU site before trees (lng/lat corners): where the ground's slope is measured (grade.ts). */
+  siteSpot?: [number, number][] | null;
   /** Where the clear spot is, in lng/lat corners (for drawing). Null when there is none. */
   clearSpot?: [number, number][] | null;
 }
@@ -216,6 +218,7 @@ export function analyzeTrees(lot: [number, number][], buildings: [number, number
     clearSqftIfMediumRemoved: b.area * cell * cell,
     clearSpot: a.area ? corners(a) : null,
     siteSqft: siteRoom.area * cell * cell,
+    siteSpot: siteRoom.area ? corners(siteRoom) : null,
     site: zone === 2 ? "behind" : "side",
   };
 }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Map, Source, Layer, Marker, NavigationControl, type MapRef, type MapLayerMouseEvent } from "react-map-gl/maplibre";
-import { ArrowLeft, ArrowRight, Calculator, ChevronDown, Download, FlaskConical, Heart, Loader2, Search, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calculator, ChevronDown, Download, ExternalLink, FlaskConical, Heart, Loader2, Search, Star } from "lucide-react";
 import type { Candidate } from "@/lib/server/candidates";
 import type { MapListing } from "@/app/api/map-listings/route";
 import { COST_LABEL, COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
@@ -12,6 +12,7 @@ import { downloadListingsCsv, downloadSavedCsv } from "@/lib/listings-csv";
 import SaveButton from "@/components/listing/SaveButton";
 import { useSavedListings } from "@/hooks/useSavedListings";
 import { gradeOf } from "@/lib/dadu-score";
+import { redfinLink } from "@/lib/listings/redfin-link";
 
 const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE ?? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const SEATTLE = { longitude: -122.335, latitude: 47.62, zoom: 10.6 };
@@ -640,6 +641,14 @@ function LotPanel({ pin, lot, error, listing, onBack }: { pin: string | null; lo
                 View the listing <ArrowRight size={15} aria-hidden />
               </Link>
             )}
+            {listing && (() => {
+              const rf = redfinLink(listing.address, listing.listingUrl);
+              return (
+                <a href={rf.href} target="_blank" rel="noopener noreferrer" className="pa-btn w-full no-underline">
+                  {rf.direct ? "View on Redfin" : "Find on Redfin"} <ExternalLink size={14} aria-hidden />
+                </a>
+              );
+            })()}
             <Link href={`/feasibility?address=${encodeURIComponent(address + ", Seattle, WA")}`} className="pa-btn w-full no-underline">Open the full report</Link>
             <Link href={calculatorHref({ sf, address })} className="pa-btn w-full no-underline"><Calculator size={15} aria-hidden /> Estimate your return</Link>
           </div>
@@ -652,7 +661,11 @@ function LotPanel({ pin, lot, error, listing, onBack }: { pin: string | null; lo
                 <Fact k="Open ground" v={lot.trees.clearSqft >= 300 ? `${lot.trees.clearSqft.toLocaleString()} sf behind the house` : "None clear of trees"} />
               </>
             ) : <Fact k="Tree canopy" v={canopy != null ? `${canopy}%` : "n/a"} />}
-            <Fact k="Steep slope" v={steep ? `${steep}% of lot` : "None"} />
+            {lot.grade ? (
+              <Fact k="Slope at the DADU site" v={`${lot.grade.slopePct}% (${lot.grade.riseFt} ft rise)${lot.grade.slopePct >= 20 ? ", very steep" : lot.grade.slopePct >= 10 ? ", steep" : ""}`} />
+            ) : (
+              <Fact k="Steep slope" v={steep ? `${steep}% of lot` : "None"} />
+            )}
             <Fact k="ADUs nearby" v={String(lot.adusNearby)} />
           </dl>
         </>

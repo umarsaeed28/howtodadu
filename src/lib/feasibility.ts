@@ -1,4 +1,5 @@
 import type { TreeSize, TreeStats } from "@/lib/tree-analysis";
+import type { GradeStats } from "@/lib/grade";
 import type { TerrainGrid } from "@/lib/terrain";
 /**
  * Prefer detailed zoning code (e.g. NR3) over legacy assessor bucket (e.g. SF 5000 from ZONELUT).
@@ -87,6 +88,8 @@ export interface FeasibilityData {
   sideClearanceFt?: number | null;
   /** Tree-by-tree measurement from the 2021 LiDAR crowns: counts by size, canopy, open ground behind the house. */
   treeStats?: TreeStats | null;
+  /** Slope of the ground across the DADU site (1 m lidar): steep sites cost more to build. */
+  gradeStats?: GradeStats | null;
 }
 
 /** Defaults for merging GIS-only ECA hits when the feasibility factors layer is missing. */

@@ -92,7 +92,7 @@ export type PlanSnapshot = {
   units: { name: string; long: string; plan: { designer: string; name: string; sqft: number; beds: string; baths: string; widthFt: number; depthFt: number; approx: boolean; detailUrl: string } | null; w: number; d: number; footprint: number; living: number; maxLiving: number; ok: boolean; checks: { ok: boolean; text: string }[] }[];
   warnings: string[];
   notes: string;
-  setbacks: { side: number; rear: number; onAlley: boolean };
+  setbacks: { side: number; rear: number; onAlley: boolean; front: number; streetSide: number | null };
 };
 
 type PlanProps = {
@@ -126,6 +126,12 @@ const extent = (x: Unit): Box => {
 const MIN_SIDE_FT = 10;
 /** A detached ADU keeps 5 ft from the house (team rule). An attached ADU joins the house, so it does not. */
 const HOUSE_SEPARATION_FT = 5;
+/** NR front yard: 20 ft (the city may allow less where the neighbours sit closer). A DADU may not sit in it. */
+const FRONT_SETBACK_FT = 20;
+/** A side or rear line that faces a street (corner and through lots): treated as 10 ft. Confirm with the city. */
+const STREET_SIDE_SETBACK_FT = 10;
+/** An edge faces a street when a street centreline runs within this distance outside it. */
+const STREET_NEAR_FT = 60;
 const UNIT_STYLE = {
   dadu: { fill: "#E6C97E", name: "DADU", long: "Detached ADU (backyard cottage)" },
   aadu: { fill: "#A9CFC4", name: "AADU", long: "Attached ADU (addition)" },
@@ -247,11 +253,29 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     const n = { x: (-(b.y - a.y) / len) * orient, y: ((b.x - a.x) / len) * orient }; // inward unit normal
     const facing = -(n.x * frontDir.x + n.y * frontDir.y); // +1 faces the street, -1 faces the rear
     const kind: "front" | "side" | "rear" = facing > 0.6 ? "front" : facing < -0.6 ? "rear" : "side";
-    return { a, b, n, len, kind, setback: kind === "side" ? side : kind === "rear" ? rear : 0 };
+    // A side or rear line with a street outside it (a corner or through lot) gets the street-side setback, not 5 ft.
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const onStreet = kind !== "front" && streets.some((st) => st.paths.some((pth) => pth.some((q, k) => {
+      const r = pth[k + 1];
+      if (!r) return false;
+      const dx = r.x - q.x, dy = r.y - q.y, l2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((mid.x - q.x) * dx + (mid.y - q.y) * dy) / l2));
+      const px = q.x + t * dx - mid.x, py = q.y + t * dy - mid.y;
+      return Math.hypot(px, py) <= STREET_NEAR_FT && -(px * n.x + py * n.y) > 0; // outside the lot, not across it
+    })));
+    const setback = kind === "front" ? FRONT_SETBACK_FT : onStreet ? STREET_SIDE_SETBACK_FT : kind === "side" ? side : rear;
+    return { a, b, n, len, kind, onStreet, setback };
   });
+  // The same setbacks on the lot's own axes (u across the frontage, v from the street), for placing and clamping units.
+  const edgeU = (e: (typeof lotEdges)[number]) => toLocal({ x: (e.a.x + e.b.x) / 2, y: (e.a.y + e.b.y) / 2 }).u;
+  const maxSb = (pred: (e: (typeof lotEdges)[number]) => boolean, dflt: number) => lotEdges.filter((e) => e.len > 1 && pred(e)).reduce((m, e) => Math.max(m, e.setback), dflt);
+  const sideL = maxSb((e) => e.kind === "side" && edgeU(e) < lw / 2, side);
+  const sideR = maxSb((e) => e.kind === "side" && edgeU(e) >= lw / 2, side);
+  const rearSb = maxSb((e) => e.kind === "rear", rear);
+  const frontSb = FRONT_SETBACK_FT;
   const clipped = lotEdges.reduce((poly, e) => (e.setback > 0 && e.len > 1 && poly.length >= 3 ? clipInside(poly, e.a, e.n, e.setback) : poly), lotRing);
   const polyEnvelope = clipped.length >= 3 && Math.abs(signedArea(clipped)) > 20;
-  const envelope = polyEnvelope ? clipped : rect(side, 0, Math.max(0, lw - 2 * side), Math.max(0, ld - rear));
+  const envelope = polyEnvelope ? clipped : rect(sideL, frontSb, Math.max(0, lw - sideL - sideR), Math.max(0, ld - rearSb - frontSb));
   const maxLiving = fp?.maxAllowedSqft ?? 1000;
   const coverageLeft = report?.coverage?.availableSqft ?? null;
   const canTwoStory = fp?.stories === 2;
@@ -269,8 +293,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   // Computed once per lot (the sheet is keyed by parcel): the search below is too heavy to repeat on every drag.
   const [initialDadu] = useState<Unit | null>(() => fp
     ? (() => {
-        const w = Math.max(MIN_SIDE_FT, Math.min(fp.suggestedWidth, lw - 2 * side));
-        const d0 = Math.max(MIN_SIDE_FT, Math.min(fp.suggestedDepth, ld - rear));
+        const w = Math.max(MIN_SIDE_FT, Math.min(fp.suggestedWidth, lw - sideL - sideR));
+        const d0 = Math.max(MIN_SIDE_FT, Math.min(fp.suggestedDepth, ld - rearSb - frontSb));
         // Start in open ground: rear first, centred first, shrinking the depth before giving up, and keeping clear of
         // every existing building (5 ft from the house). Falls back to the plain rear-centre spot.
         // Medium and large tree crowns in lot-local feet: the first pass keeps clear of them too.
@@ -284,15 +308,15 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
           }) &&
           (!avoidTrees || crowns.every((c) => Math.hypot(Math.max(0, u - c.u, c.u - (u + w)), Math.max(0, v - c.v, c.v - (v + dd))) >= c.r));
         const us: number[] = [];
-        for (let k = 0; side + k <= lw - side - w; k += 1) us.push(side + k);
+        for (let k = 0; sideL + k <= lw - sideR - w; k += 1) us.push(sideL + k);
         us.sort((p, q) => Math.abs(p - (lw - w) / 2) - Math.abs(q - (lw - w) / 2));
         // Pass 1: behind the house and clear of trees (the same open ground the score measures). Pass 2: the old rule.
         const behind = houseMaxV ? houseMaxV + HOUSE_SEPARATION_FT : 0;
         for (const avoidTrees of [true, false])
           for (let dd = d0; dd >= Math.min(d0, 15); dd -= 1)
-            for (let v = ld - rear - dd; v >= (avoidTrees ? behind : 0); v -= 1)
+            for (let v = ld - rearSb - dd; v >= Math.max(frontSb, avoidTrees ? behind : 0); v -= 1)
               for (const u of us) if (clear(u, v, dd, avoidTrees)) return { kind: "dadu", u, v, w, d: dd };
-        return { kind: "dadu", u: (lw - w) / 2, v: Math.max(0, ld - rear - d0), w, d: d0 };
+        return { kind: "dadu", u: (lw - w) / 2, v: Math.max(frontSb, ld - rearSb - d0), w, d: d0 };
       })()
     : null);
   const [units, setUnits] = useState<Unit[]>(initialDadu ? [initialDadu] : []);
@@ -310,19 +334,19 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
         // A pre-approved design keeps its drawn size; only where it sits can change.
         const e = extent(b);
         const cu0 = b.u + b.w / 2, cv0 = b.v + b.d / 2;
-        const cu = Math.round(Math.min(lw - side - e.w / 2, Math.max(side + e.w / 2, cu0)) * 2) / 2;
-        const cv = Math.round(Math.min(ld - rear - e.d / 2, Math.max(e.d / 2, cv0)) * 2) / 2;
+        const cu = Math.round(Math.min(lw - sideR - e.w / 2, Math.max(sideL + e.w / 2, cu0)) * 2) / 2;
+        const cv = Math.round(Math.min(ld - rearSb - e.d / 2, Math.max(frontSb + e.d / 2, cv0)) * 2) / 2;
         return { ...b, u: cu - b.w / 2, v: cv - b.d / 2 };
       }
-      const maxW = Math.max(MIN_SIDE_FT, lw - 2 * side);
-      const maxD = Math.max(MIN_SIDE_FT, ld - rear);
+      const maxW = Math.max(MIN_SIDE_FT, lw - sideL - sideR);
+      const maxD = Math.max(MIN_SIDE_FT, ld - rearSb - frontSb);
       const w = Math.round(Math.min(maxW, Math.max(MIN_SIDE_FT, b.w)));
       const d = Math.round(Math.min(maxD, Math.max(MIN_SIDE_FT, b.d)));
-      const u = Math.round(Math.min(lw - side - w, Math.max(side, b.u)) * 2) / 2;
-      const v = Math.round(Math.min(ld - rear - d, Math.max(0, b.v)) * 2) / 2;
+      const u = Math.round(Math.min(lw - sideR - w, Math.max(sideL, b.u)) * 2) / 2;
+      const v = Math.round(Math.min(ld - rearSb - d, Math.max(frontSb, b.v)) * 2) / 2;
       return { ...b, u, v, w, d };
     },
-    [lw, ld, side, rear]
+    [lw, ld, sideL, sideR, rearSb, frontSb]
   );
   const setUnit = (idx: number, b: Unit) => setUnits((us) => us.map((x, i) => (i === idx ? clampBox(b) : x)));
 
@@ -362,8 +386,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   const removeAadu = () => setUnits((us) => us.filter((x) => x.kind !== "aadu"));
 
   /* ---- pre-approved designs: a fixed footprint in place of the resizable DADU box ---- */
-  const envW = Math.max(MIN_SIDE_FT, lw - 2 * side);
-  const envD = Math.max(MIN_SIDE_FT, ld - rear);
+  const envW = Math.max(MIN_SIDE_FT, lw - sideL - sideR);
+  const envD = Math.max(MIN_SIDE_FT, ld - rearSb - frontSb);
   /** Whether a design fits behind the setbacks (turned either way) and inside the living-area limit. */
   const planFit = (p: PreApprovedPlan): PlanFit => {
     const straight = p.widthFt <= envW + 0.01 && p.depthFt <= envD + 0.01;
@@ -381,7 +405,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
       const old = us.find((x) => x.kind === "dadu");
       // Keep the turn when switching sizes of the same design; a new design starts square to the lot unless only turned fits.
       const angle = old?.plan && old.plan.family === p.family ? old.angle ?? 0 : turned ? 90 : 0;
-      const cu = old ? old.u + old.w / 2 : lw / 2, cv = old ? old.v + old.d / 2 : ld - rear - (turned ? w : d) / 2;
+      const cu = old ? old.u + old.w / 2 : lw / 2, cv = old ? old.v + old.d / 2 : ld - rearSb - (turned ? w : d) / 2;
       const next = clampBox({ kind: "dadu", plan: p, angle, u: cu - w / 2, v: cv - d / 2, w, d });
       return [next, ...us.filter((x) => x.kind !== "dadu")];
     });
@@ -415,7 +439,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     const hitsBuilding = bldgBoxes.some((b) => overlaps(ex, b));
     const houseGap = mainHouse ? gap(ex, mainHouse) : null;
     const list: { ok: boolean; text: string }[] = [];
-    if (x.plan && (ex.w > lw - 2 * side + 0.01 || ex.d > ld - rear + 0.01))
+    if (x.plan && (ex.w > lw - sideL - sideR + 0.01 || ex.d > ld - rearSb - frontSb + 0.01))
       list.push({ ok: false, text: "Too large for the buildable area behind the setbacks. Try turning it" });
     else if (polyEnvelope && !screenCorners(x).every((q) => pointInPoly(q, envelope) || nearPoly(q, envelope, 0.6)))
       list.push({ ok: false, text: "Crosses a setback. Drag it inside the green area" });
@@ -485,9 +509,9 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   // The biggest spot behind the house that keeps clear of medium and large crowns (none when it is under 300 sf).
   const clearSpot = treeStats?.clearSpot && treeStats.clearSqft >= MIN_FOOTPRINT_SQFT ? treeStats.clearSpot.map(([lng, lat]) => proj(lng, lat)) : null;
   const TREE_STYLE = {
-    large: { stroke: "#1F5E3B", fill: "rgba(31,94,59,0.16)", width: 1.6, dash: false },
-    medium: { stroke: "#3F8A5E", fill: "rgba(63,138,94,0.10)", width: 1.1, dash: true },
-    small: { stroke: "#8DB89C", fill: "none", width: 0.8, dash: true },
+    large: { stroke: "#2F6B49", fill: "rgba(31,94,59,0.12)", width: 0.8, dash: false },
+    medium: { stroke: "#4F9068", fill: "rgba(63,138,94,0.07)", width: 0.6, dash: true },
+    small: { stroke: "#9CC2A8", fill: "none", width: 0.45, dash: true },
   } as const;
 
   /* ---- drag and resize ---- */
@@ -603,20 +627,23 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     const leftSide = longest((e) => e.kind === "side" && across(e) < 0);
     const rightSide = longest((e) => e.kind === "side" && across(e) >= 0);
     const rearEdge = longest((e) => e.kind === "rear");
-    for (const e of [leftSide, rightSide, rearEdge]) {
+    const frontEdge = longest((e) => e.kind === "front");
+    for (const e of [frontEdge, leftSide, rightSide, rearEdge]) {
       if (!e || e.setback <= 0 || e.len < 12) continue;
       let deg = (Math.atan2(e.b.y - e.a.y, e.b.x - e.a.x) * 180) / Math.PI;
       if (deg > 90) deg -= 180;
       if (deg < -90) deg += 180;
-      const t = e.kind === "rear" ? 0.5 : 0.62;
-      setbackLabels.push({ at: { x: e.a.x + (e.b.x - e.a.x) * t + e.n.x * e.setback / 2, y: e.a.y + (e.b.y - e.a.y) * t + e.n.y * e.setback / 2 }, deg, label: `${e.setback}' ${e.kind} setback` });
+      const t = e.kind === "rear" || e.kind === "front" ? 0.5 : 0.62;
+      const label = e.kind === "front" ? `${e.setback}' front yard` : e.onStreet ? `${e.setback}' street side setback` : `${e.setback}' ${e.kind} setback`;
+      setbackLabels.push({ at: { x: e.a.x + (e.b.x - e.a.x) * t + e.n.x * e.setback / 2, y: e.a.y + (e.b.y - e.a.y) * t + e.n.y * e.setback / 2 }, deg, label });
     }
   }
-  if (!polyEnvelope && side > 0) {
-    setbackBands.push({ pts: rect(0, 0, side, ld), label: `${side}' side setback`, at: L(side / 2, ld * 0.62), vertical: !swap });
-    setbackBands.push({ pts: rect(lw - side, 0, side, ld), label: `${side}' side setback`, at: L(lw - side / 2, ld * 0.62), vertical: !swap });
+  if (!polyEnvelope) {
+    setbackBands.push({ pts: rect(0, 0, lw, frontSb), label: `${frontSb}' front yard`, at: L(lw / 2, frontSb / 2), vertical: swap });
+    if (sideL > 0) setbackBands.push({ pts: rect(0, 0, sideL, ld), label: `${sideL}' side setback`, at: L(sideL / 2, ld * 0.62), vertical: !swap });
+    if (sideR > 0) setbackBands.push({ pts: rect(lw - sideR, 0, sideR, ld), label: `${sideR}' side setback`, at: L(lw - sideR / 2, ld * 0.62), vertical: !swap });
+    if (rearSb > 0) setbackBands.push({ pts: rect(sideL, ld - rearSb, Math.max(0, lw - sideL - sideR), rearSb), label: `${rearSb}' rear setback`, at: L(lw / 2, ld - rearSb / 2), vertical: swap });
   }
-  if (!polyEnvelope && rear > 0) setbackBands.push({ pts: rect(side, ld - rear, Math.max(0, lw - 2 * side), rear), label: `${rear}' rear setback`, at: L(lw / 2, ld - rear / 2), vertical: swap });
 
   /* ---- viewBox ---- */
   const margin = 44;
@@ -654,7 +681,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
 
   /* ---- the sentence under the plan, also printed in the PDF ---- */
   const notes = [
-    "Front setback and ECA outlines are not drawn: this data has no geometry for them.",
+    `The front yard is drawn at ${FRONT_SETBACK_FT} ft, the Neighborhood Residential standard (the city can allow less where the neighbours sit closer)${lotEdges.some((e) => e.onStreet) ? `, and a side or rear line on a street at ${STREET_SIDE_SETBACK_FT} ft; confirm both with the city` : ""}. ECA outlines are not drawn: this data has no geometry for them.`,
     daduConflict && " The DADU breaks a rule where it sits now (see the checks below). Drag it clear.",
     access?.kind === "alley" && " Cars and construction reach the back from the alley.",
     access?.kind === "side" && access.width != null && access.width < MIN_ACCESS_FT && ` The side yard fits a ${DRIVEWAY_FT} ft driveway but is under the ${MIN_ACCESS_FT} ft construction heuristic.`,
@@ -681,7 +708,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
       units: units.map((x, i) => ({ name: x.plan ? x.plan.name : UNIT_STYLE[x.kind].name, long: x.plan ? `${x.plan.name} by ${x.plan.designer} (pre-approved design)` : UNIT_STYLE[x.kind].long, plan: x.plan ? { designer: x.plan.designer, name: x.plan.name, sqft: x.plan.sqft, beds: x.plan.beds, baths: x.plan.baths, widthFt: x.plan.widthFt, depthFt: x.plan.depthFt, approx: x.plan.approx, detailUrl: x.plan.detailUrl } : null, w: Math.round(x.w), d: Math.round(x.d), footprint: checks[i].footprint, living: checks[i].living, maxLiving, ok: checks[i].ok, checks: checks[i].list })),
       warnings,
       notes,
-      setbacks: { side, rear, onAlley },
+      setbacks: { side, rear, onAlley, front: FRONT_SETBACK_FT, streetSide: lotEdges.some((e) => e.onStreet) ? STREET_SIDE_SETBACK_FT : null },
     });
   });
   useEffect(() => () => { if (snapshotRef) snapshotRef.current = null; }, [snapshotRef]);
@@ -712,7 +739,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
         </defs>
 
         {adj.map((d, i) => (
-          <path key={`a${i}`} d={d} fill="none" stroke="#17241D" strokeOpacity="0.22" strokeWidth={sw * 0.8} />
+          <path key={`a${i}`} d={d} fill="none" stroke="#17241D" strokeOpacity="0.16" strokeWidth={sw * 0.45} />
         ))}
         {streets.map((s, i) =>
           s.paths.map((p, j) => (
@@ -725,9 +752,9 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
             key={`ct${c.elevation}`}
             d={c.segments.map(([a, b]) => { const p = proj(a[0], a[1]), q = proj(b[0], b[1]); return `M${p.x.toFixed(2)} ${p.y.toFixed(2)} L${q.x.toFixed(2)} ${q.y.toFixed(2)}`; }).join(" ")}
             fill="none"
-            stroke="#9C7A52"
-            strokeOpacity={c.index ? 0.75 : 0.4}
-            strokeWidth={sw * (c.index ? 1.1 : 0.6)}
+            stroke="#A88F6E"
+            strokeOpacity={c.index ? 0.5 : 0.28}
+            strokeWidth={sw * (c.index ? 0.55 : 0.3)}
             pointerEvents="none"
           />
         ))}
@@ -742,20 +769,20 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
         {envelope.length > 0 && (
           <g className="plat-fill" style={{ ["--d" as string]: "0.9s" }}>
             <path d={path(envelope)} fill="#1E6E50" fillOpacity="0.16" />
-            <path d={path(envelope)} fill="none" stroke="#145A40" strokeWidth={sw} strokeDasharray={`${sw * 4} ${sw * 3}`} />
+            <path d={path(envelope)} fill="none" stroke="#145A40" strokeOpacity="0.7" strokeWidth={sw * 0.6} strokeDasharray={`${sw * 4} ${sw * 3}`} />
           </g>
         )}
 
         {/* setbacks: hatched strips between the lot lines and the buildable envelope */}
         <defs>
           <pattern id="mp-setback" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
-            <line x1="0" y1="0" x2="0" y2="4" stroke="#B9573F" strokeOpacity="0.35" strokeWidth={sw * 0.8} />
+            <line x1="0" y1="0" x2="0" y2="4" stroke="#B9573F" strokeOpacity="0.25" strokeWidth={sw * 0.5} />
           </pattern>
         </defs>
-        {setbackRing && <path d={setbackRing} fillRule="evenodd" fill="url(#mp-setback)" stroke="#B9573F" strokeOpacity="0.5" strokeWidth={sw * 0.6} />}
+        {setbackRing && <path d={setbackRing} fillRule="evenodd" fill="url(#mp-setback)" stroke="#B9573F" strokeOpacity="0.4" strokeWidth={sw * 0.4} />}
         {setbackBands.map((b, i) => (
           <g key={`sb${i}`}>
-            <path d={path(b.pts)} fill="url(#mp-setback)" stroke="#B9573F" strokeOpacity="0.5" strokeWidth={sw * 0.6} />
+            <path d={path(b.pts)} fill="url(#mp-setback)" stroke="#B9573F" strokeOpacity="0.4" strokeWidth={sw * 0.4} />
           </g>
         ))}
 
@@ -767,14 +794,14 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
           d={path(lotPts)}
           fill="none"
           stroke="#17241D"
-          strokeWidth={sw * 2.2}
+          strokeWidth={sw * 1.6}
           strokeLinejoin="round"
         />
 
         {/* existing structures */}
         <g className="plat-fill" style={{ ["--d" as string]: "1.2s" }}>
           {houses.map((h, i) => (
-            <path key={i} d={path(h.pts)} fill="url(#mp-house)" stroke="#17241D" strokeWidth={sw * 1.4} />
+            <path key={i} d={path(h.pts)} fill="url(#mp-house)" stroke="#17241D" strokeWidth={sw * 1.2} />
           ))}
         </g>
 
@@ -790,6 +817,31 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
             );
           })}
         </g>
+        {/* section cut A-A': a thin chain line with small tags; the arrows show which way the section looks */}
+        {hasSection && (() => {
+          const ux = secB.x - secA.x, uy = secB.y - secA.y, len = Math.hypot(ux, uy) || 1;
+          const dx = ux / len, dy = uy / len; // along the cut
+          const vx = -dy, vy = dx; // looking direction (perpendicular)
+          const r = fs * 0.42;
+          const tag = (p: Pt, label: string, out: number) => {
+            const c = { x: p.x - dx * r * 1.6 * out, y: p.y - dy * r * 1.6 * out };
+            return (
+              <g key={label}>
+                <path d={`M${c.x + vx * r * 1.05} ${c.y + vy * r * 1.05} L${c.x + vx * r * 1.9 + dx * r * 0.5} ${c.y + vy * r * 1.9 + dy * r * 0.5} L${c.x + vx * r * 1.9 - dx * r * 0.5} ${c.y + vy * r * 1.9 - dy * r * 0.5} Z`} fill="#17241D" fillOpacity="0.55" />
+                <circle cx={c.x} cy={c.y} r={r} fill="#fff" stroke="#17241D" strokeOpacity="0.55" strokeWidth={sw * 0.4} />
+                <text x={c.x} y={c.y} textAnchor="middle" dominantBaseline="central" style={{ fontSize: fs * 0.5, fontWeight: 600, fill: "#17241D", fillOpacity: 0.7 }}>{label}</text>
+              </g>
+            );
+          };
+          return (
+            <g pointerEvents="none" data-section-cut>
+              <line x1={secA.x} y1={secA.y} x2={secB.x} y2={secB.y} stroke="#17241D" strokeOpacity="0.35" strokeWidth={sw * 0.45} strokeDasharray={`${sw * 7} ${sw * 2} ${sw * 1.2} ${sw * 2}`} />
+              {tag(secA, "A", 1)}
+              {tag(secB, "A′", -1)}
+            </g>
+          );
+        })()}
+
         {clearSpot && (
           <g pointerEvents="none">
             <path d={path(clearSpot)} fill="none" stroke="#2E5C6E" strokeWidth={sw * 1.2} strokeDasharray={`${sw} ${sw * 1.5}`} />
@@ -1087,7 +1139,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
       </div>
 
       <figcaption className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 border-t pt-3 text-xs" style={{ color: "var(--slate)", borderColor: "var(--hairline)" }}>
-        <Key swatch={<i style={{ background: "rgba(30, 110, 80,0.3)", border: "1px dashed #145A40" }} />}>Buildable envelope ({side} ft side, {rear ? `${rear} ft rear` : "no rear setback on the alley"})</Key>
+        <Key swatch={<i style={{ background: "rgba(30, 110, 80,0.3)", border: "1px dashed #145A40" }} />}>Buildable envelope ({FRONT_SETBACK_FT} ft front, {side} ft side{lotEdges.some((e) => e.onStreet) ? `, ${STREET_SIDE_SETBACK_FT} ft on a street side` : ""}, {rear ? `${rear} ft rear` : "no rear setback on the alley"})</Key>
         <Key swatch={<i style={{ background: "#E6C97E", border: "1px solid #17241D" }} />}>Detached ADU (drag to edit)</Key>
         {units.some((x) => x.kind === "aadu") && <Key swatch={<i style={{ background: "#A9CFC4", border: "1px solid #17241D" }} />}>Attached ADU</Key>}
         {separation && <Key swatch={<i style={{ border: "1px dashed #B9573F" }} />}>{HOUSE_SEPARATION_FT} ft from the house</Key>}
@@ -1100,6 +1152,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
         <Key swatch={<i style={{ background: "#CFD9D3" }} />}>Street</Key>
         <Key swatch={<i style={{ background: "#D9CDB4", border: "1px solid #A8957A" }} />}>Alley</Key>
         <Key swatch={<i style={{ borderTop: "2px solid #145A40", height: 0, marginTop: 5 }} />}>Vehicle access route</Key>
+        {hasSection && <Key swatch={<i style={{ borderTop: "1px dashed rgba(23,36,29,.45)", height: 0, marginTop: 5 }} />}>Section line A–A′</Key>}
       </figcaption>
       <p className="mt-2 text-xs" style={{ color: "var(--slate)" }}>
         {notes}

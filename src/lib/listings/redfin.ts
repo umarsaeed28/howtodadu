@@ -22,7 +22,7 @@ const s = (v: unknown): string | undefined => (typeof v === "string" && v ? v : 
 /** Redfin values often arrive as { value } or plain numbers. */
 const val = (v: unknown) => n(o(v).value ?? v);
 
-async function call(path: string, params: Record<string, string | string[]>): Promise<Obj> {
+export async function call(path: string, params: Record<string, string | string[]>): Promise<Obj> {
   const key = process.env.HASDATA_API_KEY;
   if (!key) throw new Error("HASDATA_API_KEY is not set.");
   const u = new URL(`${BASE}/${path}`);
@@ -67,7 +67,7 @@ export function fromRedfin(r: Obj): RawListing | null {
   };
 }
 
-const listArr = (v: unknown): Obj[] => (Array.isArray(v) ? (v as Obj[]) : []);
+export const listArr = (v: unknown): Obj[] => (Array.isArray(v) ? (v as Obj[]) : []);
 
 export function fromRedfinDetail(r: Obj): ListingDetail {
   const p = o(r.property ?? r);

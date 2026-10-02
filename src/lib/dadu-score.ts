@@ -7,6 +7,7 @@
  */
 import { MIN_LOT_SQFT, planSite, type Layout } from "@/lib/dadu-site-plan";
 import { MIN_FOOTPRINT_SQFT, type TreeStats } from "@/lib/tree-analysis";
+import { GRADE_MODERATE_PCT, GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT, gradeNote, type GradeStats } from "@/lib/grade";
 
 /** A DADU smaller than this is not worth building. */
 export const MIN_DADU_SQFT = 300;
@@ -61,6 +62,8 @@ export interface ScoreInput {
   hoaMonthly: number | null;
   /** Tree-by-tree measurement from the 2021 LiDAR crowns (tree-analysis.ts). Null when not measured. */
   trees?: TreeStats | null;
+  /** Slope of the ground across the DADU site, from 1 m lidar (grade.ts). Null when not measured. */
+  grade?: GradeStats | null;
 }
 
 export interface Gate {
@@ -133,12 +136,28 @@ function sizeFactor(sf: number): { score: number; note: string } {
   return { score: Math.round(clamp(s)), note: `The lot fits a DADU of up to ${Math.round(sf).toLocaleString("en-US")} sf.` };
 }
 
-function siteFactor(steep: number | null, flags: string[]): { score: number; note: string } {
+function siteFactor(steep: number | null, flags: string[], grade?: GradeStats | null): { score: number; note: string } {
   const f = (steep ?? 0) / 100;
   const base = f < 0.05 ? 90 : f < 0.15 ? 70 : f < 0.25 ? 50 : f < 0.4 ? 30 : 10;
-  const score = clamp(base + (f < 0.05 && !flags.length ? 10 : 0) - flags.length * 20);
+  let score = clamp(base + (f < 0.05 && !flags.length ? 10 : 0) - flags.length * 20);
   const slope = f < 0.05 ? "No meaningful steep slope" : `Steep slope on ${Math.round(f * 100)}% of the lot`;
-  return { score, note: flags.length ? `${slope}. Critical-area flags: ${flags.join(", ")}.` : `${slope}, and no critical-area flags.` };
+  let note = flags.length ? `${slope}. Critical-area flags: ${flags.join(", ")}.` : `${slope}, and no critical-area flags.`;
+  // The ground where the DADU goes: a sloped site costs more to build (foundation, retaining walls, excavation).
+  if (grade) {
+    if (grade.slopePct >= GRADE_VERY_STEEP_PCT) score = Math.min(score, 10);
+    else if (grade.slopePct >= GRADE_STEEP_PCT) score = Math.min(score, 40);
+    else if (grade.slopePct >= GRADE_MODERATE_PCT) score = clamp(score - 15);
+    note = `${note} ${gradeNote(grade)}`;
+  }
+  return { score, note };
+}
+
+/** A steep DADU site caps the grade: Fair at best from 10%, Marginal from 20%. */
+function gradeCap(grade?: GradeStats | null): number {
+  if (!grade) return 100;
+  if (grade.slopePct >= GRADE_VERY_STEEP_PCT) return GRADE_BANDS[2].min - 1;
+  if (grade.slopePct >= GRADE_STEEP_PCT) return GRADE_BANDS[1].min - 1;
+  return 100;
 }
 
 /**
@@ -243,7 +262,7 @@ export function scoreSite(i: ScoreInput): SiteScore {
     access: accessFactor(i, w),
     layout: layoutFactor(plan.layout.kind === "none" ? "single_rear" : plan.layout.kind, w, d, plan.warning != null),
     size: sizeFactor(i.daduSqft ?? 0),
-    site: siteFactor(pct(i.steepPct), i.ecaFlags),
+    site: siteFactor(pct(i.steepPct), i.ecaFlags, i.grade),
     trees: i.trees ? measuredTreeFactor(i.trees) : treeFactor(pct(i.canopyPct)),
   };
   const factors: Factor[] = (Object.keys(WEIGHTS) as FactorKey[]).map((k) => ({ key: k, name: FACTOR_NAMES[k], weight: WEIGHTS[k], score: parts[k].score, note: parts[k].note }));
@@ -256,7 +275,7 @@ export function scoreSite(i: ScoreInput): SiteScore {
   const treeCap = i.trees
     ? measuredTreeFactor(i.trees).cap
     : canopy == null || canopy > CANOPY_FAIR_AT_BEST ? GRADE_BANDS[1].min - 1 : GRADE_BANDS[0].min - 1;
-  const score = eligible ? Math.min(Math.round(clamp(raw)), accessUnknown ? GRADE_BANDS[0].min - 1 : 100, treeCap) : 0;
+  const score = eligible ? Math.min(Math.round(clamp(raw)), accessUnknown ? GRADE_BANDS[0].min - 1 : 100, treeCap, gradeCap(i.grade)) : 0;
   const g = eligible ? gradeOf(score) : { tier: 0 as Tier, label: "Not eligible" };
   return { eligible, gates, factors, score, tier: g.tier, grade: g.label };
 }

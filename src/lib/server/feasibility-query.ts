@@ -6,6 +6,8 @@ import {
   num,
   str,
 } from "@/lib/geo-helpers";
+import { gradeFrom, spotSamplePoints } from "@/lib/grade";
+import { elevationAt } from "@/lib/terrain";
 import { analyzeTrees, streetAxis, treeSize } from "@/lib/tree-analysis";
 import type {
   FeasibilityResult,
@@ -612,6 +614,12 @@ export async function getFeasibilityForAddress(
       trees.map((t) => ({ lng: t.centroid[0], lat: t.centroid[1], r: t.radiusFt, h: t.heightFt ?? null })),
       streetAxis(p ? str(p.ADDRESS) : trimmed)
     );
+  // Slope of the ground across the DADU site, from the same lidar grid the section drawing uses.
+  const spot = feasibilityMerged?.treeStats?.siteSpot;
+  if (feasibilityMerged && spot && terrain) {
+    const pts = spotSamplePoints(spot);
+    feasibilityMerged.gradeStats = gradeFrom(pts, pts.map(([lng, lat]) => elevationAt(terrain, lng, lat)));
+  }
 
   const data: FeasibilityResult = {
     coordinates: coords,

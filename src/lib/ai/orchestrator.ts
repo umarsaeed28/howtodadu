@@ -110,7 +110,8 @@ export function buildFacts(l: RawListing, lot: Candidate | null, adu: Aduniverse
       lot.trees
         ? [`Trees: ${lot.trees.large} large (likely protected) and ${lot.trees.medium} medium trees reach the lot; canopy covers ${lot.trees.canopyPct}%. Largest open spot behind the house clear of medium and large trees: ${lot.trees.clearSqft.toLocaleString("en-US")} sf (a DADU needs at least 300 sf); ${lot.trees.clearSqftIfMediumRemoved.toLocaleString("en-US")} sf if medium trees were removed`, "2021 LiDAR tree crowns"]
         : [`Tree canopy ${lot.canopyPct == null ? "unknown" : Math.round(lot.canopyPct <= 1 ? lot.canopyPct * 100 : lot.canopyPct)}% (parcel figure, trees not measured one by one)`, "city GIS"],
-      [`Steep slope: ${lot.steepPct ? "yes" : "none"}, ${lot.adusNearby} ADUs nearby`, "city GIS"]
+      [`Steep slope critical area: ${lot.steepPct ? "yes" : "none"}, ${lot.adusNearby} ADUs nearby`, "city GIS"],
+      ...(lot.grade ? [[`Ground at the DADU site: ${lot.grade.slopePct}% slope, ${lot.grade.riseFt} ft of rise across it (10% or more means a stepped foundation and retaining walls; 20% or more is very costly)`, "USGS 1 m lidar"] as [string, string]] : [])
     );
   } else {
     rows.push(["Lot: not in the city lot library (not an eligible single-family NR lot, or the DADU engine found no room)", "city GIS"]);

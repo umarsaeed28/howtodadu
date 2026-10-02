@@ -1,4 +1,5 @@
 import { parcelZoningLabel, type FeasibilityResult } from "./feasibility";
+import { GRADE_STEEP_PCT, gradeNote, type GradeStats } from "@/lib/grade";
 import type { ADUReport } from "./adu-analysis";
 import type { DealSignals } from "./deal-scoring";
 import { getSeattleDealSignals } from "./deal-scoring";
@@ -90,6 +91,7 @@ export function siteScoreFor(result: FeasibilityResult, report: ADUReport, hoaMo
     zoning: parcelZoningLabel(result.parcel),
     hoaMonthly,
     trees: f?.treeStats ?? null,
+    grade: f?.gradeStats ?? null,
   });
 }
 
@@ -106,11 +108,14 @@ function keyInsightFrom(report: ADUReport, signals: DealSignals): string {
   return parts.slice(0, 2).join(", ") + ".";
 }
 
+const lowerFirst = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
+
 function summarySentence(
   report: ADUReport,
   signals: DealSignals,
   combined: number,
-  site?: SiteScore
+  site?: SiteScore,
+  grade?: GradeStats | null
 ): string {
   const { label: verdictLabel } = verdictFromCombined(combined);
   const lot = signals.siteOverview.lotSizeSqft;
@@ -119,11 +124,17 @@ function summarySentence(
   const zone = report.stats.find((s) => s.label === "Zoning")?.value ?? "—";
   // Trees that hold the score down come first: they are the reason the number is low.
   const trees = site?.factors.find((f) => f.key === "trees");
-  const riskHint = trees && trees.score <= 40
-    ? `Watch the trees: ${trees.note.charAt(0).toLowerCase()}${trees.note.slice(1)}`
-    : signals.risks.length > 0
-      ? `Watch: ${signals.risks[0].toLowerCase()}.`
-      : "Few major flags from city data.";
+  // A steep DADU site and crowded trees are what most often hold a score down: say so first.
+  const slopeHint = grade && grade.slopePct >= GRADE_STEEP_PCT ? `Watch the slope: ${lowerFirst(gradeNote(grade))} ` : "";
+  const riskHint =
+    slopeHint +
+    (trees && trees.score <= 40
+      ? `Watch the trees: ${lowerFirst(trees.note)}`
+      : slopeHint
+        ? ""
+        : signals.risks.length > 0
+          ? `Watch: ${signals.risks[0].toLowerCase()}.`
+          : "Few major flags from city data.");
   return `${verdictLabel}. ${lotPart}, ${zone}. ${riskHint}`;
 }
 
@@ -223,7 +234,7 @@ export function buildFeasibilityTableRow(
     keyInsight: keyInsightFrom(report, signals),
     verdict,
     verdictLabel,
-    summarySentence: summarySentence(report, signals, daduScore, siteScore),
+    summarySentence: summarySentence(report, signals, daduScore, siteScore, result.feasibility?.gradeStats ?? null),
     result,
     report,
     signals,

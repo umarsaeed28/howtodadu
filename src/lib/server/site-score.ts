@@ -9,6 +9,6 @@ export function siteScoreFor(l: Pick<RawListing, "hoaMonthly">, lot: Candidate |
   return scoreSite({
     lotSqft: lot.lotSqft, widthFt: lot.lotWidth ?? adu?.raw.lotWidth ?? null, depthFt: lot.lotDepth ?? adu?.raw.lotDepth ?? null,
     alley: lot.alley, corner: lot.corner, daduSqft: lot.daduSqft, steepPct: lot.steepPct, canopyPct: lot.canopyPct,
-    ecaFlags: ecaFlagsOf(adu?.raw), existingAdus: lot.existingAdus ?? adu?.raw.totalADU ?? null, sideClearanceFt: lot.sideClearanceFt ?? null, zoning: lot.zoning, hoaMonthly: l.hoaMonthly ?? null, trees: lot.trees ?? null,
+    ecaFlags: ecaFlagsOf(adu?.raw), existingAdus: lot.existingAdus ?? adu?.raw.totalADU ?? null, sideClearanceFt: lot.sideClearanceFt ?? null, zoning: lot.zoning, hoaMonthly: l.hoaMonthly ?? null, trees: lot.trees ?? null, grade: lot.grade ?? null,
   });
 }

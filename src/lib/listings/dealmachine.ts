@@ -1,5 +1,9 @@
 import { createCache } from "./refresh-cache";
 import type { ListingQuery, ListingsProvider, RawListing } from "./provider";
+import { call as hasdata, fromRedfin, listArr } from "./redfin";
+import { streetKey, verifyActive, type ActiveOnRedfin } from "./verify-active";
+import { findLotForListing } from "@/lib/server/lot-library-store";
+import { inBuyBox } from "@/lib/buy-box";
 
 /**
  * Live on-market listings from DealMachine (https://api.docs.dealmachine.com). Needs DEALMACHINE_API_KEY.
@@ -26,6 +30,8 @@ export const DM_ACTIVE_FILTERS = [
   { filter_id: "num_units", operator: "equals", value: 1 },
   { filter_id: "lot_size_sqft", operator: "greater_than_or_equal", value: 3800 },
   { filter_id: "is_mls_active", value: true },
+  { filter_id: "is_mls_pending", value: false },
+  { filter_id: "is_mls_contingent", value: false },
 ];
 const FIELDS = ["mls_current_listing_price", "mls_days_on_market", "mls_last_initial_listing_date", "market_status", "lot_size_sqft", "year_built", "living_area_sqft", "num_bedrooms", "num_bathrooms", "has_hoa", "hoa_1_fee_amount", "zoning", "num_units"];
 
@@ -86,30 +92,90 @@ async function search(page: number): Promise<{ data: Obj[]; hasNext: boolean }> 
   return { data: j.data ?? [], hasNext: !!j.pagination?.has_next_page };
 }
 
-async function pullAll(): Promise<RawListing[]> {
-  const out: RawListing[] = [];
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const r = await search(page);
-    for (const x of r.data) {
-      const l = fromDealMachine(x);
-      if (l) out.push(l);
+/** What a pull kept, and how the truly-active check went. */
+export interface DealMachinePull {
+  listings: RawListing[];
+  check: {
+    /** True when every candidate was checked against Redfin's active listings. */
+    verified: boolean;
+    note: string;
+    fromDealMachine: number;
+    candidates: number;
+    dropped: { address: string; reason: string }[];
+  };
+}
+
+/** Redfin's Active single-family listings in one ZIP (HasData). "active" excludes pending and contingent. */
+async function redfinActive(zip: string): Promise<ActiveOnRedfin[]> {
+  const out: ActiveOnRedfin[] = [];
+  for (let page = 1; page <= 6; page++) {
+    const body = await hasdata("listing", { keyword: zip, type: "forSale", homeTypes: ["house"], statusOptions: ["active"], page: String(page) });
+    const rows = listArr(body.properties ?? body.listings ?? body.results ?? body.data);
+    for (const r of rows) {
+      const l = fromRedfin(r);
+      if (l) out.push({ street: streetKey(l.address), url: l.listingUrl ?? null, status: l.status });
     }
-    if (!r.hasNext) break;
+    if (rows.length < 20) break;
   }
   return out;
 }
 
-export const dealMachineCache = createCache<RawListing[]>("dealmachine-active", pullAll, MAX_AGE_MS);
+/** The buy box needs the lot; only these candidates can reach the map, so only they are checked. */
+const isCandidate = (l: RawListing) => {
+  if ((l.hoaMonthly ?? 0) > 0) return false;
+  const lot = findLotForListing(l.address, l.lat, l.lng);
+  return !!lot && inBuyBox({ zoning: lot.zoning, lotSqft: lot.lotSqft, coveragePct: lot.coveragePct, existingAdus: lot.existingAdus, score: lot.score });
+};
+
+async function pullAll(): Promise<DealMachinePull> {
+  const all: RawListing[] = [];
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const r = await search(page);
+    for (const x of r.data) {
+      const l = fromDealMachine(x);
+      if (l) all.push(l);
+    }
+    if (!r.hasNext) break;
+  }
+  const candidates = all.filter(isCandidate);
+  const base = { fromDealMachine: all.length, candidates: candidates.length };
+  if (!process.env.HASDATA_API_KEY)
+    return { listings: candidates, check: { ...base, verified: false, note: "Not cross-checked: HASDATA_API_KEY is not set, so DealMachine's Active status is shown as is.", dropped: [] } };
+
+  // Truly active: Redfin must list the home as active too (verify-active.ts). One search per ZIP, not per home.
+  const zips = [...new Set(candidates.map((l) => l.zip).filter(Boolean))];
+  const activeByZip = new Map<string, ActiveOnRedfin[]>();
+  const failed: string[] = [];
+  for (const z of zips) {
+    try {
+      activeByZip.set(z, await redfinActive(z));
+    } catch (e) {
+      failed.push(`${z}: ${e instanceof Error ? e.message.slice(0, 80) : "error"}`);
+    }
+  }
+  const v = verifyActive(candidates, activeByZip);
+  return {
+    listings: v.kept,
+    check: {
+      ...base,
+      verified: failed.length === 0,
+      note: failed.length ? `Redfin could not be read for ${failed.length} ZIP code(s); those homes are held back. ${failed.join("; ")}` : `Cross-checked with Redfin: ${v.kept.length} of ${candidates.length} confirmed active.`,
+      dropped: v.dropped.map((d) => ({ address: d.listing.address, reason: d.reason })),
+    },
+  };
+}
+
+export const dealMachineCache = createCache<DealMachinePull>("dealmachine-active-v2", pullAll, MAX_AGE_MS);
 
 export class DealMachineProvider implements ListingsProvider {
   async search(q: ListingQuery): Promise<{ listings: RawListing[]; total: number }> {
     const { value } = await dealMachineCache.get();
     const zips = q.zips?.length ? new Set(q.zips) : null;
-    const listings = value.filter((l) => (!zips || zips.has(l.zip)) && (q.minPrice == null || l.listPrice >= q.minPrice) && (q.maxPrice == null || l.listPrice <= q.maxPrice));
+    const listings = value.listings.filter((l) => (!zips || zips.has(l.zip)) && (q.minPrice == null || l.listPrice >= q.minPrice) && (q.maxPrice == null || l.listPrice <= q.maxPrice));
     return { listings, total: listings.length };
   }
   async getById(mlsId: string): Promise<RawListing | null> {
     const { value } = await dealMachineCache.get();
-    return value.find((l) => l.mlsId === mlsId) ?? null;
+    return value.listings.find((l) => l.mlsId === mlsId) ?? null;
   }
 }

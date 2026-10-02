@@ -43,6 +43,9 @@ export interface LotLibraryFile {
     siteSide?: (number | null)[];
     /** Share of the lot under buildings, percent. */
     coveragePct?: (number | null)[];
+    /** Slope across the DADU site, percent, and its total rise, feet. */
+    gradePct?: (number | null)[];
+    gradeRiseFt?: (number | null)[];
   };
 }
 
@@ -85,6 +88,8 @@ export function encodeLibrary(rows: Candidate[], source: string, now = new Date(
       siteSqft: rows.map((r) => r.trees?.siteSqft ?? null),
       siteSide: rows.map((r) => (r.trees?.site == null ? null : r.trees.site === "side" ? 1 : 0)),
       coveragePct: rows.map((r) => r.coveragePct ?? null),
+      gradePct: rows.map((r) => r.grade?.slopePct ?? null),
+      gradeRiseFt: rows.map((r) => r.grade?.riseFt ?? null),
     },
   };
 }
@@ -118,6 +123,7 @@ export function decodeLibrary(f: LotLibraryFile, zips?: string[] | null): Candid
       existingAdus: c.existingAdus?.[i] ?? null,
       sideClearanceFt: c.sideClearanceFt?.[i] ?? null,
       coveragePct: c.coveragePct?.[i] ?? null,
+      grade: c.gradePct?.[i] != null ? { slopePct: c.gradePct[i]!, riseFt: c.gradeRiseFt?.[i] ?? 0 } : null,
       trees:
         c.clearSqft?.[i] != null
           ? { large: c.treeLarge![i] ?? 0, medium: c.treeMedium![i] ?? 0, small: c.treeSmall![i] ?? 0, canopyPct: c.treeCanopyPct![i] ?? 0, clearSqft: c.clearSqft[i]!, clearSqftIfMediumRemoved: c.clearSqftIfMediumRemoved![i] ?? 0, ...(c.siteSqft?.[i] != null ? { siteSqft: c.siteSqft[i]!, site: c.siteSide?.[i] === 1 ? ("side" as const) : ("behind" as const) } : {}) }

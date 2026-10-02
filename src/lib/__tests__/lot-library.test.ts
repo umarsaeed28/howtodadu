@@ -28,12 +28,13 @@ const lot = (o: Partial<Candidate> = {}): Candidate => ({
   daduSqft: 1000,
   trees: null,
   coveragePct: 18.5,
+  grade: null,
   ...o,
 });
 
 describe("lot library", () => {
   const rows = [
-    lot({ trees: { large: 1, medium: 3, small: 2, canopyPct: 24, clearSqft: 640, clearSqftIfMediumRemoved: 1200 } }),
+    lot({ trees: { large: 1, medium: 3, small: 2, canopyPct: 24, clearSqft: 640, clearSqftIfMediumRemoved: 1200 }, grade: { slopePct: 12.4, riseFt: 4.1 } }),
     lot({ pin: "0000000002", zip: "98107", lat: 47.67, tier: 1, topPick: false }),
   ];
 

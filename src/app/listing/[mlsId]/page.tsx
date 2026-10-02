@@ -16,9 +16,11 @@ import InvestorSnapshot from "@/components/listing/InvestorSnapshot";
 import ListingPhoto from "@/components/listing/ListingPhoto";
 import LotSketch from "@/components/listing/LotSketch";
 import SaveButton from "@/components/listing/SaveButton";
+import { redfinLink } from "@/lib/listings/redfin-link";
 import DaduSnapshot from "@/components/listing/DaduSnapshot";
 import { siteScoreFor } from "@/lib/server/site-score";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
+import { GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT, gradeNote } from "@/lib/grade";
 
 export const dynamic = "force-dynamic";
 
@@ -194,6 +196,11 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
                   <LotSketch widthFt={widthFt} depthFt={depthFt} lotSqft={lot.lotSqft} alley={lot.alley} corner={lot.corner} layout={plan?.layout.kind ?? "single_rear"} daduSqft={sf || null} sideClearanceFt={lot.sideClearanceFt} street={titleCase(l.address.split(",")[0].replace(/^\d+[A-Z]?\s+/i, ""))} />
                   <DaduSnapshot site={site} daduSqft={sf} buildCost={sf ? constructionEstimate(sf) : null} layoutLabel={plan?.layout.kind === "none" ? null : plan?.layout.label ?? null} />
                 </div>
+                {lot.grade && lot.grade.slopePct >= GRADE_STEEP_PCT && (
+                  <p className="mt-3 rounded-lg px-3 py-2 text-sm" style={{ background: lot.grade.slopePct >= GRADE_VERY_STEEP_PCT ? "var(--red-tint)" : "var(--amber-tint)", color: "var(--ink)" }}>
+                    <strong>{lot.grade.slopePct >= GRADE_VERY_STEEP_PCT ? "Very steep site." : "Steep site."}</strong> {gradeNote(lot.grade)}
+                  </p>
+                )}
                 {plan?.warning && <p className="mt-3 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>{plan.warning}</p>}
                 {plan && (
                   <details className="pa-more mt-3 text-sm">
@@ -401,7 +408,10 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
               <div className="mt-5 flex flex-col gap-2">
                 <Link href={`/feasibility?address=${encodeURIComponent(fullAddress)}`} className="pa-btn pa-btn-primary w-full no-underline">Open the full report <ArrowRight size={15} aria-hidden /></Link>
                 <Link href={calculatorHref({ sf, address: fullAddress })} className="pa-btn w-full no-underline"><Calculator size={15} aria-hidden /> Estimate your return</Link>
-                {l.listingUrl && <a href={l.listingUrl} target="_blank" rel="noopener noreferrer" className="pa-btn w-full no-underline">View on Redfin <ExternalLink size={14} aria-hidden /></a>}
+                {(() => {
+                  const rf = redfinLink(l.address, l.listingUrl);
+                  return <a href={rf.href} target="_blank" rel="noopener noreferrer" className="pa-btn w-full no-underline">{rf.direct ? "View on Redfin" : "Find on Redfin"} <ExternalLink size={14} aria-hidden /></a>;
+                })()}
               </div>
               {(d.agent || d.brokerage) && <p className="mt-4 text-xs" style={{ color: "var(--slate)" }}>Listed by {[d.agent, d.brokerage].filter(Boolean).join(", ")}</p>}
             </div>

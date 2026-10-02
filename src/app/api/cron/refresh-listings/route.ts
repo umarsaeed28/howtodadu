@@ -14,6 +14,7 @@ export async function GET(req: Request) {
   if (!cache) return NextResponse.json({ skipped: `LISTINGS_PROVIDER ${name} has nothing to refresh` });
   try {
     const { value, fetchedAt } = await cache.get(true);
+    if (!Array.isArray(value)) return NextResponse.json({ listings: value.listings.length, check: value.check, fetchedAt: new Date(fetchedAt).toISOString() });
     return NextResponse.json({ listings: value.length, fetchedAt: new Date(fetchedAt).toISOString() });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Refresh failed" }, { status: 502 });

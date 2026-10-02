@@ -54,3 +54,40 @@ export async function fetchTerrain(ring: number[][], marginM = 16, stepM = 1.5):
     return null;
   }
 }
+
+/**
+ * Elevations (feet) at many points in as few requests as possible: 500 points a request, a few at a time, retried.
+ * For the library build, which samples every lot's DADU site. Null where the DEM has no data or a chunk failed.
+ */
+export async function sampleElevations(points: [number, number][], onChunk?: (done: number, total: number) => void, workers = 6): Promise<(number | null)[]> {
+  const out: (number | null)[] = new Array(points.length).fill(null);
+  const starts: number[] = [];
+  for (let i = 0; i < points.length; i += CHUNK) starts.push(i);
+  let done = 0;
+  const queue = [...starts];
+  await Promise.all(
+    Array.from({ length: workers }, async () => {
+      for (let start = queue.shift(); start !== undefined; start = queue.shift()) {
+        const chunk = points.slice(start, start + CHUNK);
+        for (let attempt = 0; attempt < 4; attempt++) {
+          try {
+            const body = new URLSearchParams({ geometry: JSON.stringify({ points: chunk, spatialReference: { wkid: 4326 } }), geometryType: "esriGeometryMultipoint", returnFirstValueOnly: "true", f: "json" });
+            const res = await fetch(SAMPLES_URL, { method: "POST", body, signal: AbortSignal.timeout(60000) });
+            const d = (await res.json()) as { samples?: { locationId: number; value: string }[]; error?: unknown };
+            if (d.error || !d.samples) throw new Error("elevation service error");
+            for (const smp of d.samples) {
+              const v = Number(smp.value);
+              if (Number.isFinite(v) && v > -100) out[start + smp.locationId] = v * M_TO_FT;
+            }
+            break;
+          } catch {
+            await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+          }
+        }
+        done++;
+        onChunk?.(done, starts.length);
+      }
+    })
+  );
+  return out;
+}

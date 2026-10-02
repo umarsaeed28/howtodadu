@@ -17,6 +17,8 @@ import { str, num } from "@/lib/geo-helpers";
 import { factorsToFeasibilityData } from "./factors-map";
 import { sideClearance, type Ring } from "@/lib/side-clearance";
 import { analyzeTrees, streetAxis, type Crown, type TreeStats } from "@/lib/tree-analysis";
+import { gradeFrom, spotSamplePoints, type GradeStats } from "@/lib/grade";
+import { sampleElevations } from "./elevation";
 
 const ARCGIS = "https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services";
 const FACTORS_URL = `${ARCGIS}/ADUniverse_feasibility_factors/FeatureServer/0/query`;
@@ -68,6 +70,8 @@ export interface Candidate {
   trees?: TreeStats | null;
   /** Share of the lot under buildings, 0 to 100: 2023 building outlines, else ADUniverse. Null when unknown. */
   coveragePct?: number | null;
+  /** Slope of the ground across the DADU site (grade.ts). Null when not measured. */
+  grade?: GradeStats | null;
 }
 
 export interface CandidatePage {
@@ -115,7 +119,7 @@ interface RawFeature {
 }
 
 /** `sideClearanceFt`: room the house leaves on its wider side, measured from building outlines (null if unmeasured). */
-export function toCandidate(f: RawFeature, parcelRow: EligibleParcel, sideClearanceFt: number | null = null, trees: TreeStats | null = null, builtSqft: number | null = null): Candidate | null {
+export function toCandidate(f: RawFeature, parcelRow: EligibleParcel, sideClearanceFt: number | null = null, trees: TreeStats | null = null, builtSqft: number | null = null, grade: GradeStats | null = null): Candidate | null {
   const a = f.attributes;
   const c = f.centroid;
   const { pin, address, zoning, lotSqft } = parcelRow;
@@ -123,6 +127,7 @@ export function toCandidate(f: RawFeature, parcelRow: EligibleParcel, sideCleara
   const feasibility = factorsToFeasibilityData(a);
   feasibility.sideClearanceFt = sideClearanceFt;
   feasibility.treeStats = trees;
+  feasibility.gradeStats = grade;
   if ((feasibility.totalADU ?? 0) >= MAX_ADUS_PER_LOT) return null; // already at the ADU cap
   const parcel: ParcelData = {
     address: address || null,
@@ -181,7 +186,8 @@ export function toCandidate(f: RawFeature, parcelRow: EligibleParcel, sideCleara
     lotDepth: feasibility.lotDepth,
     existingAdus: feasibility.totalADU,
     sideClearanceFt,
-    trees: trees ? { ...trees, clearSpot: null } : null,
+    trees: trees ? { ...trees, clearSpot: null, siteSpot: null } : null,
+    grade,
     coveragePct:
       builtSqft != null && lotSqft > 0
         ? Math.round((builtSqft / lotSqft) * 1000) / 10
@@ -358,7 +364,7 @@ export function treesForLot(ring: Ring, houses: Ring[], crowns: CrownIndex, addr
   const padLat = 45 / 364567, padLng = padLat / Math.cos((ys[0] * Math.PI) / 180);
   const near = crowns.near(Math.min(...xs) - padLng, Math.min(...ys) - padLat, Math.max(...xs) + padLng, Math.max(...ys) + padLat);
   const stats = analyzeTrees(ring as [number, number][], houses as [number, number][][], near, streetAxis(address));
-  delete stats.clearSpot; // only the report draws it
+  delete stats.clearSpot; // only the report draws it (siteSpot stays: the build samples its slope, then drops it)
   return stats;
 }
 
@@ -371,6 +377,7 @@ export async function fetchAllCandidates(onPage?: (stage: string, done: number, 
   for (let o = 0; o < total; o += PAGE_LIMIT) offsets.push(o);
   const out: Candidate[] = [];
   const seen = new Set<string>();
+  const pending: { f: RawFeature; row: EligibleParcel; clearFt: number | null; trees: TreeStats | null; builtSqft: number | null }[] = [];
   let done = 0;
   await runPool(offsets, async (o) => {
     const r = await arcgisPage(FACTORS_URL, {
@@ -395,14 +402,29 @@ export async function fetchAllCandidates(onPage?: (stage: string, done: number, 
       const trees = ring ? treesForLot(ring, buildings.get(pin) ?? [], crowns, row.address) : null;
       const outlines = buildings.get(pin);
       const builtSqft = outlines?.length ? outlines.reduce((s, r) => s + ringAreaSqft(r), 0) : null;
-      const c = toCandidate(f, row, clear?.maxFt ?? null, trees, builtSqft);
-      if (c) {
-        seen.add(pin);
-        out.push(c);
-      }
+      seen.add(pin);
+      pending.push({ f, row, clearFt: clear?.maxFt ?? null, trees, builtSqft });
     }
     done += 1;
     onPage?.("factors", done, offsets.length);
+  });
+
+  // The slope of every lot's DADU site: 25 lidar samples a lot, 500 to a request.
+  const points: [number, number][] = [];
+  const spans = pending.map((p) => {
+    const spot = p.trees?.siteSpot;
+    if (!spot) return null;
+    const pts = spotSamplePoints(spot);
+    const at = points.length;
+    points.push(...pts);
+    return { at, n: pts.length };
+  });
+  const z = await sampleElevations(points, (d, t) => onPage?.("elevation", d, t));
+  pending.forEach((p, i) => {
+    const span = spans[i];
+    const grade = span ? gradeFrom(points.slice(span.at, span.at + span.n), z.slice(span.at, span.at + span.n)) : null;
+    const c = toCandidate(p.f, p.row, p.clearFt, p.trees, p.builtSqft, grade);
+    if (c) out.push(c);
   });
   return out;
 }
