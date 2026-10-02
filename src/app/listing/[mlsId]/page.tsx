@@ -178,9 +178,9 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
               {/* Price first, then the facts line, then the address: the order a home buyer scans in. */}
               <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
                 <p className="pa-display leading-none tabular-nums" style={{ color: "var(--ink)", fontSize: "clamp(36px, 5vw, 48px)" }}>{usd(l.listPrice)}</p>
-                <p className="mb-1 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--green)" }}>
-                  <span className="h-2 w-2 rounded-full" style={{ background: "var(--green)" }} aria-hidden />
-                  {titleCase(l.status.replace(/_/g, " "))}{l.daysOnMarket != null ? ` · ${l.daysOnMarket} ${l.daysOnMarket === 1 ? "day" : "days"} on market` : ""}
+                <p className="mb-1 inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: pendingNote != null ? "#7A5A12" : "var(--green)" }}>
+                  <span className="h-2 w-2 rounded-full" style={{ background: pendingNote != null ? "#D9A441" : "var(--green)" }} aria-hidden />
+                  {pendingNote != null ? "Pending" : titleCase(l.status.replace(/_/g, " "))}{l.daysOnMarket != null ? ` · ${l.daysOnMarket} ${l.daysOnMarket === 1 ? "day" : "days"} on market` : ""}
                 </p>
               </div>
               <ul className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-lg tabular-nums" style={{ color: "var(--ink)" }}>
