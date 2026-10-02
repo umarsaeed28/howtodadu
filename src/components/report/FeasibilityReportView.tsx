@@ -1,6 +1,7 @@
 "use client";
 
-import { daduEconomics } from "@/lib/dadu-value";
+import { REHAB_LABELS, daduEconomics, type RehabLevel } from "@/lib/dadu-value";
+import RehabPicker from "@/components/listing/RehabPicker";
 import type { ReportListing } from "@/lib/feasibility";
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { ArrowLeft, Download, Heart, Loader2, ExternalLink } from "lucide-react";
@@ -47,8 +48,10 @@ function Section({ id, title, children, hint }: { id: string; title: string; chi
 }
 
 
-function Hero({ report, slim, listing, drawnSf }: { report: FeasibilityReport; slim: DashboardPropertySlim; listing: ReportListing | null; drawnSf: number | null }) {
+function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: FeasibilityReport; slim: DashboardPropertySlim; listing: ReportListing | null; drawnSf: number | null; houseSqft: number | null }) {
   const s = report.summary;
+  // How much work the existing house needs: its cost per sf of house joins the all-in cost and the return.
+  const [rehab, setRehab] = useState<RehabLevel>("none");
   // The cottage the estimate is for: the one drawn on the plan when there is one, else the largest the lot allows.
   const estSf = drawnSf ?? s.max_buildable_sf?.value ?? null;
   const estCost = estSf ? constructionEstimate(estSf) : null;
@@ -61,7 +64,7 @@ function Hero({ report, slim, listing, drawnSf }: { report: FeasibilityReport; s
     lot ? `${sf(lot.value)} lot` : null,
     slim.zoning ? `Zoned ${slim.zoning}` : null,
   ].filter((x): x is string => !!x);
-  const e = daduEconomics(estSf);
+  const e = daduEconomics(estSf, undefined, { rehab, houseSqft });
   const roiPct = e ? Math.round(e.roi * 100) : null;
   const money = (n: number) => (n < 0 ? "−" : "") + usd(Math.abs(n));
   // The strip: price when the home is for sale, then what the cottage costs and returns. Numbers lead, one line each.
@@ -85,10 +88,11 @@ function Hero({ report, slim, listing, drawnSf }: { report: FeasibilityReport; s
   });
   if (e) {
     tiles.push({ label: "DADU resale value", value: usd(e.saleValue), note: `${usd(e.salePsf)} per sf · ${usd(e.allInCost)} all in` });
-    tiles.push({ label: "Profit", value: money(e.profit), note: `after ${usd(e.softCosts)} soft costs`, tone: e.profit >= 0 ? "green" : "red" });
+    if (e.rehabCost > 0) tiles.push({ label: `${REHAB_LABELS[e.rehab]} of the house`, value: usd(e.rehabCost), note: `${Math.round(houseSqft ?? 0).toLocaleString()} sf × $${e.rehabRate} per sf` });
+    tiles.push({ label: "Profit", value: money(e.profit), note: e.rehabCost > 0 ? `after ${usd(e.softCosts)} soft costs and rehab` : `after ${usd(e.softCosts)} soft costs`, tone: e.profit >= 0 ? "green" : "red" });
     tiles.push({ label: "ROI", value: `${roiPct}%`, note: "profit over all-in cost", tone: (roiPct ?? 0) >= 0 ? "green" : "red" });
   }
-  if (listing && estCost) tiles.push({ label: "Price plus DADU build", value: usd(listing.price + estCost), note: "home and cottage together" });
+  if (listing && estCost) tiles.push({ label: e && e.rehabCost > 0 ? "Price, rehab and DADU build" : "Price plus DADU build", value: usd(listing.price + estCost + (e?.rehabCost ?? 0)), note: "home and cottage together" });
 
   return (
     <section aria-labelledby="rep-sum" id="rep-overview" className="mb-6 scroll-mt-[190px]">
@@ -112,7 +116,8 @@ function Hero({ report, slim, listing, drawnSf }: { report: FeasibilityReport; s
       </h2>
       <p className="mt-1 max-w-3xl text-base leading-relaxed" style={{ color: "var(--slate)" }}>{s.headline} {slim.neighborhood ? `${slim.neighborhood}. ` : ""}This is the site and code check.</p>
 
-      <dl className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6" aria-label="Price, cost and return">
+      <div className="mt-4"><RehabPicker value={rehab} onChange={setRehab} houseSqft={houseSqft} /></div>
+      <dl className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6" aria-label="Price, cost and return">
         {tiles.map((t) => (
           <div key={t.label} className="pa-raised min-w-0 p-3 sm:p-4">
             <dt className="text-xs" style={{ color: "var(--slate)" }}>{t.label}</dt>
@@ -320,7 +325,7 @@ export default function FeasibilityReportView({
         </div>
       )}
 
-      {report && <Hero report={report} slim={slim} listing={detailRow?.result.listing ?? null} drawnSf={drawnSf} />}
+      {report && <Hero report={report} slim={slim} listing={detailRow?.result.listing ?? null} drawnSf={drawnSf} houseSqft={detailRow?.result.listing?.livingSqft ?? detailRow?.result.feasibility?.totalBuildingSqft ?? null} />}
       {report && detailRow && <SectionTabs />}
       {report && detailRow && <ReportBody report={report} row={detailRow} snapshotRef={snapshotRef} onDaduChange={setDrawnSf} />}
 

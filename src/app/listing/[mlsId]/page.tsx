@@ -16,13 +16,13 @@ import InvestorSnapshot from "@/components/listing/InvestorSnapshot";
 import ListingPhoto from "@/components/listing/ListingPhoto";
 import LotSketch from "@/components/listing/LotSketch";
 import SaveButton from "@/components/listing/SaveButton";
+import InvestorRoi from "@/components/listing/InvestorRoi";
 import { zillowUrl } from "@/lib/property-image";
 import { overrideFor, statusOverrides } from "@/lib/listings/status-overrides";
 import { isPending } from "@/lib/listings/status";
 import DaduSnapshot from "@/components/listing/DaduSnapshot";
 import { siteScoreFor } from "@/lib/server/site-score";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
-import { daduEconomics } from "@/lib/dadu-value";
 import { GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT, gradeNote } from "@/lib/grade";
 
 export const dynamic = "force-dynamic";
@@ -99,7 +99,6 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
   const sf = lot?.daduSqft ? Math.round(lot.daduSqft) : 0;
   const fullAddress = l.address;
   const site = siteScoreFor(l, lot, adu);
-  const econ = daduEconomics(lot?.daduSqft);
   // Pending: from our status list (data/listing-status.json) or the source. Null when the listing is active.
   const override = overrideFor(statusOverrides(), l.address, l.zip);
   const pendingNote = override ? override.note : isPending(l.status) ? "" : null;
@@ -248,11 +247,12 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
 
             <section aria-labelledby="inv-h">
               <h2 id="inv-h" className="pa-display scroll-mt-[130px] text-xl" style={{ color: "var(--ink)" }}>Investor view</h2>
-              <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {lot?.daduSqft ? (
+                <div className="mt-3"><InvestorRoi daduSqft={lot.daduSqft} houseSqft={l.livingSqft ?? null} listPrice={l.listPrice} /></div>
+              ) : null}
+              <dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {([
-                  ["DADU ROI", econ ? `${Math.round(econ.roi * 100)}%` : null, econ ? `${usd(econ.profit)} profit on ${usd(econ.allInCost)} all in` : ""],
-                  ["DADU resale value", econ ? usd(econ.saleValue) : null, econ ? `${econ.sf.toLocaleString()} sf × ${usd(econ.salePsf)} per sf` : ""],
-                  ["Price plus DADU", lot?.daduSqft ? usd(basis.allIn) : null, lot?.daduSqft ? `${usd(l.listPrice)} + ${usd(basis.buildCost)} build` : "No DADU size found"],
+                  ...(lot?.daduSqft ? [] : [["Price plus DADU", null, "No DADU size found"] as [string, string | null, string]]),
                   ["Per sf, house plus DADU", basis.allInPerTotalSf ? usd(basis.allInPerTotalSf) : null, basis.pricePerSf ? `${usd(basis.pricePerSf)} for the house alone` : ""],
                   ["Land share of value", basis.landSharePct != null ? `${basis.landSharePct}%` : null, basis.landSharePct != null && basis.landSharePct >= 70 ? "High: the house adds little" : "Of the assessed value"],
                   ["Price to assessed", basis.priceToAssessed ? `${basis.priceToAssessed.toFixed(2)}x` : null, values?.landAv != null && values?.bldgAv != null ? `Assessed ${usd(values.landAv + values.bldgAv)}` : "King County assessor"],

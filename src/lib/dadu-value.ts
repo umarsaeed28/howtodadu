@@ -16,12 +16,27 @@ export function salePricePerSf(sf: number): number {
   return Math.round(SALE_PSF_AT_800 + SLOPE * (s - 800));
 }
 
+/** Rehab of the existing house, per sf of the house: a cost the buyer takes on with the lot. */
+export type RehabLevel = "none" | "light" | "moderate" | "heavy";
+export const REHAB_RATES: Record<RehabLevel, number> = { none: 0, light: 70, moderate: 95, heavy: 120 };
+export const REHAB_LABELS: Record<RehabLevel, string> = { none: "No rehab", light: "Light rehab", moderate: "Moderate rehab", heavy: "Heavy rehab" };
+
+export interface EconomicsOptions {
+  rehab?: RehabLevel;
+  /** The existing house's living area, sf. Rehab cost is this times the level's rate. */
+  houseSqft?: number | null;
+}
+
 export interface DaduEconomics {
   sf: number;
   salePsf: number;
   saleValue: number;
   buildCost: number;
   softCosts: number;
+  rehab: RehabLevel;
+  rehabRate: number;
+  rehabCost: number;
+  /** Build plus soft costs plus any rehab. */
   allInCost: number;
   profit: number;
   /** Profit over all-in cost, 0 to 1. */
@@ -29,15 +44,18 @@ export interface DaduEconomics {
 }
 
 /** Sale value, cost, profit and ROI for a DADU of `sf` square feet. Null when there is no room for one. */
-export function daduEconomics(sf: number | null | undefined, costPerSf: number = COST_PER_SF): DaduEconomics | null {
+export function daduEconomics(sf: number | null | undefined, costPerSf: number = COST_PER_SF, opts: EconomicsOptions = {}): DaduEconomics | null {
   if (!sf || !Number.isFinite(sf) || sf <= 0) return null;
   const s = Math.round(sf);
   const salePsf = salePricePerSf(s);
   const saleValue = Math.round(s * salePsf);
   const buildCost = constructionEstimate(s, costPerSf);
-  const allInCost = buildCost + SOFT_COSTS;
+  const rehab = opts.rehab ?? "none";
+  const rehabRate = REHAB_RATES[rehab];
+  const rehabCost = opts.houseSqft && opts.houseSqft > 0 ? Math.round(opts.houseSqft * rehabRate) : 0;
+  const allInCost = buildCost + SOFT_COSTS + rehabCost;
   const profit = saleValue - allInCost;
-  return { sf: s, salePsf, saleValue, buildCost, softCosts: SOFT_COSTS, allInCost, profit, roi: profit / allInCost };
+  return { sf: s, salePsf, saleValue, buildCost, softCosts: SOFT_COSTS, rehab, rehabRate, rehabCost, allInCost, profit, roi: profit / allInCost };
 }
 
 export const ECONOMICS_LABEL = "Resale value from the team's market read: about $800 per sf at 800 sf, $680 per sf at 1,000 sf. Costs: $350 per sf to build plus $50,000 soft costs. An estimate, not an appraisal.";

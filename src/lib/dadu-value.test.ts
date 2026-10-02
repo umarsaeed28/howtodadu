@@ -27,4 +27,15 @@ describe("DADU resale value and ROI", () => {
     expect(Math.round(e.roi * 100)).toBe(94);
   });
   it("no room means no economics", () => expect(daduEconomics(0)).toBeNull());
+  it("rehab of the existing house adds to the all-in cost: light $70, moderate $95, heavy $120 per sf of house", () => {
+    const base = daduEconomics(1000)!;
+    const light = daduEconomics(1000, undefined, { rehab: "light", houseSqft: 1500 })!;
+    const heavy = daduEconomics(1000, undefined, { rehab: "heavy", houseSqft: 1500 })!;
+    expect(light.rehabCost).toBe(105_000);
+    expect(light.allInCost).toBe(base.allInCost + 105_000);
+    expect(heavy.rehabCost).toBe(180_000);
+    expect(heavy.roi).toBeLessThan(light.roi);
+    expect(daduEconomics(1000, undefined, { rehab: "moderate", houseSqft: 2000 })!.rehabCost).toBe(190_000);
+    expect(daduEconomics(1000, undefined, { rehab: "heavy", houseSqft: null })!.rehabCost).toBe(0);
+  });
 });

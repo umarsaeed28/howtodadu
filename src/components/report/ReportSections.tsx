@@ -3,6 +3,7 @@
 import { AlertTriangle, CheckCircle2, CircleHelp, Home, MoveHorizontal, MoveVertical, Percent, Ruler, Trees, XCircle } from "lucide-react";
 import type { FeasibilityReport } from "../../../packages/schema/src";
 import type { FeasibilityTableRow } from "@/lib/feasibility-table-model";
+import { GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT } from "@/lib/grade";
 
 const fmt = (n: number) => Math.round(n).toLocaleString();
 const usd = (n: number) => `$${fmt(n)}`;
@@ -94,11 +95,13 @@ const CHECK_TONE = {
 } as const;
 
 export function ConstraintsGrid({ row }: { row: FeasibilityTableRow }) {
-  // Only the two checks the rest of the report does not already show: existing ADUs and critical areas.
+  // Two checks the rest of the report does not already show: existing ADUs, and how steep the DADU site is.
   const checks = row.report.checks.filter((c) => /adu/i.test(c.label));
-  const eca = row.report.eca;
+  const g = row.result.feasibility?.gradeStats ?? null;
+  const gradeStatus: keyof typeof CHECK_TONE = !g ? "warning" : g.slopePct >= GRADE_VERY_STEEP_PCT ? "fail" : g.slopePct >= GRADE_STEEP_PCT ? "warning" : "pass";
+  const gt = CHECK_TONE[gradeStatus];
   return (
-    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {checks.map((c) => {
         const t = CHECK_TONE[c.status as keyof typeof CHECK_TONE] ?? CHECK_TONE.warning;
         return (
@@ -116,13 +119,16 @@ export function ConstraintsGrid({ row }: { row: FeasibilityTableRow }) {
         );
       })}
       <li className="pa-inset flex items-start gap-3 p-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style={{ background: eca.hasIssues ? "var(--amber-tint)" : "var(--green-tint)" }}>
-          {eca.hasIssues ? <AlertTriangle size={16} aria-hidden style={{ color: "var(--amber)" }} /> : <CheckCircle2 size={16} aria-hidden style={{ color: "var(--green)" }} />}
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style={{ background: gt.bg }}>
+          <gt.Icon size={16} aria-hidden style={{ color: gt.color }} />
         </span>
         <span className="min-w-0">
-          <span className="block text-xs" style={{ color: "var(--slate)" }}>Critical areas</span>
-          <span className="pa-display block text-base" style={{ color: "var(--ink)" }}>{eca.hasIssues ? `${eca.labels.length} flag${eca.labels.length === 1 ? "" : "s"}` : "None"}</span>
-          <span className="block text-[11px] leading-snug" style={{ color: "var(--slate)" }}>{eca.hasIssues ? eca.labels.join(", ") : "No steep slope, wetland, slide or flood layers"}</span>
+          <span className="sr-only">{gt.word}: </span>
+          <span className="block text-xs" style={{ color: "var(--slate)" }}>Steep grade at the DADU site</span>
+          <span className="pa-display block text-base tabular-nums" style={{ color: "var(--ink)" }}>{g ? `${g.slopePct}% slope` : "Not measured"}</span>
+          <span className="block text-[11px] leading-snug" style={{ color: "var(--slate)" }}>
+            {g ? `${g.riseFt} ft of rise across the site. ${g.slopePct >= GRADE_VERY_STEEP_PCT ? "Very steep: retaining walls, a stepped foundation and heavy excavation." : g.slopePct >= GRADE_STEEP_PCT ? "Steep: expect a stepped foundation and retaining walls." : g.slopePct >= 5 ? "A moderate slope: some grading or a stepped foundation." : "Close to flat."}` : "No lidar sample for this site."}
+          </span>
         </span>
       </li>
     </ul>
