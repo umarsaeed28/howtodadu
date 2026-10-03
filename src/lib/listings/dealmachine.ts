@@ -1,7 +1,5 @@
 import { createCache } from "./refresh-cache";
 import type { ListingQuery, ListingsProvider, RawListing } from "./provider";
-import { findLotForListing } from "@/lib/server/lot-library-store";
-import { inBuyBox } from "@/lib/buy-box";
 
 /**
  * Live on-market listings from DealMachine (https://api.docs.dealmachine.com). Needs DEALMACHINE_API_KEY.
@@ -91,13 +89,6 @@ async function search(page: number): Promise<{ data: Obj[]; hasNext: boolean }> 
   return { data: j.data ?? [], hasNext: !!j.pagination?.has_next_page };
 }
 
-/** The buy box needs the lot; only these can reach the map, so only they are kept. */
-const isCandidate = (l: RawListing) => {
-  if ((l.hoaMonthly ?? 0) > 0) return false;
-  const lot = findLotForListing(l.address, l.lat, l.lng);
-  return !!lot && inBuyBox({ zoning: lot.zoning, lotSqft: lot.lotSqft, coveragePct: lot.coveragePct, existingAdus: lot.existingAdus, score: lot.score });
-};
-
 async function pullAll(): Promise<RawListing[]> {
   const all: RawListing[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
@@ -108,10 +99,12 @@ async function pullAll(): Promise<RawListing[]> {
     }
     if (!r.hasNext) break;
   }
-  return all.filter(isCandidate);
+  // The whole pull is kept. The buy box is applied on each request (map-listings), so a scoring change takes effect at
+  // once instead of waiting for the next pull.
+  return all;
 }
 
-export const dealMachineCache = createCache<RawListing[]>("dealmachine-active-v3", pullAll, MAX_AGE_MS);
+export const dealMachineCache = createCache<RawListing[]>("dealmachine-active-v4", pullAll, MAX_AGE_MS);
 
 export class DealMachineProvider implements ListingsProvider {
   async search(q: ListingQuery): Promise<{ listings: RawListing[]; total: number }> {
