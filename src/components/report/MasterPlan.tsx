@@ -473,7 +473,9 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     const under = crownsUnder(screenCorners(x));
     if (under.length) {
       const nL = under.filter((t) => t.size === "large").length, nM = under.length - nL;
-      list.push({ ok: false, text: `Under ${[nL && `${nL} large`, nM && `${nM} medium`].filter(Boolean).join(" and ")} tree crown${under.length === 1 ? "" : "s"}: ${nL ? "large trees are likely protected" : "removal needs a tree review and replacement"}` });
+      // A large tree is likely protected: a real problem. A medium one can come out with a review and replacement.
+      if (nL) list.push({ ok: false, text: `Under ${nL} large tree crown${nL === 1 ? "" : "s"}${nM ? ` and ${nM} medium` : ""}: large trees are likely protected` });
+      else list.push({ ok: true, text: `Over ${nM} medium tree${nM === 1 ? "" : "s"}: plan to remove and replace (tree review)` });
     } else if (bigCrowns.length) list.push({ ok: true, text: "Clear of medium and large tree crowns" });
     if (x.kind === "dadu" && !hitsBuilding && houseGap != null)
       list.push(houseGap < HOUSE_SEPARATION_FT ? { ok: false, text: `${houseGap.toFixed(1)} ft from the house; a DADU needs ${HOUSE_SEPARATION_FT} ft` } : { ok: true, text: `${houseGap.toFixed(0)} ft from the house (${HOUSE_SEPARATION_FT} ft needed)` });

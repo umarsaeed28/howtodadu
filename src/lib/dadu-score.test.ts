@@ -86,12 +86,14 @@ describe("factors follow the team guide", () => {
     expect(scoreSite({ ...best, canopyPct: 5, trees: openTrees }).grade).toBe("Top pick");
     expect(scoreSite({ ...best, canopyPct: 45 }).score).toBeLessThanOrEqual(92);
     expect(scoreSite({ ...best, canopyPct: 65 }).score).toBeLessThanOrEqual(81);
-    expect(scoreSite({ ...best, trees: { ...openTrees, canopyPct: 45 } }).score).toBeLessThan(scoreSite({ ...best, trees: { ...openTrees, canopyPct: 15 } }).score - 10);
+    // Trees are 10% of the score now, so heavy canopy costs a few points, not a grade.
+    expect(scoreSite({ ...best, trees: { ...openTrees, canopyPct: 45 } }).score).toBeLessThan(scoreSite({ ...best, trees: { ...openTrees, canopyPct: 15 } }).score - 4);
+    expect(scoreSite({ ...best, trees: { ...openTrees, canopyPct: 65 } }).score).toBeLessThanOrEqual(92);
   });
-  it("2722 NE Blakeley St (40 x 139 ft, no alley, 880 sf DADU, flat) lands in the high 60s, not 84", () => {
+  it("2722 NE Blakeley St (40 x 139 ft, no alley, 880 sf DADU, flat) lands around 70, not 84", () => {
     const s = scoreSite({ ...base, widthFt: 40, depthFt: 139, daduSqft: 880, canopyPct: 0.2 });
     expect(s.score).toBeGreaterThanOrEqual(66);
-    expect(s.score).toBeLessThanOrEqual(70);
+    expect(s.score).toBeLessThanOrEqual(72);
   });
   it("a wide alley lot with a full-size DADU is a top pick", () => {
     const s = scoreSite({ ...base, alley: true, widthFt: 50, depthFt: 120, daduSqft: 1000, trees: openTrees });
@@ -102,39 +104,44 @@ describe("factors follow the team guide", () => {
 
 describe("measured trees (2021 LiDAR crowns)", () => {
   const great = { ...base, alley: true, widthFt: 60, depthFt: 140, daduSqft: 1000 };
-  it("9612 55th Ave S: 1 large and 7 medium trees, only 272 sf open behind the house, scored 90 before; now Marginal and hidden", () => {
+  it("9612 55th Ave S: 1 large and 7 medium trees, 272 sf open: fits once medium trees come out, so Fair at best, not hidden", () => {
     const s = scoreSite({ ...great, canopyPct: 0.2, trees: { large: 1, medium: 7, small: 2, canopyPct: 32, clearSqft: 272, clearSqftIfMediumRemoved: 1656 } });
     expect(s.eligible).toBe(true);
-    expect(s.score).toBeLessThan(70);
-    expect(s.grade).toBe("Marginal");
-    expect(f(s, "trees")).toBeLessThanOrEqual(10);
+    expect(s.score).toBeLessThanOrEqual(81);
+    expect(s.score).toBeGreaterThanOrEqual(70);
+    expect(f(s, "trees")).toBeLessThanOrEqual(50);
+    expect(s.factors.find((x) => x.key === "trees")!.note).toMatch(/once medium trees come out/);
+  });
+  it("needing to remove one or two medium trees only keeps a lot from being a top pick", () => {
+    const s = scoreSite({ ...great, trees: { large: 0, medium: 2, small: 0, canopyPct: 12, clearSqft: 200, clearSqftIfMediumRemoved: 1200 } });
+    expect(s.score).toBeLessThanOrEqual(92);
+    expect(s.score).toBeGreaterThanOrEqual(82);
   });
   it("large trees that leave no 15 x 20 ft spot even with smaller trees removed fail the lot", () => {
     const s = scoreSite({ ...great, trees: { large: 3, medium: 0, small: 0, canopyPct: 55, clearSqft: 0, clearSqftIfMediumRemoved: 120 } });
     expect(s.eligible).toBe(false);
     expect(s.gates.find((g) => g.key === "trees")!.status).toBe("fail");
   });
-  it("a tight clear spot (under 600 sf) is Fair at best", () => {
-    expect(scoreSite({ ...great, trees: { ...openTrees, clearSqft: 450 } }).score).toBeLessThanOrEqual(81);
+  it("open ground clear of large trees under 600 sf is Fair at best", () => {
+    expect(scoreSite({ ...great, trees: { ...openTrees, clearSqft: 450, clearSqftIfMediumRemoved: 450 } }).score).toBeLessThanOrEqual(81);
+    // Medium trees in the way do not make it tight: 450 sf clear today, 1,500 sf once they come out.
+    expect(scoreSite({ ...great, trees: { ...openTrees, clearSqft: 450 } }).score).toBeGreaterThan(81);
   });
-  it("with under 1,000 sf open, four medium or large trees cap at Fair and six at Marginal", () => {
-    expect(scoreSite({ ...great, trees: { ...openTrees, clearSqft: 800, medium: 4, canopyPct: 20 } }).score).toBeLessThanOrEqual(81);
-    expect(scoreSite({ ...great, trees: { ...openTrees, clearSqft: 800, medium: 6, canopyPct: 20 } }).score).toBeLessThan(70);
+  it("with under 1,000 sf open, four large trees cap at Fair and six at Marginal; medium trees do not", () => {
+    const tight = { ...openTrees, clearSqft: 800, clearSqftIfMediumRemoved: 800, canopyPct: 20 };
+    expect(scoreSite({ ...great, trees: { ...tight, large: 4 } }).score).toBeLessThanOrEqual(81);
+    expect(scoreSite({ ...great, trees: { ...tight, large: 6 } }).score).toBeLessThan(70);
+    expect(scoreSite({ ...great, trees: { ...tight, medium: 6 } }).score).toBeGreaterThan(81);
   });
-  it("522 NE 127th St: 4 large and 2 medium trees but 1,590 sf open behind the house is Fair, not hidden and not Good", () => {
+  it("522 NE 127th St: 4 large and 2 medium trees with 1,590 sf open is Good", () => {
     const s = scoreSite({ ...base, widthFt: 90, depthFt: 121, daduSqft: 1000, sideClearanceFt: 28, lotSqft: 10870, trees: { large: 4, medium: 2, small: 6, canopyPct: 33, clearSqft: 1590, clearSqftIfMediumRemoved: 1590 } });
-    expect(s.grade).toBe("Fair");
-    expect(s.score).toBeGreaterThanOrEqual(75);
+    expect(s.grade).toBe("Good");
   });
-  it("each medium or large tree costs the tree factor 5 points", () => {
-    expect(f(scoreSite({ ...great, trees: { ...openTrees, canopyPct: 15, medium: 2 } }), "trees")).toBe(75);
+  it("a large tree costs the tree factor 5 points, a medium one 2", () => {
+    expect(f(scoreSite({ ...great, trees: { ...openTrees, canopyPct: 15, medium: 2 } }), "trees")).toBe(81);
+    expect(f(scoreSite({ ...great, trees: { ...openTrees, canopyPct: 15, large: 2 } }), "trees")).toBe(75);
   });
-  it("when the house, not the trees, leaves no 15 x 20 ft spot, the trees gate does not fail it; it is Fair at best", () => {
-    const s = scoreSite({ ...great, trees: { large: 1, medium: 0, small: 0, canopyPct: 8, clearSqft: 0, clearSqftIfMediumRemoved: 0, siteSqft: 120, site: "side" } });
-    expect(s.eligible).toBe(true);
-    expect(s.gates.find((g) => g.key === "trees")).toBeUndefined();
-    expect(s.score).toBeLessThanOrEqual(81);
-  });
+  it("trees are 10% of the score", () => expect(WEIGHTS.trees).toBe(10));
   it("unmeasured trees can never be a top pick, whatever the canopy figure says", () => {
     expect(scoreSite({ ...great, canopyPct: 0.05 }).score).toBeLessThanOrEqual(92);
     expect(scoreSite({ ...great, canopyPct: null }).score).toBeLessThanOrEqual(81);

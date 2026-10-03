@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT } from "@/lib/grade";
 
 type Span = { s0: number; s1: number };
@@ -29,6 +30,8 @@ export default function LotSection({
   units: (Span & { kind: "dadu" | "aadu"; stories: 1 | 2; cut: boolean })[];
   maxHeight: number | null;
 }) {
+  // The city data has no building heights, so the front house is drawn at one or two stories, your pick.
+  const [houseStories, setHouseStories] = useState<1 | 2>(1);
   const pts = profile.filter((p): p is { s: number; z: number } => p.z != null);
   if (pts.length < 2) return null;
 
@@ -43,8 +46,9 @@ export default function LotSection({
   const length = profile[profile.length - 1].s;
 
   const STORY_FT = 10;
-  /** The city data has no building heights; the house is drawn at an assumed 15 ft. */
-  const HOUSE_HEIGHT_FT = 15;
+  /** Assumed front-house heights: eave at 10 ft a story, with a 5 ft roof. One story 15 ft, two stories 25 ft. */
+  const HOUSE_EAVE_FT = houseStories * STORY_FT;
+  const HOUSE_HEIGHT_FT = HOUSE_EAVE_FT + 5;
   const existing = buildings.map((b) => {
     const under = zIn(b.s0, b.s1);
     const base = under.length ? under.reduce((a, c) => a + c, 0) / under.length : zAt((b.s0 + b.s1) / 2);
@@ -79,7 +83,17 @@ export default function LotSection({
 
   return (
     <div className="mt-4">
-      <h4 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>Section A–A′ through the lot</h4>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>Section A–A′ through the lot</h4>
+        <div className="flex items-center gap-1 text-xs" role="group" aria-label="Front house height">
+          <span className="mr-1" style={{ color: "var(--slate)" }}>Front house</span>
+          {([1, 2] as const).map((n) => (
+            <button key={n} type="button" aria-pressed={houseStories === n} onClick={() => setHouseStories(n)} className={`pa-chip ${houseStories === n ? "pa-chip-active" : ""}`} style={{ minHeight: 28 }}>
+              {n === 1 ? "1 story" : "2 stories"}
+            </button>
+          ))}
+        </div>
+      </div>
       <svg data-pdf-section viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className="mt-2 w-full" role="img" aria-label={`Section A–A′ through the lot. The ground ${fall >= 0 ? "falls" : "rises"} ${Math.abs(fall).toFixed(1)} feet from the front lot line to the rear lot line.`} style={{ fontSize: fs, maxHeight: 280 }}>
         <defs>
           {/* earth: fine diagonal hatch under the cut ground line */}
@@ -113,7 +127,7 @@ export default function LotSection({
           const w = b.s1 - b.s0;
           if (b.top == null)
             return <rect key={b.key} x={b.s0} y={Y(b.base) - 2.2 * ex} width={w} height={2.2 * ex} fill="none" stroke="#17241D" strokeOpacity="0.5" strokeWidth={sw * 0.6} />;
-          const eave = b.base + 10;
+          const eave = b.base + HOUSE_EAVE_FT;
           const ridge = b.top;
           if (!b.cut)
             return (
@@ -125,10 +139,12 @@ export default function LotSection({
               <path d={`M${b.s0} ${Y(b.base)} V${Y(eave)} L${b.s0 + w / 2} ${Y(ridge)} L${b.s1} ${Y(eave)} V${Y(b.base)} Z`} fill="#fff" />
               <rect x={b.s0} y={Y(eave)} width={wt} height={Y(b.base) - Y(eave)} fill="#17241D" />
               <rect x={b.s1 - wt} y={Y(eave)} width={wt} height={Y(b.base) - Y(eave)} fill="#17241D" />
-              <rect x={b.s0} y={Y(b.base) - wt * 0.7 * ex} width={w} height={wt * 0.7 * ex} fill="#17241D" />
+              {Array.from({ length: houseStories }, (_, k) => (
+                <rect key={k} x={b.s0} y={Y(b.base + k * STORY_FT) - wt * 0.7 * ex} width={w} height={wt * 0.7 * ex} fill="#17241D" />
+              ))}
               <path d={`M${b.s0 - 0.8} ${Y(eave)} L${b.s0 + w / 2} ${Y(ridge)} L${b.s1 + 0.8} ${Y(eave)}`} fill="none" stroke="#17241D" strokeWidth={sw * 2.2} strokeLinejoin="miter" />
-              <text x={(b.s0 + b.s1) / 2} y={(Y(eave) + Y(b.base)) / 2} dy={fs * 0.25} textAnchor="middle" style={{ fontSize: fs * 0.55, fill: "#17241D", fillOpacity: 0.75 }}>
-                {`House (${HOUSE_HEIGHT_FT}' assumed)`}
+              <text x={(b.s0 + b.s1) / 2} y={Y(b.base + STORY_FT / 2)} dy={fs * 0.25} textAnchor="middle" style={{ fontSize: fs * 0.55, fill: "#17241D", fillOpacity: 0.75 }}>
+                {`House, ${houseStories} ${houseStories === 1 ? "story" : "stories"} (${HOUSE_HEIGHT_FT}' assumed)`}
               </text>
             </g>
           );

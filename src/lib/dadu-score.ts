@@ -13,7 +13,7 @@ import { GRADE_MODERATE_PCT, GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT, gradeNote, t
 export const MIN_DADU_SQFT = 300;
 const FULL_DADU_SQFT = 1000;
 
-export const WEIGHTS = { access: 30, layout: 20, size: 15, site: 15, trees: 20 } as const;
+export const WEIGHTS = { access: 30, layout: 20, size: 20, site: 20, trees: 10 } as const;
 export type FactorKey = keyof typeof WEIGHTS;
 
 export const FACTOR_NAMES: Record<FactorKey, string> = {
@@ -179,41 +179,51 @@ function treeFactor(canopy: number | null): { score: number; note: string } {
   return { score: 0, note: `Tree canopy ${c}%: dense. Protected trees may rule out a DADU entirely, so this lot is Fair at best.` };
 }
 
-/** Clear spot under this (but at least the minimum) means a tight fit: Fair at best. */
+/** Open ground (clear of large trees) under this means a tight fit: Fair at best. */
 export const TIGHT_CLEAR_SQFT = 600;
-/** Medium or large trees on the lot at which the grade is capped (Fair at best, then Marginal) when open ground is short. */
+/** Large trees on the lot at which the grade is capped (Fair at best, then Marginal) when open ground is short. */
 export const TREES_FAIR_AT_BEST = 4;
 export const TREES_MARGINAL = 6;
-/** Open ground behind the house at which the tree count stops capping the grade: there is room to build around them. */
+/** Open ground at which the large-tree count stops capping the grade: there is room to build around them. */
 export const ROOMY_CLEAR_SQFT = 1000;
+/** Medium trees that must come out before a DADU fits: this many or more is Fair at best. */
+export const MEDIUM_REMOVALS_FAIR_AT_BEST = 4;
 
-/** Measured trees: the open ground behind the house decides it, then how many medium and large trees there are. */
 /** True when the house itself leaves no 15 by 20 ft spot, so open ground says nothing about the trees. */
 const noRoomBeforeTrees = (t: TreeStats) => t.siteSqft != null && t.siteSqft < MIN_FOOTPRINT_SQFT;
 
+/**
+ * Measured trees. Large trees (likely protected) decide where a DADU can go; medium trees can come out with a review
+ * and replacement, so they cost a little and never hide a lot on their own.
+ */
 function measuredTreeFactor(t: TreeStats): { score: number; note: string; cap: number } {
   const big = t.large + t.medium;
   const count = `${t.large} large and ${t.medium} medium tree${big === 1 ? "" : "s"} reach the lot; canopy covers ${t.canopyPct}%`;
   const where = t.site === "side" ? "past the front of the house" : "behind the house";
+  const byCanopy = t.canopyPct <= 10 ? 100 : t.canopyPct <= 20 ? 85 : t.canopyPct <= 30 ? 65 : t.canopyPct <= 40 ? 45 : t.canopyPct <= 50 ? 30 : 15;
+  let score = Math.max(0, byCanopy - t.large * 5 - t.medium * 2);
   if (noRoomBeforeTrees(t)) {
-    // Not a tree finding: the house leaves no clear 15 by 20 ft rectangle. Score the trees on canopy and count, and keep
-    // the lot out of the top grades until someone confirms where a DADU goes.
-    const score = Math.max(0, (t.canopyPct <= 10 ? 100 : t.canopyPct <= 20 ? 85 : t.canopyPct <= 30 ? 65 : t.canopyPct <= 40 ? 45 : t.canopyPct <= 50 ? 30 : 15) - big * 5);
+    // Not a tree finding: the house leaves no clear 15 by 20 ft rectangle. Keep the lot out of the top grades until
+    // someone confirms where a DADU goes.
     return { score, cap: GRADE_BANDS[1].min - 1, note: `${count}. The house leaves no clear 15 by 20 ft spot for a DADU in the city outlines, so placement needs a site visit.` };
   }
-  if (t.clearSqft < MIN_FOOTPRINT_SQFT)
-    return { score: 5, cap: GRADE_BANDS[2].min - 1, note: `${count}. No open 15 by 20 ft spot ${where}: a DADU would mean removing medium trees, with tree review and replacement.` };
-  let score = t.canopyPct <= 10 ? 100 : t.canopyPct <= 20 ? 85 : t.canopyPct <= 30 ? 65 : t.canopyPct <= 40 ? 45 : t.canopyPct <= 50 ? 30 : 15;
-  score = Math.max(0, score - big * 5);
+  // Open ground: clear of large trees. Medium trees in the way are assumed removable.
+  const open = t.clearSqftIfMediumRemoved;
+  const needsRemoval = t.clearSqft < MIN_FOOTPRINT_SQFT;
   let cap = 100;
-  if (t.clearSqft < TIGHT_CLEAR_SQFT) { score = Math.min(score, 40); cap = GRADE_BANDS[1].min - 1; }
-  if (t.clearSqft < ROOMY_CLEAR_SQFT) {
-    if (big >= TREES_MARGINAL) cap = Math.min(cap, GRADE_BANDS[2].min - 1);
-    else if (big >= TREES_FAIR_AT_BEST) cap = Math.min(cap, GRADE_BANDS[1].min - 1);
+  let note = `${count}. The largest open spot ${where} is about ${t.clearSqft.toLocaleString("en-US")} sf.`;
+  if (needsRemoval) {
+    score = Math.min(score, 50);
+    cap = t.medium >= MEDIUM_REMOVALS_FAIR_AT_BEST ? GRADE_BANDS[1].min - 1 : GRADE_BANDS[0].min - 1;
+    note = `${count}. A DADU fits ${where} once medium trees come out (about ${open.toLocaleString("en-US")} sf then), with a tree review and replacement.`;
   }
-  if (t.canopyPct > CANOPY_FAIR_AT_BEST) cap = Math.min(cap, GRADE_BANDS[1].min - 1);
-  else if (t.canopyPct > CANOPY_NO_TOP_PICK) cap = Math.min(cap, GRADE_BANDS[0].min - 1);
-  return { score, cap, note: `${count}. The largest open spot ${where} is about ${t.clearSqft.toLocaleString("en-US")} sf.` };
+  if (open < TIGHT_CLEAR_SQFT) { score = Math.min(score, 40); cap = Math.min(cap, GRADE_BANDS[1].min - 1); }
+  if (open < ROOMY_CLEAR_SQFT) {
+    if (t.large >= TREES_MARGINAL) cap = Math.min(cap, GRADE_BANDS[2].min - 1);
+    else if (t.large >= TREES_FAIR_AT_BEST) cap = Math.min(cap, GRADE_BANDS[1].min - 1);
+  }
+  if (t.canopyPct > CANOPY_FAIR_AT_BEST) cap = Math.min(cap, GRADE_BANDS[0].min - 1);
+  return { score, cap, note };
 }
 
 export function scoreSite(i: ScoreInput): SiteScore {
