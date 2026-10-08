@@ -13,7 +13,8 @@ import { zillowUrl } from "@/lib/feasibility-verdict";
 import FeasPropertyDetails from "@/components/feasibility-pencil/FeasPropertyDetails";
 import MasterPlan, { type PlanSnapshot } from "./MasterPlan";
 import ReportEmailGate from "./ReportEmailGate";
-import { hasReportAccess } from "@/lib/report-access";
+import ReportPaywall from "./ReportPaywall";
+import { hasReportAccess, hasReportPayment } from "@/lib/report-access";
 import SiteIntel from "./SiteIntel";
 import { ConstraintsGrid, FactsStrip, RisksList, ScenariosGrid, VerifyStrip } from "./ReportSections";
 import { COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
@@ -281,15 +282,19 @@ export default function FeasibilityReportView({
   }, [onBack]);
 
   const snapshotRef = useRef<(() => PlanSnapshot) | null>(null);
-  // Email wall: the report renders blurred until this browser has given an email once.
+  // Two gates over the blurred report: an email once (every report), then a payment for this address.
   // Read after mount so the server render and the first client render agree.
-  const [unlocked, setUnlocked] = useState(false);
+  const gateAddress = slim.streetLine || slim.address;
+  const [emailGiven, setEmailGiven] = useState(false);
+  const [paid, setPaid] = useState(false);
   const [accessChecked, setAccessChecked] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
   useEffect(() => {
-    setUnlocked(hasReportAccess());
+    setEmailGiven(hasReportAccess());
+    setPaid(hasReportPayment(gateAddress));
     setAccessChecked(true);
-  }, []);
+  }, [gateAddress]);
+  const unlocked = emailGiven && paid;
   // The DADU as drawn on the plan: the build estimate and return follow it (the largest allowed size until it is drawn).
   const [drawnSf, setDrawnSf] = useState<number | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -341,7 +346,7 @@ export default function FeasibilityReportView({
             Zillow
             <ExternalLink size={14} aria-hidden />
           </a>
-          <button type="button" className="pa-btn pa-btn-sm" onClick={downloadPdf} disabled={!report || pdfBusy || !unlocked} aria-busy={pdfBusy} title={unlocked ? undefined : "Enter your email to download the PDF"}>
+          <button type="button" className="pa-btn pa-btn-sm" onClick={downloadPdf} disabled={!report || pdfBusy || !unlocked} aria-busy={pdfBusy} title={unlocked ? undefined : "Unlock the full report to download the PDF"}>
             {pdfBusy ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Download size={15} aria-hidden />}
             {pdfBusy ? "Making PDF…" : "Download PDF"}
           </button>
@@ -393,7 +398,11 @@ export default function FeasibilityReportView({
       {!unlocked && accessChecked && (
         <div className="absolute inset-0 flex items-start justify-center px-2 pt-10 sm:pt-16">
           <div className="sticky top-28 flex w-full justify-center">
-            <ReportEmailGate address={slim.streetLine || slim.address} onUnlock={() => { setUnlocked(true); setJustUnlocked(true); }} />
+            {!emailGiven ? (
+              <ReportEmailGate address={gateAddress} onUnlock={() => setEmailGiven(true)} />
+            ) : (
+              <ReportPaywall address={gateAddress} onUnlock={() => { setPaid(true); setJustUnlocked(true); }} />
+            )}
           </div>
         </div>
       )}
