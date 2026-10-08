@@ -21,6 +21,7 @@ import { zillowUrl } from "@/lib/property-image";
 import { overrideFor, statusOverrides } from "@/lib/listings/status-overrides";
 import { isPending } from "@/lib/listings/status";
 import DaduSnapshot from "@/components/listing/DaduSnapshot";
+import StartProjectCta from "@/components/portal/StartProjectCta";
 import { siteScoreFor } from "@/lib/server/site-score";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
 import { GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT, gradeNote } from "@/lib/grade";
@@ -213,6 +214,7 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
                   </p>
                 )}
                 {plan?.warning && <p className="mt-3 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>{plan.warning}</p>}
+                <div className="mt-4"><StartProjectCta address={l.address} compact /></div>
                 {plan && (
                   <details className="pa-more mt-3 text-sm">
                     <summary className="cursor-pointer font-semibold" style={{ color: "var(--green)" }}>Layout, access and resale notes</summary>

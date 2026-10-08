@@ -6,7 +6,7 @@ import { createProject } from "@/app/portal/actions";
 import { ActionForm, field, label } from "./ActionForm";
 
 /** Stage 1. Either the client owns the property, or they ask Pencil to find a lot (a brokerage lead). */
-export default function AcquireForm() {
+export default function AcquireForm({ defaultAddress = "" }: { defaultAddress?: string }) {
   const [mode, setMode] = useState<"own" | "help">("own");
   return (
     <div className="pa-raised p-5 sm:p-6">
@@ -33,7 +33,7 @@ export default function AcquireForm() {
         {mode === "own" ? (
           <label className={label} style={{ color: "var(--ink)" }}>
             Property address
-            <input name="address" className={field} placeholder="610 N 125th St, Seattle" autoComplete="street-address" autoFocus required />
+            <input name="address" className={field} defaultValue={defaultAddress} placeholder="610 N 125th St, Seattle" autoComplete="street-address" autoFocus required />
             <span className="font-normal" style={{ color: "var(--slate)" }}>Seattle only. We pull the parcel, zoning, lot shape and site data from the city and county.</span>
           </label>
         ) : (

@@ -16,6 +16,7 @@ import ReportEmailGate from "./ReportEmailGate";
 import ReportPaywall from "./ReportPaywall";
 import { hasReportAccess, reportCreditsLeft, spendReportCredit } from "@/lib/report-access";
 import SiteIntel from "./SiteIntel";
+import StartProjectCta from "@/components/portal/StartProjectCta";
 import { ConstraintsGrid, FactsStrip, RisksList, ScenariosGrid, VerifyStrip } from "./ReportSections";
 import { COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
 import { calculatorHref } from "@/lib/calculator/inputs";
@@ -415,6 +416,11 @@ export default function FeasibilityReportView({
         </div>
       )}
       </div>
+      {report && (
+        <div className="mt-6">
+          <StartProjectCta address={slim.address} />
+        </div>
+      )}
     </div>
   );
 }
