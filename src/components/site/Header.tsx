@@ -12,6 +12,7 @@ const NAV = [
   { href: "/calculator", label: "Calculator" },
   { href: "/insights", label: "Insights" },
   { href: "/company", label: "Company" },
+  { href: "/portal", label: "Portal" },
 ];
 
 function isActive(pathname: string, href: string) {

@@ -17,9 +17,11 @@ export const updateSession = async (request: NextRequest) => {
     },
   });
 
-  // Nothing to refresh: skip the network call so ordinary visitors pay nothing.
+  // Nothing to refresh: skip the network call so ordinary visitors pay nothing. The portal is the exception:
+  // a visitor without a session is sent to sign in.
+  const portal = PORTAL_PREFIXES.some((p) => request.nextUrl.pathname === p || request.nextUrl.pathname.startsWith(p + "/"));
   if (!supabaseUrl || !supabaseKey) return supabaseResponse;
-  if (!request.cookies.getAll().some((c) => c.name.startsWith("sb-"))) return supabaseResponse;
+  if (!request.cookies.getAll().some((c) => c.name.startsWith("sb-"))) return portal ? toLogin(request) : supabaseResponse;
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
@@ -38,13 +40,24 @@ export const updateSession = async (request: NextRequest) => {
 
   try {
     // Reading the user is what refreshes an expiring session token.
-    await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
+    if (portal && !data.user) return toLogin(request);
   } catch {
     // Supabase unreachable: serve the page anyway.
   }
 
   return supabaseResponse;
 };
+
+/** Signed-in only. The pages check the role themselves; this just keeps visitors out. */
+const PORTAL_PREFIXES = ["/portal", "/admin", "/gc"];
+
+function toLogin(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/login";
+  url.search = `?next=${encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search)}`;
+  return NextResponse.redirect(url);
+}
 
 /** The helper as named in the Supabase quickstart. */
 export const createClient = updateSession;
