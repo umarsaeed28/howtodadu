@@ -5,6 +5,17 @@
 const KEY = "pencil.reportAccess.v1";
 const PAID_KEY = "pencil.reportPaid.v1";
 
+export function reportAccessEmail(): string | null {
+  try {
+    const raw = window.localStorage.getItem(KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as { email?: unknown };
+    return typeof v.email === "string" && v.email.includes("@") ? v.email : null;
+  } catch {
+    return null;
+  }
+}
+
 export function hasReportAccess(): boolean {
   try {
     const raw = window.localStorage.getItem(KEY);
@@ -58,4 +69,40 @@ export function grantReportPayment(address: string, receipt: { id: string; at?: 
   } catch {
     /* storage blocked: the caller keeps access in state for this page */
   }
+}
+
+/** Prepaid reports from the five-pack: each new address opened spends one instead of showing the paywall. */
+const CREDITS_KEY = "pencil.reportCredits.v1";
+
+export function reportCreditsLeft(): number {
+  try {
+    const raw = window.localStorage.getItem(CREDITS_KEY);
+    if (!raw) return 0;
+    const v = JSON.parse(raw) as { credits?: unknown };
+    return typeof v.credits === "number" && v.credits > 0 ? Math.floor(v.credits) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function grantReportCredits(n: number, receipt: { id: string }): void {
+  try {
+    window.localStorage.setItem(CREDITS_KEY, JSON.stringify({ credits: reportCreditsLeft() + n, receiptId: receipt.id, at: new Date().toISOString() }));
+  } catch {
+    /* storage blocked */
+  }
+}
+
+/** Spends one credit on this address and marks it paid. False when there is no credit to spend (storage blocked counts as none). */
+export function spendReportCredit(address: string): boolean {
+  if (hasReportPayment(address)) return true;
+  const left = reportCreditsLeft();
+  if (left < 1) return false;
+  try {
+    window.localStorage.setItem(CREDITS_KEY, JSON.stringify({ credits: left - 1, at: new Date().toISOString() }));
+  } catch {
+    return false;
+  }
+  grantReportPayment(address, { id: "credit" });
+  return true;
 }

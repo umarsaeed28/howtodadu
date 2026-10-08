@@ -46,3 +46,33 @@ describe("report access", () => {
     expect(paidAddressKey(" X  Y ")).toBe("x y");
   });
 });
+
+describe("report credits", () => {
+  beforeEach(() => {
+    (globalThis as { window?: unknown }).window = { localStorage: new MemoryStorage() };
+  });
+
+  it("the five-pack spends one credit per new address and remembers the address", async () => {
+    const m = await import("./report-access");
+    expect(m.reportCreditsLeft()).toBe(0);
+    expect(m.spendReportCredit("A St")).toBe(false);
+    m.grantReportCredits(5, { id: "mock_pack" });
+    expect(m.reportCreditsLeft()).toBe(5);
+    expect(m.spendReportCredit("A St")).toBe(true);
+    expect(m.reportCreditsLeft()).toBe(4);
+    expect(m.spendReportCredit("A St")).toBe(true);
+    expect(m.reportCreditsLeft()).toBe(4);
+    expect(m.hasReportPayment("a st")).toBe(true);
+    for (const a of ["B", "C", "D", "E"]) expect(m.spendReportCredit(a)).toBe(true);
+    expect(m.reportCreditsLeft()).toBe(0);
+    expect(m.spendReportCredit("F")).toBe(false);
+    expect(m.hasReportPayment("F")).toBe(false);
+  });
+
+  it("reads the email the gate stored", async () => {
+    const m = await import("./report-access");
+    expect(m.reportAccessEmail()).toBeNull();
+    m.grantReportAccess("a@b.co");
+    expect(m.reportAccessEmail()).toBe("a@b.co");
+  });
+});

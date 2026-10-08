@@ -12,17 +12,32 @@
 /** What one full report costs. Change here and the paywall, the receipt and the API follow. */
 export const REPORT_PRICE_CENTS = 2900;
 
+export type ProductId = "single" | "pack5";
+
+/** The two things on sale: one report, or five reports plus the weekly newsletter. */
+export const PRODUCTS: Record<ProductId, { id: ProductId; name: string; amountCents: number; credits: number; newsletter: boolean }> = {
+  single: { id: "single", name: "One report", amountCents: REPORT_PRICE_CENTS, credits: 1, newsletter: false },
+  pack5: { id: "pack5", name: "5 reports + weekly newsletter", amountCents: 3000, credits: 5, newsletter: true },
+};
+
+export function productOf(v: unknown): ProductId {
+  return v === "pack5" ? "pack5" : "single";
+}
+
 export type PaymentProviderName = "mock" | "stripe";
 
 export type Receipt = {
   id: string;
   address: string;
+  product: ProductId;
+  credits: number;
   amountCents: number;
   provider: PaymentProviderName;
   at: string;
 };
 
-export type CheckoutRequest = { address: string; amountCents: number };
+/** `simulate` is for the mock only: "fail" exercises the declined path without any card data crossing the wire. */
+export type CheckoutRequest = { address: string; product: ProductId; simulate?: "fail" };
 
 export type CheckoutResult = { ok: true; receipt: Receipt } | { ok: false; error: string; redirect?: string };
 
@@ -33,9 +48,11 @@ export interface PaymentProvider {
 
 export const mockProvider: PaymentProvider = {
   name: "mock",
-  async startCheckout({ address, amountCents }) {
+  async startCheckout({ address, product, simulate }) {
+    if (simulate === "fail") return { ok: false, error: "card_declined" };
+    const p = PRODUCTS[product];
     const id = `mock_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-    return { ok: true, receipt: { id, address, amountCents, provider: "mock", at: new Date().toISOString() } };
+    return { ok: true, receipt: { id, address, product: p.id, credits: p.credits, amountCents: p.amountCents, provider: "mock", at: new Date().toISOString() } };
   },
 };
 

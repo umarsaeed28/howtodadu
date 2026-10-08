@@ -14,7 +14,7 @@ import FeasPropertyDetails from "@/components/feasibility-pencil/FeasPropertyDet
 import MasterPlan, { type PlanSnapshot } from "./MasterPlan";
 import ReportEmailGate from "./ReportEmailGate";
 import ReportPaywall from "./ReportPaywall";
-import { hasReportAccess, hasReportPayment } from "@/lib/report-access";
+import { hasReportAccess, reportCreditsLeft, spendReportCredit } from "@/lib/report-access";
 import SiteIntel from "./SiteIntel";
 import { ConstraintsGrid, FactsStrip, RisksList, ScenariosGrid, VerifyStrip } from "./ReportSections";
 import { COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
@@ -285,13 +285,16 @@ export default function FeasibilityReportView({
   // Two gates over the blurred report: an email once (every report), then a payment for this address.
   // Read after mount so the server render and the first client render agree.
   const gateAddress = slim.streetLine || slim.address;
+  // A prepaid credit from the five-pack opens a new address without the paywall.
   const [emailGiven, setEmailGiven] = useState(false);
   const [paid, setPaid] = useState(false);
+  const [creditsLeft, setCreditsLeft] = useState(0);
   const [accessChecked, setAccessChecked] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
   useEffect(() => {
     setEmailGiven(hasReportAccess());
-    setPaid(hasReportPayment(gateAddress));
+    setPaid(spendReportCredit(gateAddress));
+    setCreditsLeft(reportCreditsLeft());
     setAccessChecked(true);
   }, [gateAddress]);
   const unlocked = emailGiven && paid;
@@ -350,6 +353,11 @@ export default function FeasibilityReportView({
             {pdfBusy ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Download size={15} aria-hidden />}
             {pdfBusy ? "Making PDF…" : "Download PDF"}
           </button>
+          {creditsLeft > 0 && (
+            <span className="pa-chip" title="Prepaid reports from your five-pack; each new address uses one">
+              {creditsLeft} {creditsLeft === 1 ? "report" : "reports"} left
+            </span>
+          )}
           <button type="button" className="pa-btn pa-btn-sm" aria-pressed={favorite} onClick={onToggleFavorite}>
             <Heart size={15} aria-hidden fill={favorite ? "var(--flag)" : "none"} color={favorite ? "var(--flag)" : "var(--ink)"} />
             {favorite ? "Saved" : "Save"}
@@ -401,7 +409,7 @@ export default function FeasibilityReportView({
             {!emailGiven ? (
               <ReportEmailGate address={gateAddress} onUnlock={() => setEmailGiven(true)} />
             ) : (
-              <ReportPaywall address={gateAddress} onUnlock={() => { setPaid(true); setJustUnlocked(true); }} />
+              <ReportPaywall address={gateAddress} onUnlock={() => { setPaid(true); setCreditsLeft(reportCreditsLeft()); setJustUnlocked(true); }} />
             )}
           </div>
         </div>
