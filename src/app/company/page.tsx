@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { Section, Container, Heading, Lede, Body, Button, Card } from "@/components/ui";
 
 export const metadata: Metadata = {
-  title: "Company — Pencil",
+  title: "About us — Pencil",
   description:
     "Pencil combines architecture, development, and software to help people build middle housing in Seattle.",
 };

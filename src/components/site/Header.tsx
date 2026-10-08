@@ -7,12 +7,9 @@ import { Heart, Menu, X } from "lucide-react";
 import { useSavedListings } from "@/hooks/useSavedListings";
 
 const NAV = [
-  { href: "/", label: "Map" },
+  { href: "/search", label: "Search" },
   { href: "/feasibility", label: "Feasibility" },
-  { href: "/calculator", label: "Calculator" },
-  { href: "/insights", label: "Insights" },
-  { href: "/company", label: "Company" },
-  { href: "/portal", label: "Portal" },
+  { href: "/company", label: "About us" },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -66,8 +63,8 @@ export default function Header() {
         </nav>
 
         <div className="site-actions">
-          <Link href="/contact" className="s-btn s-btn--primary">
-            Talk to us
+          <Link href="/login" className="s-btn s-btn--primary">
+            Sign in
           </Link>
         </div>
 
@@ -104,12 +101,12 @@ export default function Header() {
           </nav>
           <div style={{ marginTop: "auto", paddingTop: 24 }}>
             <Link
-              href="/contact"
+              href="/login"
               className="s-btn s-btn--primary s-btn--lg"
               style={{ width: "100%" }}
               onClick={() => setOpen(false)}
             >
-              Talk to us
+              Sign in to the portal
             </Link>
           </div>
         </div>

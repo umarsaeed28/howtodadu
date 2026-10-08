@@ -249,7 +249,7 @@ export default function CalculatorClient() {
 
           <p className="text-xs" style={{ color: "var(--slate)" }}>
             Estimates only, not a quote or financial advice. Back to the{" "}
-            <Link href="/" className="underline underline-offset-2">map</Link>.
+            <Link href="/search" className="underline underline-offset-2">map</Link>.
           </p>
         </div>
       </div>

@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
       { source: "/app", destination: "/", permanent: true },
       { source: "/app/:path*", destination: "/", permanent: true },
       { source: "/product", destination: "/", permanent: true },
+      { source: "/about", destination: "/", permanent: true },
     ];
   },
 };
