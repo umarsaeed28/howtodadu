@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { Check, ShieldCheck, Timer, Users } from "lucide-react";
+import { ArrowRight, Check, ShieldCheck, Timer, Users } from "lucide-react";
 import { Section, Container, Heading, Lede } from "@/components/ui";
 import { AddressForm, Term, TrackedLink } from "@/components/home/HomeBits";
 import Faq, { type FaqItem } from "@/components/home/Faq";
@@ -133,7 +133,12 @@ export default function Home() {
               </TrackedLink>
             </li>
           </ul>
-          <p className="hm-note">Pre-approved partner plans are priced by each design firm.</p>
+          <div className="hm-note-row">
+            <p className="hm-note">Pre-approved partner plans are priced by each design firm.</p>
+            <TrackedLink href="/plans" event="pricing_card_click" props={{ tier: "preapproved" }} className="s-btn s-btn--outline">
+              View pre-approved designs <ArrowRight size={15} aria-hidden />
+            </TrackedLink>
+          </div>
         </Container>
       </Section>
 

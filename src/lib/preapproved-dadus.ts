@@ -28,14 +28,14 @@ export interface PreApprovedPlan {
   detailUrl: string;
   /** The designer's submitted plan set, hosted by the City. */
   pdfUrl: string;
-  /** PLACEHOLDER: a photo or rendering of the design (public/plans/<id>.webp). Until one is added, cards draw the footprint. */
+  /** The design's cover image from the ADUniverse gallery, one per family (public/plans/<family>.webp). Without one, cards draw the footprint. */
   image?: string;
 }
 
 const PAGE = "https://aduniverse-seattlecitygis.hub.arcgis.com/pages";
 const PDF = (n: string) => `https://www.seattle.gov/Documents/Departments/OPCD/OngoingInitiatives/EncouragingBackyardCottages/DADU_Submission${n}.pdf`;
 
-export const PREAPPROVED_PLANS: PreApprovedPlan[] = [
+const PLANS: Omit<PreApprovedPlan, "image">[] = [
   { id: "cast-cedar", family: "cast-cedar", option: "1 bed", designer: "CAST Architecture", name: "Cedar Cottage", sqft: 467, beds: "1", baths: "1", stories: 1, widthFt: 32.25, depthFt: 16.5, approx: true, note: "One level with a covered porch (531 sf total). A 2-bedroom version is also approved.", licenseFee: 1000, detailUrl: `${PAGE}/cast-arch`, pdfUrl: PDF("012") },
   { id: "haas-studio", family: "haas", option: "Studio 288", designer: "Haas Architectural", name: "Urban Cottage Studio", sqft: 288, beds: "Studio", baths: "1", stories: 1, widthFt: 12, depthFt: 24, approx: false, note: "Prefab SIP panels. The base unit; add bedrooms later.", licenseFee: 900, detailUrl: `${PAGE}/urban-cottage`, pdfUrl: PDF("076") },
   { id: "haas-1br", family: "haas", option: "1 bed 432", designer: "Haas Architectural", name: "Urban Cottage 1 Bed", sqft: 432, beds: "1", baths: "1", stories: 1, widthFt: 36, depthFt: 12, approx: false, note: "Linear layout. An L-shaped 24 x 24 layout is also approved.", licenseFee: 900, detailUrl: `${PAGE}/urban-cottage`, pdfUrl: PDF("076") },
@@ -48,6 +48,9 @@ export const PREAPPROVED_PLANS: PreApprovedPlan[] = [
   { id: "fivedot-schooner", family: "fivedot-schooner", option: "2 bed", designer: "Fivedot Architects", name: "Schooner", sqft: 1000, beds: "2", baths: "2", stories: 2, widthFt: 34, depthFt: 16, approx: false, note: "Simple rectangle. Can be mirrored or rotated to face the private side of the lot.", licenseFee: 1000, detailUrl: `${PAGE}/fivedot-arch`, pdfUrl: PDF("033") },
   { id: "shape-willow-creek", family: "shape-willow-creek", option: "1 bed", designer: "Shape Architecture", name: "Willow Creek DADU", sqft: 624, beds: "1", baths: "1", stories: 1, widthFt: 26, depthFt: 24, approx: false, note: "Living space over a garage or storage level, with an exterior stair.", licenseFee: 750, detailUrl: `${PAGE}/shape-arch`, pdfUrl: PDF("156") },
 ];
+
+/** Every family has its ADUniverse gallery cover in public/plans. */
+export const PREAPPROVED_PLANS: PreApprovedPlan[] = PLANS.map((p) => ({ ...p, image: `/plans/${p.family}.webp` }));
 
 export const planFootprintSf = (p: Pick<PreApprovedPlan, "widthFt" | "depthFt">) => Math.round(p.widthFt * p.depthFt);
 
