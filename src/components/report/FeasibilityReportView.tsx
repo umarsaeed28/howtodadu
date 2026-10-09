@@ -10,6 +10,7 @@ import type { FeasibilityTableRow } from "@/lib/feasibility-table-model";
 import type { FeasibilityReport } from "../../../packages/schema/src";
 import { toReport } from "@/lib/report/to-report";
 import { zillowUrl } from "@/lib/feasibility-verdict";
+import { googleMapsUrl } from "@/lib/property-image";
 import FeasPropertyDetails from "@/components/feasibility-pencil/FeasPropertyDetails";
 import MasterPlan, { type DaduState, type PlanSnapshot } from "./MasterPlan";
 import ReportPaywall from "./ReportPaywall";
@@ -443,6 +444,10 @@ export default function FeasibilityReportView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 pt-1">
+          <a href={googleMapsUrl(slim.address, slim.lat, slim.lng)} target="_blank" rel="noopener noreferrer" className="pa-btn pa-btn-sm no-underline">
+            Google Maps
+            <ExternalLink size={14} aria-hidden />
+          </a>
           <a href={zillowUrl(slim.address)} target="_blank" rel="noopener noreferrer" className="pa-btn pa-btn-sm no-underline">
             Zillow
             <ExternalLink size={14} aria-hidden />
