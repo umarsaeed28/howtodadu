@@ -77,7 +77,7 @@ export default function Home() {
         <Container>
           <div className="hm-how-head">
             <Heading level={2} id="hm-how" className="hm-how-h">From buying the lot to the final inspection</Heading>
-            <p className="hm-how-lede">About a year, start to finish. One team runs every stage of your DADU; hire us for all of it, or only the parts you need.</p>
+            <p className="hm-how-lede">About ten months, start to finish. One team runs every stage of your DADU; hire us for all of it, or only the parts you need.</p>
           </div>
           <ProjectTimeline />
           <p className="cf-band-note">Builders we refer may pay Pencil a referral fee. We tell you before you choose one.</p>

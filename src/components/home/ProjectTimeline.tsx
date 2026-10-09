@@ -1,5 +1,5 @@
 /**
- * "How it works" as a schedule: one 12-month axis with a bar per phase, then the phases in order. Durations are
+ * "How it works" as a schedule: one 10-month axis with a bar per phase, then the phases in order. Durations are
  * typical, not promises; the permit stretch is the city's review, and its length is never promised (copy guardrail).
  */
 type Phase = {
@@ -16,14 +16,14 @@ type Phase = {
   city?: boolean;
 };
 
-const MONTHS = 12;
+const MONTHS = 10;
 
 const PHASES: Phase[] = [
   { title: "Acquisition", start: 0, end: 1, when: "Month 1", body: "We find a Seattle lot that takes a DADU, or start from yours, and get it under contract." },
   { title: "Feasibility and surveys", start: 0.2, end: 1, when: "While under contract", overlap: true, body: "Right after the lot goes under contract: the detailed feasibility and the boundary and topographic surveys, before you close." },
-  { title: "Design", start: 1, end: 3, when: "Months 2 to 3", body: "A pre-approved plan, or a custom design for your lot by our licensed architects and designers." },
-  { title: "Permit", start: 3, end: 6, when: "Typically 2 to 3 months", city: true, body: "We submit to SDCI and handle every round of corrections. Review times vary, so we never promise an approval date." },
-  { title: "Construction", start: 6, end: 12, when: "Typically 5 to 6 months", body: "Vetted builders, bids side by side, then one tracker from groundbreaking to final inspection." },
+  { title: "Design", start: 1, end: 2, when: "Month 2", body: "A pre-approved plan, or a custom design for your lot by our licensed architects and designers." },
+  { title: "Permit", start: 2, end: 4, when: "Months 3 to 4, typically", city: true, body: "We submit to SDCI and handle every round of corrections. Review times vary, so we never promise an approval date." },
+  { title: "Construction", start: 4, end: 10, when: "Months 5 to 10", body: "Vetted builders, bids side by side, then one tracker from groundbreaking to final inspection." },
 ];
 
 const pct = (m: number) => `${(m / MONTHS) * 100}%`;
@@ -31,7 +31,7 @@ const pct = (m: number) => `${(m / MONTHS) * 100}%`;
 export default function ProjectTimeline() {
   return (
     <div className="tl">
-      <div className="tl-chart" role="img" aria-label="Timeline: acquisition in month 1 with feasibility and surveys while under contract, design in months 2 to 3, permit typically 2 to 3 months, construction typically 5 to 6 months. About 10 to 12 months in all.">
+      <div className="tl-chart" role="img" aria-label="Timeline: acquisition in month 1 with feasibility and surveys while under contract, design in month 2, permit typically months 3 to 4, construction months 5 to 10. About 10 months in all.">
         <div className="tl-axis" aria-hidden>
           {Array.from({ length: MONTHS }, (_, i) => (
             <span key={i} className="tl-month" style={{ left: pct(i), width: pct(1) }}>
@@ -52,7 +52,7 @@ export default function ProjectTimeline() {
         </div>
         <p className="tl-total" aria-hidden>
           <span className="tl-total-line" />
-          <span className="tl-total-text">About 10 to 12 months, contract to final inspection</span>
+          <span className="tl-total-text">About 10 months, contract to final inspection</span>
         </p>
       </div>
 
