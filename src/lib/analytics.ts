@@ -7,7 +7,7 @@
  * logs to the console. Never send personal data (addresses, emails, names) as event properties.
  */
 export type FunnelEvent =
-  | { name: "hero_cta_click"; props: { cta: "check_my_lot" | "browse_plans" | "draw_my_dadu" | "path_card"; path?: string } }
+  | { name: "hero_cta_click"; props: { cta: "check_my_lot" | "browse_plans" | "draw_my_dadu" | "path_card" | "free_consult"; path?: string } }
   | { name: "address_submitted"; props: { source: "hero" | "footer_cta" | "feasibility" } }
   | { name: "pricing_card_click"; props: { tier: string } }
   | { name: "teaser_viewed"; props: { eligible: boolean } }
