@@ -3,6 +3,7 @@ import { PRODUCTS, REVIEW_BUSINESS_DAYS, addBusinessDays } from "@/lib/pricing";
 import { slotFor, ymd } from "@/lib/queue";
 import { isPin } from "@/lib/parcel-context";
 import { customPlanCounts, recordOrder } from "@/lib/server/orders";
+import { recordPurchase } from "@/lib/server/purchases";
 import { currentViewer } from "@/lib/portal/server";
 import { sendMail, portalUrl } from "@/lib/portal/notify";
 
@@ -72,6 +73,8 @@ export async function POST(req: Request) {
 
   const receipt: Receipt = { orderId: order.id, token: order.token, kind, amountCents: product.amountCents, provider: charge.provider, at: now.toISOString(), dueDate, queueWeek, booked };
   console.log(`[checkout] ${charge.provider} ${kind} order ${order.id}${order.stored ? "" : " (not stored)"}`);
+  // The money ledger the admin's revenue page reads: one row per payment.
+  void recordPurchase({ kind: "order", product: kind, amountCents: product.amountCents, email, userId: viewer?.id ?? null, orderId: order.stored ? order.id : null, provider: charge.provider, paymentId: charge.paymentId, meta: { address, pin } });
 
   // The buyer's receipt email, with a link back to their purchase.
   // TODO: attach the feasibility PDF (render it on the server) instead of linking to the report.

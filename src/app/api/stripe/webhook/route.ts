@@ -1,6 +1,8 @@
 import { parseWebhook, stripeEnabled } from "@/lib/portal/stripe";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { notifyProject } from "@/lib/portal/server";
+import { recordPurchase } from "@/lib/server/purchases";
+import { PERMIT_PACKAGE } from "@/lib/portal/types";
 
 export const runtime = "nodejs";
 
@@ -29,6 +31,8 @@ export async function POST(req: Request) {
   const now = new Date().toISOString();
   const paymentId = typeof session.payment_intent === "string" ? session.payment_intent : session.id;
   await admin.from("permit_packages").update({ payment_id: paymentId, paid_at: now, status: "kickoff", updated_at: now }).eq("project_id", projectId);
+  const { data: owner } = await admin.from("projects").select("owner_id, address").eq("id", projectId).maybeSingle();
+  void recordPurchase({ kind: "permit", product: "permit_package", amountCents: session.amount_total ?? PERMIT_PACKAGE.feeCents, email: session.customer_details?.email ?? session.customer_email ?? null, userId: owner?.owner_id ?? null, projectId, provider: "stripe", paymentId, meta: { address: owner?.address ?? null, stripe_event_id: event.id } });
   const { data: p } = await admin.from("projects").select("stage").eq("id", projectId).maybeSingle();
   await admin.from("projects").update({ stage: "permit", latest_update: "Permit package paid; kickoff scheduled", updated_at: now }).eq("id", projectId);
   await admin.from("activity_log").insert([

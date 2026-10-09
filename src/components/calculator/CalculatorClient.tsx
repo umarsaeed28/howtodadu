@@ -200,7 +200,7 @@ export default function CalculatorClient() {
               <>
                 <p className="pa-display mt-1 text-3xl tabular-nums sm:text-4xl" style={{ color: "var(--ink)" }}>{usd(parsed.construction)}</p>
                 <p className="mt-1 text-sm tabular-nums" style={{ color: "var(--slate)" }}>
-                  {parsed.sf.toLocaleString("en-US")} sf × {usd(parsed.costPerSf)} per sf
+                  {parsed.sf.toLocaleString("en-US")} sf{parsed.aadu ? ` DADU + ${parsed.aadu.sf.toLocaleString("en-US")} sf AADU` : ""} × {usd(parsed.costPerSf)} per sf
                 </p>
               </>
             ) : (
