@@ -10,7 +10,7 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
   const { address } = await searchParams;
   const viewer = await requireViewer(`/portal/new${address ? `?address=${encodeURIComponent(address)}` : ""}`, ["client", "admin"]);
   return (
-    <PortalFrame viewer={viewer} active="/portal">
+    <PortalFrame viewer={viewer} active="/dashboard">
       <Stepper stage="acquire" />
       <div className="mx-auto mt-6 max-w-[640px]">
         <h1 className="pa-display text-3xl" style={{ color: "var(--ink)" }}>Where is the DADU going?</h1>

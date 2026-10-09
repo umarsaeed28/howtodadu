@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 /** Only paths inside the site are safe to send someone to after sign-in. */
 function safeNext(v: string | undefined): string {
-  return v && v.startsWith("/") && !v.startsWith("//") ? v : "/portal";
+  return v && v.startsWith("/") && !v.startsWith("//") ? v : "/dashboard";
 }
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; mode?: string }> }) {

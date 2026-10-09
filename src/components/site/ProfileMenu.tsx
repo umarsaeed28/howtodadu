@@ -8,7 +8,7 @@ import { createClient } from "@/utils/supabase/client";
 type Me = { name: string; email: string; role: "client" | "admin" | "gc"; verified: boolean };
 
 const HOME: Record<Me["role"], { href: string; label: string }> = {
-  client: { href: "/portal", label: "My projects" },
+  client: { href: "/dashboard", label: "Your properties" },
   admin: { href: "/admin", label: "Pipeline" },
   gc: { href: "/gc", label: "Referred projects" },
 };

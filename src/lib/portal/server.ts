@@ -40,7 +40,7 @@ export async function requireViewer(nextPath: string, roles?: Role[]): Promise<V
 }
 
 export function homeFor(role: Role): string {
-  return role === "admin" ? "/admin" : role === "gc" ? "/gc" : "/portal";
+  return role === "admin" ? "/admin" : role === "gc" ? "/gc" : "/dashboard";
 }
 
 /** One project with everything its page shows. Null when it does not exist or the viewer may not see it. */

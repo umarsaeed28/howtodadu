@@ -50,7 +50,7 @@ export const updateSession = async (request: NextRequest) => {
 };
 
 /** Signed-in only. The pages check the role themselves; this just keeps visitors out. */
-const PORTAL_PREFIXES = ["/portal", "/admin", "/gc"];
+const PORTAL_PREFIXES = ["/portal", "/dashboard", "/admin", "/gc"];
 
 function toLogin(request: NextRequest) {
   const url = request.nextUrl.clone();

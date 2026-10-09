@@ -1347,3 +1347,26 @@ body { background: #F6F7F6; }
 .site .pf-choices .pd-size-name { display: inline-flex; align-items: center; gap: 6px; }
 .site .pf-file { padding-top: 10px; }
 @media (min-width: 900px) { .site .pt-grid { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); } }
+
+/* Dashboard: your properties ---------------------------------------------- */
+.site .db-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.site .db-grid { margin: 20px 0 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+.site .db-card { display: flex; flex-direction: column; padding: 20px; border-radius: 16px; background: var(--surface); box-shadow: var(--nm-out); }
+.site .db-addr { margin: 0; font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.02em; color: var(--ink); }
+.site .db-pin { margin: 2px 0 0; font-size: 0.8rem; color: var(--slate); font-variant-numeric: tabular-nums; }
+.site .db-lines { margin: 14px 0 16px; padding: 0; list-style: none; display: grid; gap: 8px; flex: 1; }
+.site .db-line { display: grid; grid-template-columns: 18px 84px minmax(0, 1fr); align-items: center; gap: 8px; font-size: 0.92rem; }
+.site .db-line svg { color: var(--slate); }
+.site .db-line[data-state="done"] svg { color: var(--flag); }
+.site .db-line[data-state="active"] svg { color: #7A5A12; }
+.site .db-k { color: var(--slate); }
+.site .db-v { font-weight: 600; color: var(--ink); }
+.site .db-line[data-state="todo"] .db-v { font-weight: 500; color: var(--slate); }
+.site .db-next { width: 100%; justify-content: center; }
+.site .db-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 12px 0 0; font-size: 0.88rem; }
+.site .db-links a { display: inline-flex; align-items: center; min-height: 36px; color: var(--flag-deep); font-weight: 600; }
+.site .db-empty { margin-top: 20px; padding: 24px; border-radius: 16px; background: var(--surface); box-shadow: var(--nm-out); display: grid; gap: 8px; justify-items: start; color: var(--slate); }
+.site .db-empty-h { margin: 0; font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; font-size: 1.3rem; color: var(--ink); }
+.site .db-empty p { margin: 0; }
+@media (min-width: 720px) { .site .db-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .site .db-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

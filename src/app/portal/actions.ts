@@ -23,6 +23,7 @@ const projectPath = (id: string) => `/portal/projects/${id}`;
 
 function refresh(id?: string) {
   revalidatePath("/portal");
+  revalidatePath("/dashboard");
   revalidatePath("/admin");
   revalidatePath("/gc");
   if (id) revalidatePath(projectPath(id));
