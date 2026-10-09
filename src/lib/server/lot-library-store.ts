@@ -1,6 +1,6 @@
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { decodeLibrary, enforceRoomRule, makeLotFinder, zipCounts, type LotLibraryFile } from "@/lib/lot-library";
+import { decodeLibrary, enforceNrRule, enforceRoomRule, makeLotFinder, zipCounts, type LotLibraryFile } from "@/lib/lot-library";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
 import { inBuyBox } from "@/lib/buy-box";
 import type { Candidate } from "./candidates";
@@ -24,7 +24,7 @@ function load(): Loaded | null {
   if (!existsSync(FILE)) return null;
   const m = statSync(FILE).mtimeMs;
   if (loaded && m === mtime) return loaded;
-  const file = enforceRoomRule(JSON.parse(readFileSync(FILE, "utf8")) as LotLibraryFile);
+  const file = enforceRoomRule(enforceNrRule(JSON.parse(readFileSync(FILE, "utf8")) as LotLibraryFile));
   const byPin = new Map<string, number>();
   file.cols.pin.forEach((p, i) => byPin.set(p, i));
   loaded = { file, byPin, all: null, find: null };

@@ -24,6 +24,7 @@ import DaduSnapshot from "@/components/listing/DaduSnapshot";
 import StartProjectCta from "@/components/portal/StartProjectCta";
 import { siteScoreFor } from "@/lib/server/site-score";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
+import { isNrZone } from "@/lib/zoning";
 import { GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT, gradeNote } from "@/lib/grade";
 
 export const dynamic = "force-dynamic";
@@ -87,11 +88,26 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
   if (!data) notFound();
   const { listing: l, detail: d } = data;
   const lot = libraryAvailable() ? findLotForListing(l.address, l.lat, l.lng) : null;
+  // The NR gate: a listing not on an NR library lot gets a short note, no analysis (src/lib/zoning.ts).
+  if (!lot || !isNrZone(lot.zoning)) {
+    return (
+      <div className="pencil-app">
+        <article className="mx-auto max-w-[640px] px-4 pb-16 pt-10 md:px-6">
+          <h1 className="pa-display text-2xl" style={{ color: "var(--ink)" }}>{street(l.address)} is not suitable for a DADU</h1>
+          <p className="mt-3 text-base leading-relaxed" style={{ color: "var(--ink)" }}>
+            It is not on a Neighborhood Residential (NR) lot with room for a DADU, so Pencil does not analyze it. Search NR-zoned properties for the best development opportunities.
+          </p>
+          <div className="mt-6">
+            <Link href="/search?top=1" className="pa-btn pa-btn-primary no-underline">Search NR-zoned properties <ArrowRight size={14} aria-hidden /></Link>
+          </div>
+        </article>
+      </div>
+    );
+  }
   const [adu, values] = lot ? await Promise.all([getAduniverseFacts(lot.pin), getParcelValues(lot.pin)]) : [null, null];
   const plan = lot ? planSite({ lotSqft: lot.lotSqft, widthFt: adu?.raw.lotWidth ?? null, depthFt: adu?.raw.lotDepth ?? null, alley: lot.alley }) : null;
   const basis = computeBasis({ price: l.listPrice, livingSqft: l.livingSqft, lotSqft: l.lotSqft || lot?.lotSqft, daduSqft: lot?.daduSqft, landAv: values?.landAv, bldgAv: values?.bldgAv });
   const risks = riskFlags({ hoa: l.hoaMonthly, plan, adu, canopyPct: lot?.canopyPct ?? null, zoning: lot?.zoning ?? "" });
-  if (!lot) risks.push({ text: "This address is not in the city lot library: it is not an eligible single-family lot, or the DADU engine found no room.", source: "City GIS", level: "watch" });
   const isTest = listingsProviderName() === "fixture";
   const photos = d.photos.length ? d.photos : l.photos;
   const e = 0.0009;

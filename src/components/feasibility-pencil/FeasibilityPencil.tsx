@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2, Upload, MapPin, Calculator, BadgeCheck } from "lucide-react";
-import { fetchFeasibility } from "@/lib/feasibility";
+import { fetchFeasibility, isNotSuitable } from "@/lib/feasibility";
+import NotSuitable from "./NotSuitable";
 import FeasAddressSearch from "./FeasAddressSearch";
 import { generateADUReport } from "@/lib/adu-analysis";
 import { buildFeasibilityTableRow, type FeasibilityTableRow } from "@/lib/feasibility-table-model";
@@ -37,6 +38,8 @@ export default function FeasibilityPencil() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkPhase, setBulkPhase] = useState("");
   const [errorBanner, setErrorBanner] = useState("");
+  // A property turned away by the NR zoning gate: shown as "not suitable", never as a report.
+  const [notSuitable, setNotSuitable] = useState<{ address: string; zoning: string | null; message: string } | null>(null);
 
   const [pencilsOnly, setPencilsOnly] = useState(false);
   const [verdicts, setVerdicts] = useState<Set<Verdict>>(new Set());
@@ -165,6 +168,7 @@ export default function FeasibilityPencil() {
     pushRecentAddress(q);
     setSingleLoading(true);
     setErrorBanner("");
+    setNotSuitable(null);
     try {
       const data = await fetchFeasibility(q);
       const report =
@@ -189,7 +193,8 @@ export default function FeasibilityPencil() {
       setRows((prev) => mergeDashboardSlims(prev, [slim], 5000));
       setSelectedId(slim.id);
     } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : "Something went wrong.");
+      if (isNotSuitable(err)) setNotSuitable({ address: q, zoning: err.zoning, message: err.message });
+      else setErrorBanner(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSingleLoading(false);
     }
@@ -311,6 +316,7 @@ export default function FeasibilityPencil() {
               {errorBanner}
             </div>
           )}
+          {notSuitable && <NotSuitable address={notSuitable.address} zoning={notSuitable.zoning} message={notSuitable.message} />}
 
           <form
             className="mx-auto mt-6 flex w-full max-w-xl flex-col gap-2.5 sm:flex-row"
@@ -413,6 +419,7 @@ export default function FeasibilityPencil() {
               {errorBanner}
             </div>
           )}
+          {notSuitable && <NotSuitable address={notSuitable.address} zoning={notSuitable.zoning} message={notSuitable.message} />}
           {singleLoading && (
             <div className="mb-4">
               <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>Checking {singleAddress}</p>
@@ -461,6 +468,7 @@ export default function FeasibilityPencil() {
                 {errorBanner}
               </div>
             )}
+          {notSuitable && <NotSuitable address={notSuitable.address} zoning={notSuitable.zoning} message={notSuitable.message} />}
 
             {bulkLoading && bulkPhase && (
               <p className="pa-mono mb-4 flex items-center gap-2 text-xs" style={{ color: "var(--slate)" }}>

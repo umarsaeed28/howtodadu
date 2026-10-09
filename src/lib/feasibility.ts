@@ -228,6 +228,17 @@ export interface ReportListing {
   livingSqft: number | null;
 }
 
+/** A feasibility request the server turned away. `code` is set when the property failed the NR zoning gate. */
+export class FeasibilityError extends Error {
+  constructor(message: string, readonly code: "not_nr" | "zoning_unknown" | null = null, readonly zoning: string | null = null) {
+    super(message);
+    this.name = "FeasibilityError";
+  }
+}
+
+/** True when the error means the property is outside NR, or its zoning is unknown: show "not suitable", not a failure. */
+export const isNotSuitable = (e: unknown): e is FeasibilityError => e instanceof FeasibilityError && e.code != null;
+
 export async function fetchFeasibility(
   address: string
 ): Promise<FeasibilityResult> {
@@ -236,8 +247,9 @@ export async function fetchFeasibility(
   );
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || "Failed to fetch feasibility data");
+    const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string; zoning?: string | null };
+    const code = body.code === "not_nr" || body.code === "zoning_unknown" ? body.code : null;
+    throw new FeasibilityError(body.error || "Failed to fetch feasibility data", code, body.zoning ?? null);
   }
 
   return res.json();

@@ -31,6 +31,10 @@ export async function startProjectFromLot(fd: FormData): Promise<{ error?: strin
     }
   }
 
+  // The feasibility first: a property outside NR (or with no recorded zoning) never becomes a project.
+  const outcome = await getFeasibilityForAddress(address);
+  if (!outcome.ok && outcome.code) return { error: outcome.error };
+
   const { data, error } = await db.from("projects").insert({ owner_id: v.id, address, parcel_id: isPin(pin) ? pin : null, stage: "acquire" }).select("id").single();
   if (error || !data) return { error: error?.message ?? "Could not start the project." };
   await logActivity(db, data.id, v.id, "note", `Project started for ${address}`);
@@ -45,8 +49,7 @@ export async function startProjectFromLot(fd: FormData): Promise<{ error?: strin
     drawn = null;
   }
 
-  // The feasibility, run again now so the project holds today's reading, with the drawing attached.
-  const outcome = await getFeasibilityForAddress(address);
+  // Today's feasibility reading goes into the project, with the drawing attached.
   if (outcome.ok) {
     const s = summarizeFeasibility(outcome.data);
     await db.from("feasibility_reports").insert({ project_id: data.id, score: s.score, verdict: s.verdict, max_dadu_sf: s.maxDaduSf, buildable_area_sf: s.buildableAreaSf, summary: { ...s, drawn } });

@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
 
   const outcome = await getFeasibilityForAddress(address);
   if (!outcome.ok) {
-    return NextResponse.json({ error: outcome.error }, { status: outcome.status });
+    // A property outside NR (or with no recorded zoning) comes back with code "not_nr" / "zoning_unknown".
+    return NextResponse.json({ error: outcome.error, code: outcome.code, zoning: outcome.zoning }, { status: outcome.status });
   }
 
   // The home's own listing, when it is for sale: the report then shows the price next to the build estimate.
