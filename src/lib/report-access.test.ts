@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { grantReportAccess, grantReportPayment, hasReportAccess, hasReportPayment, paidAddressKey } from "./report-access";
+import { hasFeasibilityAccess, lastEmail, orderKey, ordersFor, rememberEmail, rememberOrder } from "./report-access";
 
 class MemoryStorage {
   private m = new Map<string, string>();
@@ -14,65 +14,33 @@ describe("report access", () => {
     (globalThis as { window?: unknown }).window = { localStorage: new MemoryStorage() };
   });
 
-  it("email unlocks every report, payment unlocks one address", () => {
-    expect(hasReportAccess()).toBe(false);
-    grantReportAccess("a@b.co");
-    expect(hasReportAccess()).toBe(true);
-    expect(hasReportPayment("610 N 125th St")).toBe(false);
-    grantReportPayment("610 N 125th St", { id: "mock_1" });
-    expect(hasReportPayment("610 N 125th St")).toBe(true);
-    expect(hasReportPayment("  610 n 125TH st ")).toBe(true);
-    expect(hasReportPayment("3504 NE 93rd St")).toBe(false);
+  it("a feasibility order opens that parcel only", () => {
+    expect(hasFeasibilityAccess("0004000070", "610 N 125th St")).toBe(false);
+    rememberOrder({ orderId: "o1", token: "t", kind: "feasibility_instant", key: "0004000070", at: "2026-10-08" });
+    expect(hasFeasibilityAccess("0004000070", "610 N 125th St")).toBe(true);
+    expect(hasFeasibilityAccess("0004000071", "612 N 125th St")).toBe(false);
   });
 
-  it("keeps several paid addresses and replaces a repeat", () => {
-    grantReportPayment("A St", { id: "r1" });
-    grantReportPayment("B St", { id: "r2" });
-    grantReportPayment("a st", { id: "r3" });
-    const raw = JSON.parse((globalThis as unknown as { window: { localStorage: MemoryStorage } }).window.localStorage.getItem("pencil.reportPaid.v1")!) as { address: string; receiptId: string }[];
-    expect(raw.map((p) => [p.address, p.receiptId])).toEqual([["b st", "r2"], ["a st", "r3"]]);
+  it("other products do not open the report; keys ignore case and spacing", () => {
+    rememberOrder({ orderId: "o2", token: "t", kind: "custom_plan", key: "  610 N  125th St ", at: "x" });
+    expect(hasFeasibilityAccess(null, "610 n 125th st")).toBe(false);
+    expect(ordersFor("610 N 125TH ST")).toHaveLength(1);
+    expect(orderKey("0004000070")).toBe("0004000070");
   });
 
-  it("never stores anything but the address key and receipt id", () => {
-    grantReportPayment("A St", { id: "r1", at: "2026-10-08T00:00:00.000Z" });
-    const raw = (globalThis as unknown as { window: { localStorage: MemoryStorage } }).window.localStorage.getItem("pencil.reportPaid.v1")!;
-    expect(JSON.parse(raw)).toEqual([{ address: "a st", receiptId: "r1", at: "2026-10-08T00:00:00.000Z" }]);
+  it("honors reports bought before the new tiers", () => {
+    window.localStorage.setItem("pencil.reportPaid.v1", JSON.stringify([{ address: "610 n 125th st", receiptId: "r", at: "x" }]));
+    expect(hasFeasibilityAccess(null, "610 N 125th St")).toBe(true);
+  });
+
+  it("remembers the buyer's email", () => {
+    rememberEmail(" Owner@Example.com ");
+    expect(lastEmail()).toBe("owner@example.com");
   });
 
   it("survives blocked storage", () => {
     (globalThis as { window?: unknown }).window = { localStorage: { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); } } };
-    expect(() => grantReportPayment("A St", { id: "r1" })).not.toThrow();
-    expect(hasReportPayment("A St")).toBe(false);
-    expect(paidAddressKey(" X  Y ")).toBe("x y");
-  });
-});
-
-describe("report credits", () => {
-  beforeEach(() => {
-    (globalThis as { window?: unknown }).window = { localStorage: new MemoryStorage() };
-  });
-
-  it("the five-pack spends one credit per new address and remembers the address", async () => {
-    const m = await import("./report-access");
-    expect(m.reportCreditsLeft()).toBe(0);
-    expect(m.spendReportCredit("A St")).toBe(false);
-    m.grantReportCredits(5, { id: "mock_pack" });
-    expect(m.reportCreditsLeft()).toBe(5);
-    expect(m.spendReportCredit("A St")).toBe(true);
-    expect(m.reportCreditsLeft()).toBe(4);
-    expect(m.spendReportCredit("A St")).toBe(true);
-    expect(m.reportCreditsLeft()).toBe(4);
-    expect(m.hasReportPayment("a st")).toBe(true);
-    for (const a of ["B", "C", "D", "E"]) expect(m.spendReportCredit(a)).toBe(true);
-    expect(m.reportCreditsLeft()).toBe(0);
-    expect(m.spendReportCredit("F")).toBe(false);
-    expect(m.hasReportPayment("F")).toBe(false);
-  });
-
-  it("reads the email the gate stored", async () => {
-    const m = await import("./report-access");
-    expect(m.reportAccessEmail()).toBeNull();
-    m.grantReportAccess("a@b.co");
-    expect(m.reportAccessEmail()).toBe("a@b.co");
+    expect(hasFeasibilityAccess("0004000070", "x")).toBe(false);
+    expect(() => rememberOrder({ orderId: "o", token: "t", kind: "feasibility_instant", key: "x", at: "x" })).not.toThrow();
   });
 });

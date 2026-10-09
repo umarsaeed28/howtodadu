@@ -1,65 +1,59 @@
 /**
- * Payments for the full feasibility report.
+ * Payments for every Pencil product (feasibility instant / reviewed, custom plan, permit). Prices come from
+ * src/lib/pricing.ts.
  *
  * One provider interface, chosen by PAYMENTS_PROVIDER:
- *   - "mock" (default): no money moves. The server issues a receipt for the address and nothing else.
- *     The browser's card fields are decoration: they never leave the page and are never stored.
- *   - "stripe" (later): create a Stripe Checkout Session for REPORT_PRICE_CENTS, redirect to it, and
- *     on return verify the session server-side before issuing the receipt. Nothing in this app ever
- *     touches a card number: Stripe's hosted page collects it.
+ *   - "mock" (default): no money moves. The browser's card fields are decoration: they never leave the page and
+ *     are never stored. A charge always succeeds unless the request asks the mock to decline (simulate: "fail").
+ *   - "stripe": TODO(payment). Create a Stripe Checkout Session for the product's price with
+ *     metadata { order_id, kind }, redirect to it, and mark the order paid from the webhook
+ *     (src/app/api/stripe/webhook/route.ts). Nothing in this app ever touches a card number.
  */
+import { PRODUCTS, isProductKind, type ProductKind } from "@/lib/pricing";
 
-/** What one full report costs. Change here and the paywall, the receipt and the API follow. */
-export const REPORT_PRICE_CENTS = 2900;
-
-export type ProductId = "single" | "pack5";
-
-/** The two things on sale: one report, or five reports plus the weekly newsletter. */
-export const PRODUCTS: Record<ProductId, { id: ProductId; name: string; amountCents: number; credits: number; newsletter: boolean }> = {
-  single: { id: "single", name: "One report", amountCents: REPORT_PRICE_CENTS, credits: 1, newsletter: false },
-  pack5: { id: "pack5", name: "5 reports + weekly newsletter", amountCents: 9900, credits: 5, newsletter: true },
-};
-
-export function productOf(v: unknown): ProductId {
-  return v === "pack5" ? "pack5" : "single";
-}
+export { PRODUCTS, isProductKind, type ProductKind };
 
 export type PaymentProviderName = "mock" | "stripe";
 
-export type Receipt = {
-  id: string;
-  address: string;
-  product: ProductId;
-  credits: number;
-  amountCents: number;
-  provider: PaymentProviderName;
-  at: string;
-};
+/** What the checkout route sends a provider: the product and who is buying. Never card data. */
+export type ChargeRequest = { kind: ProductKind; email: string; orderId: string; simulate?: "fail" };
 
-/** `simulate` is for the mock only: "fail" exercises the declined path without any card data crossing the wire. */
-export type CheckoutRequest = { address: string; product: ProductId; simulate?: "fail" };
-
-export type CheckoutResult = { ok: true; receipt: Receipt } | { ok: false; error: string; redirect?: string };
+export type ChargeResult = { ok: true; paymentId: string; provider: PaymentProviderName } | { ok: false; error: "card_declined" | "stripe_not_configured" | "unavailable"; redirect?: string };
 
 export interface PaymentProvider {
   name: PaymentProviderName;
-  startCheckout(req: CheckoutRequest): Promise<CheckoutResult>;
+  charge(req: ChargeRequest): Promise<ChargeResult>;
 }
+
+/** What the browser gets back after a successful checkout. */
+export type Receipt = {
+  orderId: string;
+  /** Lets a guest open their order without an account. */
+  token: string;
+  kind: ProductKind;
+  amountCents: number;
+  provider: PaymentProviderName;
+  at: string;
+  /** Reviewed feasibility: the review date. Custom plan: the day plans are ready. */
+  dueDate: string | null;
+  /** Custom plan: the Monday its drafting week starts. */
+  queueWeek: string | null;
+  /** Custom plan: true when this week was full and the order went to a later week. */
+  booked: boolean;
+};
 
 export const mockProvider: PaymentProvider = {
   name: "mock",
-  async startCheckout({ address, product, simulate }) {
+  async charge({ simulate }) {
     if (simulate === "fail") return { ok: false, error: "card_declined" };
-    const p = PRODUCTS[product];
-    const id = `mock_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-    return { ok: true, receipt: { id, address, product: p.id, credits: p.credits, amountCents: p.amountCents, provider: "mock", at: new Date().toISOString() } };
+    return { ok: true, paymentId: `mock_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`, provider: "mock" };
   },
 };
 
-/** Reserved: the Stripe provider refuses until it is wired up, so a misconfigured deploy never silently unlocks reports. */
+/** TODO(payment): Stripe Checkout. Refuses until wired, so a misconfigured deploy never marks an order paid. */
 export const stripeProvider: PaymentProvider = {
   name: "stripe",
-  async startCheckout() {
+  async charge() {
     return { ok: false, error: "stripe_not_configured" };
   },
 };
@@ -72,7 +66,9 @@ export function getPaymentProvider(env: Record<string, string | undefined> = pro
   return paymentProviderName(env) === "stripe" ? stripeProvider : mockProvider;
 }
 
-/** The address as the receipt names it: trimmed, single-spaced, at most 200 characters. Empty when unusable. */
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Trimmed, single-spaced, at most 200 characters. Empty when unusable. */
 export function cleanAddress(v: unknown): string {
   return typeof v === "string" ? v.trim().replace(/\s+/g, " ").slice(0, 200) : "";
 }

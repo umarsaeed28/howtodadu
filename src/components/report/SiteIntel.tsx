@@ -202,7 +202,7 @@ export function Canopy({ row }: { row: FeasibilityTableRow }) {
       <Card title="Trees" source="2021 LiDAR tree crowns, one by one">
         <Bar value={ts.canopyPct} max={60} color={ts.canopyPct > 25 || tight ? "var(--amber)" : "var(--green)"} marker={25} />
         <div className="grid grid-cols-4 gap-2 text-center">
-          {([[ts.large, "large", "#2F6B49"], [ts.medium, "medium", "#4F9068"], [ts.small, "small", "#9CC2A8"], [ts.canopyPct, "% canopy", "var(--ink)"]] as [number, string, string][]).map(([n, label, color]) => (
+          {([[ts.large, "large", "#2F6B49"], [ts.medium, "medium", "#4F9068"], [ts.small, "small", "#5E8F70"], [ts.canopyPct, "% canopy", "var(--ink)"]] as [number, string, string][]).map(([n, label, color]) => (
             <div key={label} className="rounded-lg py-2" style={{ background: "rgba(23,36,29,.04)" }}>
               <p className="pa-display text-xl tabular-nums" style={{ color }}>{n}</p>
               <p className="text-[11px]" style={{ color: "var(--slate)" }}>{label}</p>

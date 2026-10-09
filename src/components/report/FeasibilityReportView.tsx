@@ -12,11 +12,13 @@ import { toReport } from "@/lib/report/to-report";
 import { zillowUrl } from "@/lib/feasibility-verdict";
 import FeasPropertyDetails from "@/components/feasibility-pencil/FeasPropertyDetails";
 import MasterPlan, { type PlanSnapshot } from "./MasterPlan";
-import ReportEmailGate from "./ReportEmailGate";
 import ReportPaywall from "./ReportPaywall";
-import { hasReportAccess, reportCreditsLeft, spendReportCredit } from "@/lib/report-access";
+import { LimitsStrip, PurchaseBanner, ReportNextSteps, ReportTeaser } from "./ReportJourney";
+import { hasFeasibilityAccess } from "@/lib/report-access";
+import { saveParcel } from "@/lib/parcel-context";
+import { isProductKind, type ProductKind } from "@/lib/pricing";
+import { track } from "@/lib/analytics";
 import SiteIntel from "./SiteIntel";
-import StartProjectCta from "@/components/portal/StartProjectCta";
 import { ConstraintsGrid, FactsStrip, RisksList, ScenariosGrid, VerifyStrip } from "./ReportSections";
 import { COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
 import { calculatorHref } from "@/lib/calculator/inputs";
@@ -283,22 +285,28 @@ export default function FeasibilityReportView({
   }, [onBack]);
 
   const snapshotRef = useRef<(() => PlanSnapshot) | null>(null);
-  // Two gates over the blurred report: an email once (every report), then a payment for this address.
+  // The free teaser is open to everyone; the full report opens after either paid tier ($200 or $600).
   // Read after mount so the server render and the first client render agree.
   const gateAddress = slim.streetLine || slim.address;
-  // A prepaid credit from the five-pack opens a new address without the paywall.
-  const [emailGiven, setEmailGiven] = useState(false);
+  const pin = slim.pin;
   const [paid, setPaid] = useState(false);
-  const [creditsLeft, setCreditsLeft] = useState(0);
   const [accessChecked, setAccessChecked] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
+  const [purchase, setPurchase] = useState<{ kind: string; dueDate: string | null; email: string } | null>(null);
+  const [defaultTier, setDefaultTier] = useState<ProductKind | undefined>(undefined);
   useEffect(() => {
-    setEmailGiven(hasReportAccess());
-    setPaid(spendReportCredit(gateAddress));
-    setCreditsLeft(reportCreditsLeft());
+    setPaid(hasFeasibilityAccess(pin, gateAddress));
+    const t = new URLSearchParams(window.location.search).get("tier");
+    const tier = t === "reviewed" ? "feasibility_reviewed" : t === "instant" ? "feasibility_instant" : t;
+    if (isProductKind(tier)) setDefaultTier(tier);
+    if (pin) saveParcel({ pin, address: slim.address });
     setAccessChecked(true);
-  }, [gateAddress]);
-  const unlocked = emailGiven && paid;
+  }, [pin, gateAddress, slim.address]);
+  const unlocked = paid;
+  const eligible = !!detailRow && detailRow.siteScore.eligible && (detailRow.daduScore ?? 0) > 0;
+  useEffect(() => {
+    if (accessChecked && !paid && detailRow) track("teaser_viewed", { eligible });
+  }, [accessChecked, paid, detailRow, eligible]);
   // The DADU as drawn on the plan: the build estimate and return follow it (the largest allowed size until it is drawn).
   const [drawnSf, setDrawnSf] = useState<number | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -354,11 +362,6 @@ export default function FeasibilityReportView({
             {pdfBusy ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Download size={15} aria-hidden />}
             {pdfBusy ? "Making PDF…" : "Download PDF"}
           </button>
-          {creditsLeft > 0 && (
-            <span className="pa-chip" title="Prepaid reports from your five-pack; each new address uses one">
-              {creditsLeft} {creditsLeft === 1 ? "report" : "reports"} left
-            </span>
-          )}
           <button type="button" className="pa-btn pa-btn-sm" aria-pressed={favorite} onClick={onToggleFavorite}>
             <Heart size={15} aria-hidden fill={favorite ? "var(--flag)" : "none"} color={favorite ? "var(--flag)" : "var(--ink)"} />
             {favorite ? "Saved" : "Save"}
@@ -377,6 +380,9 @@ export default function FeasibilityReportView({
         </div>
       )}
 
+      {accessChecked && !unlocked && detailRow && <ReportTeaser eligible={eligible} lotSqft={slim.lotSizeSqft} zoning={slim.zoning} />}
+      {unlocked && purchase && <PurchaseBanner kind={purchase.kind} dueDate={purchase.dueDate} email={purchase.email} />}
+
       <div className="relative">
       <div
         inert={!unlocked}
@@ -392,6 +398,7 @@ export default function FeasibilityReportView({
       )}
 
       {report && <Hero report={report} slim={slim} listing={detailRow?.result.listing ?? null} drawnSf={drawnSf} houseSqft={detailRow?.result.listing?.livingSqft ?? detailRow?.result.feasibility?.totalBuildingSqft ?? null} />}
+      {report && detailRow && <div className="mb-6"><LimitsStrip adu={detailRow.report} zoning={slim.zoning} lotSqft={slim.lotSizeSqft} buildingSqft={detailRow.result.feasibility?.totalBuildingSqft ?? null} /></div>}
       {report && detailRow && <SectionTabs />}
       {report && detailRow && <ReportBody report={report} row={detailRow} snapshotRef={snapshotRef} onDaduChange={setDrawnSf} />}
 
@@ -405,22 +412,25 @@ export default function FeasibilityReportView({
       </div>
 
       {!unlocked && accessChecked && (
-        <div className="absolute inset-0 flex items-start justify-center px-2 pt-10 sm:pt-16">
-          <div className="sticky top-28 flex w-full justify-center">
-            {!emailGiven ? (
-              <ReportEmailGate address={gateAddress} onUnlock={() => setEmailGiven(true)} />
-            ) : (
-              <ReportPaywall address={gateAddress} onUnlock={() => { setPaid(true); setCreditsLeft(reportCreditsLeft()); setJustUnlocked(true); }} />
-            )}
+        <div className="absolute inset-0 flex items-start justify-center px-2 pt-8 sm:pt-14">
+          <div className="sticky top-28 flex w-full flex-col items-center">
+            <p className="rt-overlay">Your full buildable envelope is ready.</p>
+            <ReportPaywall
+              pin={pin}
+              address={gateAddress}
+              defaultTier={defaultTier}
+              onUnlock={(r, email) => {
+                setPaid(true);
+                setJustUnlocked(true);
+                setPurchase({ kind: r.kind, dueDate: r.dueDate, email });
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            />
           </div>
         </div>
       )}
       </div>
-      {report && (
-        <div className="mt-6">
-          <StartProjectCta address={slim.address} />
-        </div>
-      )}
+      {report && <ReportNextSteps pin={pin} />}
     </div>
   );
 }

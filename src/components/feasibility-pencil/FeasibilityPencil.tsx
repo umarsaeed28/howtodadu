@@ -19,6 +19,8 @@ import FeasAppBar from "./FeasAppBar";
 import FeasFilterBar from "./FeasFilterBar";
 import FeasCard from "./FeasCard";
 import FeasibilityReportView from "@/components/report/FeasibilityReportView";
+import LoadingSteps from "./LoadingSteps";
+import { isPin, saveParcel } from "@/lib/parcel-context";
 import { NoSearchResults } from "@/components/shared/states";
 import type { FeasSortKey } from "./types";
 
@@ -173,6 +175,14 @@ export default function FeasibilityPencil() {
       const slim = buildDashboardPropertySlim(data, report);
       const full = buildFeasibilityTableRow(data, report);
       detailCache.current.set(slim.id, full);
+      // Carry the parcel in the URL and this browser, so plans, custom and permit never ask for the address again.
+      if (isPin(slim.pin)) {
+        saveParcel({ pin: slim.pin, address: slim.address });
+        const sp = new URLSearchParams(window.location.search);
+        sp.set("parcel", slim.pin);
+        sp.set("address", q);
+        window.history.replaceState(null, "", `${window.location.pathname}?${sp.toString()}`);
+      }
       setRows((prev) => mergeDashboardSlims(prev, [slim], 5000));
       setSelectedId(slim.id);
     } catch (err) {
@@ -215,10 +225,27 @@ export default function FeasibilityPencil() {
   const prefillRan = useRef(false);
   useEffect(() => {
     const prefill = searchParams.get("address");
+    const parcel = searchParams.get("parcel");
     if (prefill && !prefillRan.current) {
       prefillRan.current = true;
       setSingleAddress(prefill);
       void runSingle(prefill);
+    } else if (isPin(parcel) && !prefillRan.current) {
+      // Only a parcel id (from another journey): look up its address, then run as usual.
+      prefillRan.current = true;
+      setSingleLoading(true);
+      fetch(`/api/parcel?pin=${parcel}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((p: { address?: string } | null) => {
+          if (p?.address) {
+            setSingleAddress(p.address);
+            void runSingle(p.address);
+          } else {
+            setSingleLoading(false);
+            setErrorBanner("We could not find that parcel. Enter the address instead.");
+          }
+        })
+        .catch(() => setSingleLoading(false));
     }
     if (searchParams.get("view") === "favorites") {
       setFavoritesOnly(true);
@@ -374,7 +401,10 @@ export default function FeasibilityPencil() {
             </div>
           )}
           {singleLoading && (
-            <p className="mb-4 text-sm" style={{ color: "var(--slate)" }} aria-live="polite">Checking {singleAddress}…</p>
+            <div className="mb-4">
+              <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>Checking {singleAddress}</p>
+              <LoadingSteps compact />
+            </div>
           )}
           <FeasibilityReportView
             slim={selectedSlim}
@@ -427,10 +457,17 @@ export default function FeasibilityPencil() {
 
             {showSkeleton ? (
               <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
-                <Loader2 size={28} className="animate-spin" aria-hidden style={{ color: "var(--green)" }} />
-                <p className="mt-4 text-sm" style={{ color: "var(--slate)" }}>
-                  {bulkLoading ? bulkPhase || "Screening addresses…" : "Checking the property…"}
-                </p>
+                {bulkLoading ? (
+                  <>
+                    <Loader2 size={28} className="animate-spin" aria-hidden style={{ color: "var(--green)" }} />
+                    <p className="mt-4 text-sm" style={{ color: "var(--slate)" }}>{bulkPhase || "Screening addresses…"}</p>
+                  </>
+                ) : (
+                  <>
+                    {singleAddress && <p className="mb-3 text-base font-semibold" style={{ color: "var(--ink)" }}>{singleAddress}</p>}
+                    <LoadingSteps />
+                  </>
+                )}
               </div>
             ) : sorted.length === 0 ? (
               <NoSearchResults />
