@@ -21,6 +21,9 @@ import { REHAB_LABELS, REHAB_RATES, salePricePerSf, type RehabLevel } from "@/li
 import Heatmap, { TONE_TINT, TONE_VAR, toneOf } from "./Heatmap";
 import { RentCard } from "./ExitCompare";
 
+type PayMode = "all_cash" | "cash" | "amount" | "ltc";
+const PAY_MODES: [PayMode, string][] = [["all_cash", "All cash"], ["cash", "I have this much cash"], ["amount", "A loan amount"], ["ltc", "Loan to cost"]];
+
 function Group({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
     <section className="pa-raised p-5">
@@ -47,6 +50,14 @@ export default function CalculatorClient() {
   const [form, setForm] = useState<CalcForm>(() => fromSearchParams(new URLSearchParams(sp.toString())));
   // The AADU block is open when a link or the visitor put an area in it.
   const [aaduOn, setAaduOn] = useState(() => !!form.aaduSf);
+  // One way to pay: the cash in hand (the loan covers the rest), a loan amount, loan to cost, or all cash.
+  const [payMode, setPayMode] = useState<PayMode>(() => (form.cashDown ? "cash" : form.loanAmount ? "amount" : form.ltcPct ? "ltc" : "all_cash"));
+  const choosePay = (k: PayMode) => {
+    setPayMode(k);
+    setForm((f) => ({ ...f, cashDown: k === "cash" ? f.cashDown : "", loanAmount: k === "amount" ? f.loanAmount : "", ltcPct: k === "ltc" ? f.ltcPct : "" }));
+    const name = k === "cash" ? "cashDown" : k === "amount" ? "loanAmount" : k === "ltc" ? "ltcPct" : null;
+    if (name) setTimeout(() => document.querySelector<HTMLInputElement>(`input[name="${name}"]`)?.focus(), 0);
+  };
 
   // Mirror the inputs into the URL so a result can be shared.
   useEffect(() => {
@@ -121,19 +132,32 @@ export default function CalculatorClient() {
             <Field label="Contingency" value={form.contingencyPct} onChange={set("contingencyPct")} suffix="% of build" error={err("contingencyPct")} />
           </Group>
 
-          <Group title="Financing and holding" note="Enter the cash you have and the rest is borrowed. Or set a loan amount or loan to cost. All blank means all cash. Holding costs run for the whole timeline.">
-            <Field label="Cash you have" value={form.cashDown} onChange={set("cashDown")} prefix="$" hint="The loan covers everything above this" error={err("cashDown")} />
-            <Field label="Interest rate" value={form.ratePct} onChange={set("ratePct")} suffix="%" error={err("ratePct")} />
-            <Field label="Or loan amount" value={form.loanAmount} onChange={set("loanAmount")} prefix="$" error={err("loanAmount")} />
-            <Field label="Or loan to cost" value={form.ltcPct} onChange={set("ltcPct")} suffix="%" error={err("ltcPct")} />
-            <div className="grid grid-cols-3 gap-2">
+          <Group title="Financing" note="How is it paid for?">
+            <div className="flex flex-wrap gap-2 sm:col-span-2" role="radiogroup" aria-label="How it is paid for">
+              {PAY_MODES.map(([k, label]) => (
+                <button key={k} type="button" role="radio" aria-checked={payMode === k} className={`pa-chip ${payMode === k ? "pa-chip-active" : ""}`} style={{ minHeight: 40 }} onClick={() => choosePay(k)}>{label}</button>
+              ))}
+            </div>
+            {payMode === "cash" && <Field label="Cash you have" name="cashDown" value={form.cashDown} onChange={set("cashDown")} prefix="$" hint="The loan covers everything above this" error={err("cashDown")} />}
+            {payMode === "amount" && <Field label="Loan amount" name="loanAmount" value={form.loanAmount} onChange={set("loanAmount")} prefix="$" hint="Your cash covers the rest" error={err("loanAmount")} />}
+            {payMode === "ltc" && <Field label="Loan to cost" name="ltcPct" value={form.ltcPct} onChange={set("ltcPct")} suffix="%" hint="Share of the cost the loan covers" error={err("ltcPct")} />}
+            {payMode !== "all_cash" && <Field label="Interest rate" value={form.ratePct} onChange={set("ratePct")} suffix="% a year" error={err("ratePct")} />}
+          </Group>
+
+          <Group title="Timeline" note="Months in each stage. Holding costs run through all of them.">
+            <div className="grid grid-cols-3 gap-2 sm:col-span-2">
               <Field label="Permits" value={form.permitMonths} onChange={set("permitMonths")} suffix="mo" inputMode="numeric" error={err("permitMonths")} />
               <Field label="Build" value={form.buildMonths} onChange={set("buildMonths")} suffix="mo" inputMode="numeric" error={err("buildMonths")} />
               <Field label="Sale" value={form.exitMonths} onChange={set("exitMonths")} suffix="mo" inputMode="numeric" error={err("exitMonths")} />
             </div>
-            <Field label="Property tax" value={form.taxMonthly} onChange={set("taxMonthly")} prefix="$" suffix="a month" error={err("taxMonthly")} />
-            <Field label="Insurance" value={form.insuranceMonthly} onChange={set("insuranceMonthly")} prefix="$" suffix="a month" error={err("insuranceMonthly")} />
-            <Field label="Utilities and upkeep" value={form.utilitiesMonthly} onChange={set("utilitiesMonthly")} prefix="$" suffix="a month" error={err("utilitiesMonthly")} />
+            <details className="sm:col-span-2" open={!!(form.taxMonthly || form.insuranceMonthly || form.utilitiesMonthly)}>
+              <summary className="cursor-pointer text-xs font-semibold" style={{ color: "var(--ink)", minHeight: 32, display: "flex", alignItems: "center" }}>Holding costs a month (optional)</summary>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Field label="Property tax" value={form.taxMonthly} onChange={set("taxMonthly")} prefix="$" error={err("taxMonthly")} />
+                <Field label="Insurance" value={form.insuranceMonthly} onChange={set("insuranceMonthly")} prefix="$" error={err("insuranceMonthly")} />
+                <Field label="Utilities and upkeep" value={form.utilitiesMonthly} onChange={set("utilitiesMonthly")} prefix="$" error={err("utilitiesMonthly")} />
+              </div>
+            </details>
           </Group>
 
           <Group title="The exit" note="One value for each building. The house starts at break-even (price plus rehab); the units start at Pencil's resale estimate. Once the MLS feed is connected, comps will suggest these. Your number wins.">
