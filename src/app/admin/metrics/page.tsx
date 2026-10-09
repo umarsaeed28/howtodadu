@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import PortalFrame from "@/components/portal/PortalFrame";
-import { adminDb, requireAdmin } from "@/lib/admin/server";
+import { adminDb, envState, requireAdmin } from "@/lib/admin/server";
+import EnvBar from "@/components/admin/EnvBar";
 import { computeMetrics } from "@/lib/portal/metrics";
 import { STAGES, STAGE_LABELS, usd, type Activity, type FeasibilityRow, type PermitPackage, type Project, type Referral } from "@/lib/portal/types";
 
@@ -18,7 +19,8 @@ function Tile({ k, v, note }: { k: string; v: string; note?: string }) {
 
 export default async function MetricsPage() {
   const viewer = await requireAdmin("/admin/metrics");
-  const db = adminDb();
+  const es = await envState();
+  const db = adminDb(es.env);
   const [projects, feas, permits, referrals, activity] = await Promise.all([
     db.from("projects").select("*"),
     db.from("feasibility_reports").select("*"),
@@ -35,7 +37,7 @@ export default async function MetricsPage() {
   });
   const days = (n: number | undefined) => (n == null ? "—" : `${n} d`);
   return (
-    <PortalFrame viewer={viewer} active="/admin/metrics" wide>
+    <PortalFrame viewer={viewer} active="/admin/metrics" wide banner={<EnvBar env={es.env} host={es.host} available={es.available} path="/admin/metrics" />}>
       <h1 className="pa-display text-3xl" style={{ color: "var(--ink)" }}>Metrics</h1>
       <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>All time, from the projects and their logs.</p>
 

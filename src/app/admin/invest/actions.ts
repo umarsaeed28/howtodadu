@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { adminDb, currentAdmin } from "@/lib/admin/server";
+import { adminDb, currentAdmin, currentEnv } from "@/lib/admin/server";
 import { mergeAssumptions } from "@/lib/invest/assumptions";
 import { clearLiveFeed, computeFeed, storeSnapshot } from "@/lib/server/invest";
 
@@ -12,7 +12,7 @@ export async function saveInvestSettings(_: { error?: string; ok?: boolean }, fd
   const raw: Record<string, unknown> = Object.fromEntries(fd.entries());
   raw.financeConstruction = fd.get("financeConstruction") === "on";
   const data = mergeAssumptions(raw);
-  const db = adminDb();
+  const db = adminDb(await currentEnv());
   const { error } = await db.from("invest_settings").upsert({ id: 1, data, updated_by: null, updated_at: new Date().toISOString() });
   if (error) return { error: error.message.includes("invest_settings") ? "The invest_settings table is missing. Apply supabase/migrations/0010_invest.sql first." : error.message };
   clearLiveFeed();

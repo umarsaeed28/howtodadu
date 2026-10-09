@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PortalFrame from "@/components/portal/PortalFrame";
-import { adminDb, requireAdmin } from "@/lib/admin/server";
+import { adminDb, envState, requireAdmin } from "@/lib/admin/server";
+import EnvBar from "@/components/admin/EnvBar";
 import { loadCards } from "@/lib/portal/cards";
 import { nextAction, STAGES, STAGE_LABELS } from "@/lib/portal/types";
 
@@ -11,7 +12,8 @@ export const dynamic = "force-dynamic";
 /** Every project, one column per stage. Leads without an address sit in Acquire. */
 export default async function AdminBoard() {
   const viewer = await requireAdmin("/admin");
-  const db = adminDb();
+  const es = await envState();
+  const db = adminDb(es.env);
   const cards = await loadCards(db);
   const { data: owners } = await db.from("profiles").select("id, full_name, email");
   const ownerName = (id: string) => {
@@ -19,7 +21,7 @@ export default async function AdminBoard() {
     return o?.full_name || o?.email || "Client";
   };
   return (
-    <PortalFrame viewer={viewer} active="/admin" wide>
+    <PortalFrame viewer={viewer} active="/admin" wide banner={<EnvBar env={es.env} host={es.host} available={es.available} path="/admin" />}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="pa-display text-3xl" style={{ color: "var(--ink)" }}>Pipeline</h1>

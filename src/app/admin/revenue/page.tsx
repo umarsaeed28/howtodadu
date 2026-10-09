@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import PortalFrame from "@/components/portal/PortalFrame";
-import { adminDb, requireAdmin } from "@/lib/admin/server";
+import { adminDb, envState, requireAdmin } from "@/lib/admin/server";
+import EnvBar from "@/components/admin/EnvBar";
 import { listPurchases } from "@/lib/server/purchases";
 import { PRODUCT_LABELS, revenueTotals } from "@/lib/portal/revenue";
 import { usd } from "@/lib/portal/types";
@@ -22,12 +23,13 @@ const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "sh
 /** Total revenue and every purchase, from the purchases ledger (migration 0011). */
 export default async function RevenuePage() {
   const viewer = await requireAdmin("/admin/revenue");
-  const db = adminDb();
+  const es = await envState();
+  const db = adminDb(es.env);
   const { rows, error } = await listPurchases(db);
   const t = revenueTotals(rows);
   const max = Math.max(1, ...t.byMonth.map((m) => m.amountCents));
   return (
-    <PortalFrame viewer={viewer} active="/admin/revenue" wide>
+    <PortalFrame viewer={viewer} active="/admin/revenue" wide banner={<EnvBar env={es.env} host={es.host} available={es.available} path="/admin/revenue" />}>
       <h1 className="pa-display text-3xl" style={{ color: "var(--ink)" }}>Revenue</h1>
       <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>Every payment, as it happened. Refunds count against the total.</p>
 

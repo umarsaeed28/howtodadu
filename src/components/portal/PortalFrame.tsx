@@ -16,7 +16,7 @@ const LINKS: Record<Viewer["role"], { href: string; label: string }[]> = {
 };
 
 /** The portal's own bar under the site header: role links, who is signed in, sign out. Pages sit in a narrow column. */
-export default function PortalFrame({ viewer, active, children, wide }: { viewer: Viewer; active: string; children: React.ReactNode; wide?: boolean }) {
+export default function PortalFrame({ viewer, active, children, wide, banner }: { viewer: Viewer; active: string; children: React.ReactNode; wide?: boolean; banner?: React.ReactNode }) {
   return (
     <main className="pencil-app">
       <div className="border-b" style={{ borderColor: "var(--hairline)", background: "var(--paper)" }}>
@@ -43,7 +43,10 @@ export default function PortalFrame({ viewer, active, children, wide }: { viewer
           </form>
         </div>
       </div>
-      <div className={`mx-auto px-4 pb-16 pt-6 md:px-6 ${wide ? "max-w-[1400px]" : "max-w-[1040px]"}`}>{children}</div>
+      <div className={`mx-auto px-4 pb-16 pt-6 md:px-6 ${wide ? "max-w-[1400px]" : "max-w-[1040px]"}`}>
+        {banner && <div className="mb-5">{banner}</div>}
+        {children}
+      </div>
     </main>
   );
 }

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import PortalFrame from "@/components/portal/PortalFrame";
 import ReferralRow from "@/components/portal/ReferralRow";
-import { adminDb, requireAdmin } from "@/lib/admin/server";
+import { adminDb, envState, requireAdmin } from "@/lib/admin/server";
+import EnvBar from "@/components/admin/EnvBar";
 import { referralFeeCents, usd, type GcPartner, type Project, type Referral } from "@/lib/portal/types";
 
 export const metadata: Metadata = { title: "Lead routing — Pencil admin" };
@@ -11,7 +12,8 @@ export const dynamic = "force-dynamic";
 /** Every referral: who got the lead, the contract value, the fee owed and whether it was paid. */
 export default async function ReferralsPage() {
   const viewer = await requireAdmin("/admin/referrals");
-  const db = adminDb();
+  const es = await envState();
+  const db = adminDb(es.env);
   const [{ data: referrals }, { data: gcs }, { data: projects }] = await Promise.all([
     db.from("referrals").select("*").order("created_at", { ascending: false }),
     db.from("gc_partners").select("*").order("company"),
@@ -23,7 +25,7 @@ export default async function ReferralsPage() {
   const owed = rows.filter((r) => r.status === "won").reduce((s, r) => s + (referralFeeCents(r) ?? 0), 0);
   const paid = rows.filter((r) => r.status === "paid").reduce((s, r) => s + (referralFeeCents(r) ?? 0), 0);
   return (
-    <PortalFrame viewer={viewer} active="/admin/referrals" wide>
+    <PortalFrame viewer={viewer} active="/admin/referrals" wide banner={<EnvBar env={es.env} host={es.host} available={es.available} path="/admin/referrals" />}>
       <h1 className="pa-display text-3xl" style={{ color: "var(--ink)" }}>Lead routing</h1>
       <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>Route a project to builders from its page (admin panel). Record the contract and the fee here.</p>
       <dl className="mt-4 grid grid-cols-3 gap-2">
