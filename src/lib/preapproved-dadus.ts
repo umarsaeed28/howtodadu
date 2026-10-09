@@ -28,6 +28,8 @@ export interface PreApprovedPlan {
   detailUrl: string;
   /** The designer's submitted plan set, hosted by the City. */
   pdfUrl: string;
+  /** PLACEHOLDER: a photo or rendering of the design (public/plans/<id>.webp). Until one is added, cards draw the footprint. */
+  image?: string;
 }
 
 const PAGE = "https://aduniverse-seattlecitygis.hub.arcgis.com/pages";

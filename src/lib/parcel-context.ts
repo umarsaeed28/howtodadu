@@ -44,3 +44,9 @@ export function withParcel(path: string, pin: string | null | undefined): string
   sp.set("parcel", pin);
   return `${base}?${sp.toString()}`;
 }
+
+/** "610 N 125TH ST, Seattle, WA" → "610 N 125th St". For display; city records come in capitals. */
+export function prettyAddress(a: string): string {
+  const street = a.replace(/,\s*Seattle,\s*WA.*$/i, "").replace(/\s+\d{5}(-\d{4})?$/, "").trim();
+  return street.replace(/[A-Za-z]+/g, (w) => (/^(N|S|E|W|NE|NW|SE|SW)$/i.test(w) ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1).toLowerCase())).replace(/(\d)(St|Nd|Rd|Th)\b/g, (_, d, x) => d + x.toLowerCase());
+}
