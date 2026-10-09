@@ -166,3 +166,20 @@ export function matchGcs(req: Pick<BuildRequest, "budget_tier" | "area" | "size_
 }
 
 export const usd = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
+
+/* ── The permit service's four-step tracker, on top of the permit package statuses ── */
+export const PERMIT_TRACKER = ["intake", "submitted", "corrections", "issued"] as const;
+export type PermitTrackerStep = (typeof PERMIT_TRACKER)[number];
+export const PERMIT_TRACKER_LABELS: Record<PermitTrackerStep, string> = {
+  intake: "Intake",
+  submitted: "Submitted to SDCI",
+  corrections: "Corrections",
+  issued: "Issued",
+};
+/** Kickoff through drawings is still intake; the city's approval is the issued permit. */
+export function permitTrackerStep(status: PermitStatus): PermitTrackerStep {
+  if (status === "approved") return "issued";
+  if (status === "corrections") return "corrections";
+  if (status === "submitted") return "submitted";
+  return "intake";
+}

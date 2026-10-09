@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeMetrics } from "./metrics";
-import { matchGcs, nextAction, referralFeeCents, sizeTierFor, type Activity, type BuildRequest, type FeasibilityRow, type GcPartner, type PermitPackage, type Project, type Referral } from "./types";
+import { matchGcs, nextAction, permitTrackerStep, referralFeeCents, sizeTierFor, type Activity, type BuildRequest, type FeasibilityRow, type GcPartner, type PermitPackage, type Project, type Referral } from "./types";
 
 const project = (over: Partial<Project> = {}): Project => ({
   id: "p1", owner_id: "u1", address: "610 N 125th St, Seattle, WA", parcel_id: null, stage: "feasibility", lot_help_requested: false, lot_help_notes: "", brokerage_fee_cents: 0,
@@ -72,5 +72,14 @@ describe("computeMetrics", () => {
     expect(m.avgCorrectionRounds).toBe(2);
     expect(m.avgApprovalDays).toBe(10);
     expect(m.revenueCents).toEqual({ permit: 1_500_000, referral: 1_500_000, brokerage: 500_000, total: 3_500_000 });
+  });
+});
+
+describe("permit tracker", () => {
+  it("maps package statuses onto Intake, Submitted, Corrections, Issued", () => {
+    expect(["kickoff", "design_options", "client_approval", "drawings"].map((x) => permitTrackerStep(x as PermitPackage["status"]))).toEqual(["intake", "intake", "intake", "intake"]);
+    expect(permitTrackerStep("submitted")).toBe("submitted");
+    expect(permitTrackerStep("corrections")).toBe("corrections");
+    expect(permitTrackerStep("approved")).toBe("issued");
   });
 });
