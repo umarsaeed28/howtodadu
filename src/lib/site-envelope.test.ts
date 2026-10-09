@@ -47,3 +47,13 @@ describe("site frame", () => {
     expect(setbackViolations(frame.lotEdges, frame.rect(10, 40, 20, 20))).toEqual([]);
   });
 });
+
+describe("plan fit against the open ground", () => {
+  it("rejects every design when the house leaves no spot, and any design larger than the spot", () => {
+    const f = { ...frame, maxLiving: 1000 };
+    expect(planFitFor({ ...f, roomSqft: 0 }, { widthFt: 16, depthFt: 20, sqft: 600 })).toEqual({ fits: false, reason: "No open spot for a DADU on this lot" });
+    expect(planFitFor({ ...f, roomSqft: 400 }, { widthFt: 20, depthFt: 30, sqft: 600 })).toEqual({ fits: false, reason: "Needs 600 sf of open ground; the lot has about 400 sf" });
+    expect(planFitFor({ ...f, roomSqft: 700 }, { widthFt: 20, depthFt: 30, sqft: 600 })).toEqual({ fits: true, reason: null });
+    expect(planFitFor({ ...f, roomSqft: null }, { widthFt: 20, depthFt: 30, sqft: 600 })).toEqual({ fits: true, reason: null });
+  });
+});

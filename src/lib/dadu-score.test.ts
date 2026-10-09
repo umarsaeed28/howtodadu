@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { GRADE_BANDS, WEIGHTS, FACTOR_NAMES, gradeOf, scoreSite, type ScoreInput } from "./dadu-score";
+import { GRADE_BANDS, WEIGHTS, FACTOR_NAMES, UNMEASURED_ROOM_CAP, gradeOf, physicalDaduSqft, scoreSite, type ScoreInput } from "./dadu-score";
 
 const base: ScoreInput = {
   lotSqft: 5000,
@@ -17,7 +17,7 @@ const base: ScoreInput = {
   hoaMonthly: 0,
 };
 /** An open, measured lot: no medium or large trees and plenty of clear ground behind the house. */
-const openTrees = { large: 0, medium: 0, small: 1, canopyPct: 5, clearSqft: 1500, clearSqftIfMediumRemoved: 1500 };
+const openTrees = { large: 0, medium: 0, small: 1, canopyPct: 5, clearSqft: 1500, clearSqftIfMediumRemoved: 1500, siteSqft: 1500 };
 const f = (s: ReturnType<typeof scoreSite>, k: keyof typeof WEIGHTS) => s.factors.find((x) => x.key === k)!.score;
 
 describe("gates", () => {
@@ -105,7 +105,7 @@ describe("factors follow the team guide", () => {
 describe("measured trees (2021 LiDAR crowns)", () => {
   const great = { ...base, alley: true, widthFt: 60, depthFt: 140, daduSqft: 1000 };
   it("9612 55th Ave S: 1 large and 7 medium trees, 272 sf open: fits once medium trees come out, so Fair at best, not hidden", () => {
-    const s = scoreSite({ ...great, canopyPct: 0.2, trees: { large: 1, medium: 7, small: 2, canopyPct: 32, clearSqft: 272, clearSqftIfMediumRemoved: 1656 } });
+    const s = scoreSite({ ...great, canopyPct: 0.2, trees: { large: 1, medium: 7, small: 2, canopyPct: 32, clearSqft: 272, clearSqftIfMediumRemoved: 1656, siteSqft: 2000 } });
     expect(s.eligible).toBe(true);
     expect(s.score).toBeLessThanOrEqual(81);
     expect(s.score).toBeGreaterThanOrEqual(70);
@@ -113,12 +113,12 @@ describe("measured trees (2021 LiDAR crowns)", () => {
     expect(s.factors.find((x) => x.key === "trees")!.note).toMatch(/once medium trees come out/);
   });
   it("needing to remove one or two medium trees only keeps a lot from being a top pick", () => {
-    const s = scoreSite({ ...great, trees: { large: 0, medium: 2, small: 0, canopyPct: 12, clearSqft: 200, clearSqftIfMediumRemoved: 1200 } });
+    const s = scoreSite({ ...great, trees: { large: 0, medium: 2, small: 0, canopyPct: 12, clearSqft: 200, clearSqftIfMediumRemoved: 1200, siteSqft: 2000 } });
     expect(s.score).toBeLessThanOrEqual(92);
     expect(s.score).toBeGreaterThanOrEqual(82);
   });
   it("large trees that leave no 15 x 20 ft spot even with smaller trees removed fail the lot", () => {
-    const s = scoreSite({ ...great, trees: { large: 3, medium: 0, small: 0, canopyPct: 55, clearSqft: 0, clearSqftIfMediumRemoved: 120 } });
+    const s = scoreSite({ ...great, trees: { large: 3, medium: 0, small: 0, canopyPct: 55, clearSqft: 0, clearSqftIfMediumRemoved: 120, siteSqft: 2000 } });
     expect(s.eligible).toBe(false);
     expect(s.gates.find((g) => g.key === "trees")!.status).toBe("fail");
   });
@@ -134,7 +134,7 @@ describe("measured trees (2021 LiDAR crowns)", () => {
     expect(scoreSite({ ...great, trees: { ...tight, medium: 6 } }).score).toBeGreaterThan(81);
   });
   it("522 NE 127th St: 4 large and 2 medium trees with 1,590 sf open is Good", () => {
-    const s = scoreSite({ ...base, widthFt: 90, depthFt: 121, daduSqft: 1000, sideClearanceFt: 28, lotSqft: 10870, trees: { large: 4, medium: 2, small: 6, canopyPct: 33, clearSqft: 1590, clearSqftIfMediumRemoved: 1590 } });
+    const s = scoreSite({ ...base, widthFt: 90, depthFt: 121, daduSqft: 1000, sideClearanceFt: 28, lotSqft: 10870, trees: { large: 4, medium: 2, small: 6, canopyPct: 33, clearSqft: 1590, clearSqftIfMediumRemoved: 1590, siteSqft: 2000 } });
     expect(s.grade).toBe("Good");
   });
   it("a large tree costs the tree factor 5 points, a medium one 2", () => {
@@ -194,5 +194,43 @@ describe("grades and weights", () => {
     const doc = readFileSync("rag/documents/36-site-score.md", "utf8");
     for (const [k, w] of Object.entries(WEIGHTS)) expect(doc).toContain(`${FACTOR_NAMES[k as keyof typeof WEIGHTS]}, weight ${w}.`);
     for (const g of GRADE_BANDS) expect(doc).toContain(g.min === 0 ? `${g.label}: under ${GRADE_BANDS[2].min}` : `${g.label}: ${g.min}`);
+  });
+});
+
+describe("room for a DADU is a hard gate", () => {
+  it("5519 5th Ave NE: a corner lot whose house leaves no 15 by 20 ft spot fails, whatever coverage is left", () => {
+    // City data for parcel 3856904795: 3,420 sf corner lot, house and garage cover 32%, so 610 sf of coverage is left,
+    // but the building outlines leave no 15 by 20 ft spot inside the setbacks and 5 ft from the house.
+    const s = scoreSite({
+      ...base, lotSqft: 3420, widthFt: 57, depthFt: 60, corner: true, daduSqft: 610, canopyPct: 0.41, sideClearanceFt: 15.2, zoning: "SF 5000",
+      trees: { large: 2, medium: 0, small: 0, canopyPct: 34, clearSqft: 0, clearSqftIfMediumRemoved: 0, siteSqft: 0, site: "side" },
+    });
+    expect(s.eligible).toBe(false);
+    expect(s.score).toBe(0);
+    expect(s.grade).toBe("Not eligible");
+    expect(s.gates.find((g) => g.key === "dadu")).toMatchObject({ status: "fail" });
+    expect(s.gates.find((g) => g.key === "dadu")!.note).toContain("no 15 by 20 ft spot");
+  });
+
+  it("a spot just under 300 sf fails; 300 sf passes", () => {
+    const at = (siteSqft: number) => scoreSite({ ...base, trees: { ...openTrees, siteSqft } });
+    expect(at(299).eligible).toBe(false);
+    expect(at(300).eligible).toBe(true);
+  });
+
+  it("holds the DADU size to the open spot, built two stories", () => {
+    expect(physicalDaduSqft(1000, 400)).toBe(800);
+    expect(physicalDaduSqft(610, 2000)).toBe(610);
+    expect(physicalDaduSqft(1000, null)).toBe(1000);
+    const s = scoreSite({ ...base, daduSqft: 1000, trees: { ...openTrees, clearSqft: 400, clearSqftIfMediumRemoved: 400, siteSqft: 400 } });
+    expect(s.gates.find((g) => g.key === "dadu")!.note).toContain("up to 800 sf");
+  });
+
+  it("an unmeasured spot is unknown, never feasible: Marginal at best", () => {
+    const s = scoreSite({ ...base, alley: true, widthFt: 55, daduSqft: 1000, canopyPct: 0.05 });
+    expect(s.gates.find((g) => g.key === "dadu")!.status).toBe("unknown");
+    expect(s.eligible).toBe(true);
+    expect(s.score).toBeLessThanOrEqual(UNMEASURED_ROOM_CAP);
+    expect(s.score).toBeLessThan(70);
   });
 });

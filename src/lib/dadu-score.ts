@@ -193,6 +193,16 @@ export const MEDIUM_REMOVALS_FAIR_AT_BEST = 4;
 const noRoomBeforeTrees = (t: TreeStats) => t.siteSqft != null && t.siteSqft < MIN_FOOTPRINT_SQFT;
 
 /**
+ * The largest DADU the lot can physically take. The rules allowance (coverage left, the 1,000 sf cap) says nothing
+ * about where it goes, so it is held to the open spot the building outlines leave, built two stories (the NR height
+ * allows it). Null room means the spot was not measured.
+ */
+export function physicalDaduSqft(rulesSqft: number | null, roomSqft: number | null | undefined): number | null {
+  if (roomSqft == null) return rulesSqft;
+  return Math.min(rulesSqft ?? 0, roomSqft * 2);
+}
+
+/**
  * Measured trees. Large trees (likely protected) decide where a DADU can go; medium trees can come out with a review
  * and replacement, so they cost a little and never hide a lot on their own.
  */
@@ -203,9 +213,8 @@ function measuredTreeFactor(t: TreeStats): { score: number; note: string; cap: n
   const byCanopy = t.canopyPct <= 10 ? 100 : t.canopyPct <= 20 ? 85 : t.canopyPct <= 30 ? 65 : t.canopyPct <= 40 ? 45 : t.canopyPct <= 50 ? 30 : 15;
   let score = Math.max(0, byCanopy - t.large * 5 - t.medium * 2);
   if (noRoomBeforeTrees(t)) {
-    // Not a tree finding: the house leaves no clear 15 by 20 ft rectangle. Keep the lot out of the top grades until
-    // someone confirms where a DADU goes.
-    return { score, cap: GRADE_BANDS[1].min - 1, note: `${count}. The house leaves no clear 15 by 20 ft spot for a DADU in the city outlines, so placement needs a site visit.` };
+    // Not a tree finding: the house leaves no 15 by 20 ft spot, and the "Room for a DADU" gate fails the lot.
+    return { score, cap: 0, note: `${count}. The house leaves no 15 by 20 ft spot for a DADU.` };
   }
   // Open ground: clear of large trees. Medium trees in the way are assumed removable.
   const open = t.clearSqftIfMediumRemoved;
@@ -226,8 +235,28 @@ function measuredTreeFactor(t: TreeStats): { score: number; note: string; cap: n
   return { score, cap, note };
 }
 
+/**
+ * Room for a DADU, hard: a 15 by 20 ft spot must exist inside the setbacks, outside the front yard and 5 ft from the
+ * house (tree-analysis.ts, from the city's building outlines), and the rules must leave at least 300 sf. When the spot
+ * was not measured the gate is unknown and the lot cannot read as feasible (see the cap in scoreSite).
+ */
+function roomGate(room: number | null, dadu: number | null): Gate {
+  const label = "Room for a DADU";
+  if (room != null && room < MIN_FOOTPRINT_SQFT)
+    return { key: "dadu", label, status: "fail", note: "The house leaves no 15 by 20 ft spot for a DADU inside the setbacks, out of the front yard and 5 ft from the house (city building outlines)." };
+  if ((dadu ?? 0) < MIN_DADU_SQFT) return { key: "dadu", label, status: "fail", note: `The rules leave room for less than ${MIN_DADU_SQFT} sf.` };
+  const size = `A DADU of up to ${Math.round(dadu!).toLocaleString("en-US")} sf`;
+  if (room == null) return { key: "dadu", label, status: "unknown", note: `${size} is allowed, but where it would go on the lot was not measured. Confirm a 15 by 20 ft spot on site.` };
+  return { key: "dadu", label, status: "pass", note: `${size} fits, on an open spot of about ${Math.round(room).toLocaleString("en-US")} sf.` };
+}
+
+/** A lot whose DADU spot was not measured cannot read as feasible: Marginal at best until someone confirms it. */
+export const UNMEASURED_ROOM_CAP = GRADE_BANDS[2].min - 1;
+
 export function scoreSite(i: ScoreInput): SiteScore {
   const w = i.widthFt != null ? Math.round(i.widthFt) : null;
+  const room = i.trees?.siteSqft ?? null;
+  const dadu = physicalDaduSqft(i.daduSqft, room);
   const d = i.depthFt != null ? Math.round(i.depthFt) : null;
   const zone = (i.zoning ?? "").trim().toUpperCase();
   const zoneOk = /^(NR|SF)/.test(zone);
@@ -244,9 +273,7 @@ export function scoreSite(i: ScoreInput): SiteScore {
     (i.existingAdus ?? 0) >= 2
       ? { key: "adus", label: "ADU slots", status: "fail", note: "The lot already has two ADUs, the maximum." }
       : { key: "adus", label: "ADU slots", status: i.existingAdus == null ? "unknown" : "pass", note: i.existingAdus == null ? "Existing ADU count unknown." : `${i.existingAdus} existing ADU${i.existingAdus === 1 ? "" : "s"}, under the cap of 2.` },
-    (i.daduSqft ?? 0) >= MIN_DADU_SQFT
-      ? { key: "dadu", label: "Room for a DADU", status: "pass", note: `A DADU of up to ${Math.round(i.daduSqft!).toLocaleString("en-US")} sf fits.` }
-      : { key: "dadu", label: "Room for a DADU", status: "fail", note: `The rules leave room for less than ${MIN_DADU_SQFT} sf.` },
+    roomGate(i.trees?.siteSqft ?? null, dadu),
     zoneOk
       ? { key: "zoning", label: "Zoning", status: "pass", note: `${zone}: single-family residential, covered by the guide.` }
       : { key: "zoning", label: "Zoning", status: zone ? "unknown" : "unknown", note: zone ? `${zone} is outside the Neighborhood Residential rules in the guide.` : "Zoning unknown." },
@@ -271,7 +298,7 @@ export function scoreSite(i: ScoreInput): SiteScore {
   const parts: Record<FactorKey, { score: number; note: string }> = {
     access: accessFactor(i, w),
     layout: layoutFactor(plan.layout.kind === "none" ? "single_rear" : plan.layout.kind, w, d, plan.warning != null),
-    size: sizeFactor(i.daduSqft ?? 0),
+    size: sizeFactor(dadu ?? 0),
     site: siteFactor(pct(i.steepPct), i.ecaFlags, i.grade),
     trees: i.trees ? measuredTreeFactor(i.trees) : treeFactor(pct(i.canopyPct)),
   };
@@ -285,7 +312,7 @@ export function scoreSite(i: ScoreInput): SiteScore {
   const treeCap = i.trees
     ? measuredTreeFactor(i.trees).cap
     : canopy == null || canopy > CANOPY_FAIR_AT_BEST ? GRADE_BANDS[1].min - 1 : GRADE_BANDS[0].min - 1;
-  const score = eligible ? Math.min(Math.round(clamp(raw)), accessUnknown ? GRADE_BANDS[0].min - 1 : 100, treeCap, gradeCap(i.grade)) : 0;
+  const score = eligible ? Math.min(Math.round(clamp(raw)), accessUnknown ? GRADE_BANDS[0].min - 1 : 100, treeCap, gradeCap(i.grade), room == null ? UNMEASURED_ROOM_CAP : 100) : 0;
   const g = eligible ? gradeOf(score) : { tier: 0 as Tier, label: "Not eligible" };
   return { eligible, gates, factors, score, tier: g.tier, grade: g.label };
 }

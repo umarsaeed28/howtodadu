@@ -101,3 +101,15 @@ describe("feasibility study", () => {
     expect(s.standards.find((r) => r.item === "Floor area ratio (FAR)")?.ref).toBe("Estimate");
   });
 });
+
+describe("feasibility study on a lot with no room", () => {
+  it("does not call leftover coverage room to build", () => {
+    const parcel = { address: "5519 5TH AVE NE 98105", pin: "3856904795", lotSqft: 3420, zoning: "SF 5000" } as ParcelData;
+    const factors = { ...emptyFeasibilityData(), lotType: "corner", lotWidth: 57, lotDepth: 60, totalBuildingSqft: 1100, lotCoveragePercent: 0.3217,
+      treeStats: { large: 2, medium: 0, small: 0, canopyPct: 34, clearSqft: 0, clearSqftIfMediumRemoved: 0, siteSqft: 0, site: "side" as const } };
+    const real = generateADUReport(parcel, factors);
+    const s = buildStudy({ ...base, address: "5519 5th Ave NE", lotSqft: 3420, zoning: "SF 5000", feasibility: factors, adu: real, verdict: "Not feasible" });
+    expect(s.coverage?.summary).toBe("About 610 SF of lot coverage remains on paper, but the house leaves no 15 by 20 ft spot to build a DADU on.");
+    expect(s.dadu.find((r) => r.item === "Maximum DADU size")?.value).toContain("1,000 SF");
+  });
+});

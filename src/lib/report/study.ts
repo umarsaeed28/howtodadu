@@ -6,7 +6,7 @@
  * Every figure comes from the engine's own outputs (adu-analysis, the site envelope, far.ts) or city records; this
  * file only words them. Where the engine has no data (overhead lines, porch areas) the section says what to check.
  */
-import { NR_HEIGHT, type ADUReport } from "@/lib/adu-analysis";
+import { DADU_MAX_GROSS_SQFT, NR_HEIGHT, type ADUReport } from "@/lib/adu-analysis";
 import type { FeasibilityData } from "@/lib/feasibility";
 import { isNeighborhoodResidential, maxFarForZone, maxFloorAreaForZone } from "@/lib/feasibility/far";
 import { FRONT_SETBACK_FT, STREET_SIDE_SETBACK_FT } from "@/lib/site-envelope";
@@ -69,13 +69,14 @@ export function buildStudy(i: StudyInput): Study {
   const f = i.feasibility;
   const fp = i.adu?.daduFootprint ?? null;
   const cov = i.adu?.coverage ?? null;
+  const noRoom = !!i.adu?.checks?.some((c) => c.label === "Room for a DADU" && c.status === "fail");
   const alley = !!f?.hasAlley;
   const grade = f?.gradeStats ?? null;
   const steep = grade ? grade.slopePct >= GRADE_STEEP_PCT : false;
   const existingFloor = f?.totalBuildingSqft ?? null;
   const garages = f?.detachedGarageCount ?? 0;
   const adus = f?.totalADU ?? 0;
-  const maxDadu = fp?.maxAllowedSqft ?? null;
+  const maxDadu = fp?.maxAllowedSqft ?? DADU_MAX_GROSS_SQFT;
   const proposedLiving = i.drawn?.living ?? fp?.buildableSqft ?? null;
   const proposedFootprint = i.drawn?.footprint ?? fp?.footprintSqft ?? null;
   const proposedLabel = i.drawn ? `the DADU as drawn (${i.drawn.w} x ${i.drawn.d} ft, ${sf(i.drawn.living)})` : proposedLiving ? `a ${sf(proposedLiving)} DADU` : "a DADU";
@@ -148,7 +149,9 @@ export function buildStudy(i: StudyInput): Study {
           ? proposedFootprint <= cov.availableSqft
             ? `About ${sf(cov.availableSqft)} of coverage remains, enough for ${proposedLabel}, whose footprint is ${sf(proposedFootprint)}.`
             : `About ${sf(cov.availableSqft)} of coverage remains, less than the ${sf(proposedFootprint)} footprint of ${proposedLabel}. A smaller footprint or a second story is needed.`
-          : `About ${sf(cov.availableSqft)} of lot coverage remains for new building.`,
+          : noRoom
+            ? `About ${sf(cov.availableSqft)} of lot coverage remains on paper, but the house leaves no 15 by 20 ft spot to build a DADU on.`
+            : `About ${sf(cov.availableSqft)} of lot coverage remains for new building.`,
       }
     : null;
 

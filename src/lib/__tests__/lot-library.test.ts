@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decodeLibrary, encodeLibrary, makeLotFinder, zipCounts } from "../lot-library";
+import { decodeLibrary, encodeLibrary, enforceRoomRule, makeLotFinder, zipCounts } from "../lot-library";
 import { parcelWhere, toEligibleParcel, tierOf, MAX_ADUS_PER_LOT } from "../server/candidates";
 import type { Candidate } from "../server/candidates";
 import { fromSpark, toSparkFilter } from "../listings/spark";
@@ -100,5 +100,30 @@ describe("Flex (Spark) listings", () => {
     expect(l.mlsId).toBe("K1");
     expect(l.lat).toBeCloseTo(47.66);
     expect(l.lotSqft).toBe(10890);
+  });
+});
+
+describe("room rule on a library built before it", () => {
+  const trees = (siteSqft: number) => ({ large: 0, medium: 0, small: 0, canopyPct: 5, clearSqft: siteSqft, clearSqftIfMediumRemoved: siteSqft, siteSqft, site: "side" as const });
+  const file = () =>
+    encodeLibrary(
+      [
+        lot({ pin: "3856904795", address: "5519 5TH AVE NE 98105", score: 81, tier: 1, topPick: false, daduSqft: 610, trees: trees(0) }),
+        lot({ pin: "0000000002", score: 88, daduSqft: 1000, trees: trees(400) }),
+        lot({ pin: "0000000003", score: 90, daduSqft: 1000, trees: trees(1500) }),
+        lot({ pin: "0000000004", score: 75, daduSqft: 900 }),
+      ],
+      "test"
+    );
+
+  it("drops a lot whose house leaves no 15 by 20 ft spot below the shown floor, and holds sizes to the open spot", () => {
+    const out = decodeLibrary(enforceRoomRule(file()));
+    expect(out.map((l) => [l.pin, l.score, l.tier, l.topPick, l.daduSqft])).toEqual([
+      ["3856904795", 0, 0, false, null],
+      ["0000000002", 88, 3, true, 800],
+      ["0000000003", 90, 3, true, 1000],
+      ["0000000004", 75, 3, true, 900],
+    ]);
+    expect(zipCounts(enforceRoomRule(file()), 65).reduce((n, z) => n + z.lots, 0)).toBe(3);
   });
 });

@@ -1,6 +1,7 @@
 import type { FeasibilityData, LotGeometry, SitePlanData } from "@/lib/feasibility";
 import type { ADUReport } from "@/lib/adu-analysis";
 import { lotRotation, turn, unturn } from "@/lib/lot-orientation";
+import { MIN_FOOTPRINT_SQFT } from "@/lib/tree-analysis";
 
 /*
  * The site frame behind the master plan: the lot projected to feet and squared to the page, which side faces the
@@ -175,7 +176,9 @@ export function computeSiteFrame({ lot, sitePlan, feasibility, report }: SiteInp
   const maxLiving = fp?.maxAllowedSqft ?? 1000;
   const coverageLeft = report?.coverage?.availableSqft ?? null;
   const canTwoStory = fp?.stories === 2;
-  return { theta, proj, ring, unproj, lotPts, x0, x1, y0, y1, cx, cy, streets, front, swap, lw, ld, L, toLocal, rect, fp, onAlley, side, rear, frontDir, lotRing, lotEdges, sideL, sideR, rearSb, frontSb, polyEnvelope, envelope, maxLiving, coverageLeft, canTwoStory };
+  /** The largest open spot the house leaves for a DADU (tree-analysis.ts), square feet. Null when not measured. */
+  const roomSqft = feasibility?.treeStats?.siteSqft ?? null;
+  return { roomSqft, theta, proj, ring, unproj, lotPts, x0, x1, y0, y1, cx, cy, streets, front, swap, lw, ld, L, toLocal, rect, fp, onAlley, side, rear, frontDir, lotRing, lotEdges, sideL, sideR, rearSb, frontSb, polyEnvelope, envelope, maxLiving, coverageLeft, canTwoStory };
 }
 
 export type SiteFrame = ReturnType<typeof computeSiteFrame>;
@@ -188,8 +191,16 @@ export function envelopeSize(f: Pick<SiteFrame, "lw" | "ld" | "sideL" | "sideR" 
 
 export type PlanFit = { fits: boolean; reason: string | null };
 
-/** Whether a design (width x depth, living sf) fits behind the setbacks, turned either way, and inside the size limit. */
-export function planFitFor(f: Pick<SiteFrame, "lw" | "ld" | "sideL" | "sideR" | "rearSb" | "frontSb" | "maxLiving">, p: { widthFt: number; depthFt: number; sqft: number }): PlanFit {
+/**
+ * Whether a design (width x depth, living sf) fits behind the setbacks, turned either way, inside the size limit, and
+ * on the open ground the house leaves. The open spot is the largest rectangle there, so a footprint bigger than it
+ * cannot fit anywhere; under 15 by 20 ft nothing fits.
+ */
+export function planFitFor(f: Pick<SiteFrame, "lw" | "ld" | "sideL" | "sideR" | "rearSb" | "frontSb" | "maxLiving"> & { roomSqft?: number | null }, p: { widthFt: number; depthFt: number; sqft: number }): PlanFit {
+  const room = f.roomSqft ?? null;
+  if (room != null && room < MIN_FOOTPRINT_SQFT) return { fits: false, reason: "No open spot for a DADU on this lot" };
+  const footprint = Math.round(p.widthFt * p.depthFt);
+  if (room != null && footprint > room) return { fits: false, reason: `Needs ${footprint.toLocaleString("en-US")} sf of open ground; the lot has about ${Math.round(room).toLocaleString("en-US")} sf` };
   const env = envelopeSize(f);
   const straight = p.widthFt <= env.w + 0.01 && p.depthFt <= env.d + 0.01;
   const turned = p.depthFt <= env.w + 0.01 && p.widthFt <= env.d + 0.01;

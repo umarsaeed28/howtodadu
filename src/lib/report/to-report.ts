@@ -119,7 +119,7 @@ export function toReport(row: FeasibilityTableRow, now: Date = new Date()): Feas
     "single_dadu",
     fp != null,
     fp ? 1 : 0,
-    fp?.note ?? "Lot does not meet the minimum for a detached accessory dwelling unit.",
+    fp?.note ?? report.checks.find((c) => c.label === "Room for a DADU" && c.status === "fail")?.shortNote ?? "Lot does not meet the minimum for a detached accessory dwelling unit.",
     true
   );
   const opt = (needle: string) =>

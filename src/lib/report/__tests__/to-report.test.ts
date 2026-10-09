@@ -97,3 +97,29 @@ describe("toReport", () => {
     expect(report.survey_required.length).toBeGreaterThan(0);
   });
 });
+
+describe("toReport on a lot with no room for a DADU", () => {
+  // 5519 5th Ave NE (parcel 3856904795): 610 sf of lot coverage left, but the house leaves no 15 by 20 ft spot.
+  const result = fixture();
+  result.parcel = { ...parcel, address: "5519 5TH AVE NE 98105", lotSqft: 3420, zoning: "SF 5000" };
+  result.feasibility = {
+    ...result.feasibility!,
+    lotType: "corner", hasAlley: false, lotWidth: 57, lotDepth: 60, totalBuildingSqft: 1100, lotCoveragePercent: 0.3217, sideClearanceFt: 15.2,
+    treeStats: { large: 2, medium: 0, small: 0, canopyPct: 34, clearSqft: 0, clearSqftIfMediumRemoved: 0, siteSqft: 0, site: "side" },
+  };
+  const adu = generateADUReport(result.parcel, result.feasibility);
+  const report = toReport(buildFeasibilityTableRow(result, adu), new Date("2026-10-08T00:00:00Z"));
+
+  it("is Not feasible with a zero score, no DADU size and no build cost", () => {
+    expect(report.summary.verdict).toBe("Not feasible");
+    expect(report.summary.score.value).toBe(0);
+    expect(report.summary.max_buildable_sf).toBeNull();
+    expect(report.summary.construction_cost_usd).toBeNull();
+  });
+
+  it("ranks the missing room first, as a hard prohibition", () => {
+    expect(report.risks[0].title).toMatch(/^Room for a DADU: The house leaves no 15 by 20 ft spot/);
+    expect(report.risks[0].hard_prohibition).toBe(true);
+    expect(report.scenarios.find((s) => s.id === "single_dadu")).toMatchObject({ allowed: false });
+  });
+});

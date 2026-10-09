@@ -1,4 +1,5 @@
 import { parcelZoningLabel, type ParcelData, type FeasibilityData } from "./feasibility";
+import { MIN_FOOTPRINT_SQFT } from "./tree-analysis";
 
 export type CheckStatus = "pass" | "fail" | "info" | "warning";
 
@@ -158,24 +159,35 @@ export const DADU_MAX_GROSS_SQFT = 1000;
 
 /* ── DADU Footprint Calculation (SMC 23.42.022, 23.44) ── */
 
+/**
+ * The largest DADU the rules and the lot allow. `roomSqft` is the open spot the building outlines leave for it (inside
+ * the setbacks, out of the front yard, 5 ft from the house; tree-analysis.ts): the footprint may not exceed it, and
+ * under 15 by 20 ft there is no DADU at all, whatever lot coverage is left. Null room means not measured.
+ */
 function computeDADUFootprint(
   lot: number,
   availCov: number,
   w: number,
-  hl: { base: number; pitched: number } | null
+  hl: { base: number; pitched: number } | null,
+  roomSqft: number | null = null
 ): DADUFootprint | null {
   if (lot < MIN_LOT_SIZE) return null;
+  if (roomSqft != null && roomSqft < MIN_FOOTPRINT_SQFT) return null;
 
   const codeMax = DADU_MAX_GROSS_SQFT;
-  const buildable = Math.min(codeMax, availCov);
-  if (buildable <= 0) return null;
+  const byRules = Math.min(codeMax, availCov);
+  if (byRules <= 0) return null;
 
   const maxH = hl ? hl.base + hl.pitched : 17;
-  const canTwoStory = maxH >= 18 && buildable >= 400;
-  const stories: 1 | 2 = canTwoStory && buildable >= 500 ? 2 : 1;
+  const canTwoStory = maxH >= 18 && byRules >= 400;
+  const stories: 1 | 2 = canTwoStory && byRules >= 500 ? 2 : 1;
 
-  const footprint = stories === 2 ? Math.round(buildable / 2) : buildable;
-  const living = stories === 2 ? buildable : buildable;
+  // Coverage counts the footprint; the open spot caps it too. Floor area is the footprint times the stories.
+  const ruleFootprint = stories === 2 ? Math.round(byRules / 2) : byRules;
+  const footprint = roomSqft != null ? Math.min(ruleFootprint, roomSqft) : ruleFootprint;
+  const buildable = footprint < ruleFootprint ? footprint * stories : byRules;
+  const living = buildable;
+  const roomBound = footprint < ruleFootprint;
 
   const dims = suggestDimensions(footprint, w);
 
@@ -192,8 +204,9 @@ function computeDADUFootprint(
     sideSetback: 5, // NR side setback: 5 ft average, 3 ft minimum (SMC 23.44.090 Table A); the average is used
     garageConversion: false,
     garageNote: null,
-    note:
-      buildable < codeMax
+    note: roomBound
+      ? `The open spot the house leaves caps your DADU at a ${footprint} sq ft footprint, ${buildable} sq ft over ${stories} ${stories === 2 ? "stories" : "story"} (code allows up to ${codeMax}).`
+      : buildable < codeMax
         ? `Coverage limits cap your buildable DADU at ${buildable} sq ft (code allows up to ${codeMax}).`
         : `You can build up to ${codeMax} sq ft.`,
   };
@@ -475,6 +488,9 @@ export function generateADUReport(
   const aduOk = totalADU < 2;
   /** GIS may flag over-limit; numeric check uses Seattle max coverage curve (see maxLotCoverageSqft). */
   const covOk = factors?.lotCoverageOver === false || covFrac < maxCovFrac;
+  /** Open spot for a DADU the building outlines leave (tree-analysis.ts). Under 15 by 20 ft, no DADU fits. */
+  const room = factors?.treeStats?.siteSqft ?? null;
+  const noRoom = room != null && room < MIN_FOOTPRINT_SQFT;
 
   const eca = computeEca(factors);
   const access = computeAccess(factors, w, lot);
@@ -525,7 +541,8 @@ export function generateADUReport(
   // No access is a significant practical concern
   if (access.type === "none" && w > 0) score -= 13;
 
-  const confidence = Math.max(0, Math.min(100, score));
+  // Nowhere to put a DADU outweighs every other strength.
+  const confidence = Math.max(0, Math.min(noRoom ? 20 : 100, score));
 
   let confidenceLabel: string;
   let headline: string;
@@ -599,6 +616,16 @@ export function generateADUReport(
         ? `Under max lot coverage (${maxCovSqft.toLocaleString()} sq ft) — room to build.`
         : `At or near max lot coverage (${maxCovSqft.toLocaleString()} sq ft).`,
     },
+    ...(room != null
+      ? [{
+          label: "Room for a DADU",
+          status: (noRoom ? "fail" : "pass") as CheckStatus,
+          value: noRoom ? "No 15 x 20 ft spot" : `~${Math.round(room).toLocaleString()} sq ft open`,
+          shortNote: noRoom
+            ? "The house leaves no 15 by 20 ft spot inside the setbacks, out of the front yard and 5 ft from the house. Lot coverage left over is not a place to build."
+            : "An open spot at least 15 by 20 ft fits inside the setbacks, 5 ft from the house.",
+        }]
+      : []),
   ];
 
   const availCov = Math.max(0, maxCovSqft - usedSqft);
@@ -751,7 +778,7 @@ export function generateADUReport(
   ];
 
   const daduFootprint = zoningOk
-    ? computeDADUFootprint(lot, availCov, w, hl)
+    ? computeDADUFootprint(lot, availCov, w, hl, room)
     : null;
   // An ADU needs no rear setback where the rear lot line abuts an alley (SMC 23.44.090 Table A, note 3).
   if (daduFootprint && factors?.hasAlley) daduFootprint.rearSetback = 0;

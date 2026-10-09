@@ -750,3 +750,40 @@ describe("Edge Cases", () => {
     expect(report.access.type).toBeDefined();
   });
 });
+
+/* ═══════════════════════════════════════════════════════════
+   ROOM FOR A DADU (open spot from the building outlines)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("Room for a DADU", () => {
+  const trees = (siteSqft: number) => ({ large: 0, medium: 0, small: 0, canopyPct: 5, clearSqft: siteSqft, clearSqftIfMediumRemoved: siteSqft, siteSqft, site: "side" as const });
+
+  it("5519 5th Ave NE: no 15 by 20 ft spot means no DADU, however much coverage is left", () => {
+    const report = generateADUReport(
+      makeParcel({ lotSqft: 3420, zoning: "SF 5000" }),
+      makeFactors({ lotType: "corner", lotWidth: 57, lotDepth: 60, lotCoveragePercent: 0.3217, detachedGarageCount: 1, detachedGarageSqft: 160, treeStats: trees(0) })
+    );
+    expect(report.coverage!.availableSqft).toBe(610);
+    expect(report.daduFootprint).toBeNull();
+    expect(report.checks.find((c) => c.label === "Room for a DADU")).toMatchObject({ status: "fail", value: "No 15 x 20 ft spot" });
+    expect(report.confidence).toBeLessThanOrEqual(20);
+    expect(report.confidenceLabel).toBe("Unlikely");
+  });
+
+  it("holds the footprint to the open spot and builds the rest upward", () => {
+    const report = generateADUReport(makeParcel({ lotSqft: 5400, zoning: "NR3" }), makeFactors({ lotCoveragePercent: 0.1, treeStats: trees(400) }));
+    expect(report.daduFootprint).toMatchObject({ stories: 2, footprintSqft: 400, buildableSqft: 800, livingSqft: 800 });
+    expect(report.daduFootprint!.note).toContain("open spot");
+  });
+
+  it("leaves the rules size alone when the open spot is big enough", () => {
+    const report = generateADUReport(makeParcel({ lotSqft: 5400, zoning: "NR3" }), makeFactors({ lotCoveragePercent: 0.1, treeStats: trees(1500) }));
+    expect(report.daduFootprint).toMatchObject({ footprintSqft: 500, buildableSqft: 1000 });
+    expect(report.checks.find((c) => c.label === "Room for a DADU")!.status).toBe("pass");
+  });
+
+  it("adds no room check when the spot was not measured", () => {
+    const report = generateADUReport(makeParcel(), makeFactors());
+    expect(report.checks.find((c) => c.label === "Room for a DADU")).toBeUndefined();
+  });
+});

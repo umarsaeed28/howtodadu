@@ -202,10 +202,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
               for (let v = ld - rearSb - dd; v >= Math.max(frontSb, avoidTrees ? behind : 0); v -= 1)
                 for (const u of us) if (inside(u, v, ww, dd) && clear(u, v, dd, avoidTrees)) return { kind: "dadu", u, v, w: ww, d: dd };
           }
-        // Nothing fits: centre a minimum footprint on the envelope so it at least starts on the lot.
-        const c = envelope.reduce((a, q) => ({ x: a.x + q.x / envelope.length, y: a.y + q.y / envelope.length }), { x: 0, y: 0 });
-        const cl = toLocal(c);
-        return { kind: "dadu", u: cl.u - MIN_SIDE_FT / 2, v: cl.v - MIN_SIDE_FT / 2, w: MIN_SIDE_FT, d: MIN_SIDE_FT };
+        // Nothing fits: draw no DADU. A footprint dropped on the envelope would sit on the house and read as a site.
+        return null;
       })()
     : null);
   // A saved drawing wins over the engine's suggestion; a pre-approved design comes back by its id.
@@ -615,8 +613,10 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     !streets.length && " No street geometry returned, so the street side is assumed south.",
   ].filter(Boolean).join("");
   const ts = feasibility?.treeStats;
+  const noRoom = (ts?.siteSqft != null && ts.siteSqft < MIN_FOOTPRINT_SQFT) || (!!fp && !initialDadu);
   const warnings = [
-    ts && ts.clearSqft < MIN_FOOTPRINT_SQFT && `Trees: ${ts.large} large and ${ts.medium} medium trees reach this lot, and no open 15 by 20 ft spot behind the house clears them. A DADU here means removing trees, with a tree review and replacement${ts.clearSqftIfMediumRemoved < MIN_FOOTPRINT_SQFT ? "; even then, large trees leave no room" : ""}.`,
+    noRoom && `No room for a DADU: the house leaves no 15 by 20 ft spot inside the setbacks, out of the front yard and ${HOUSE_SEPARATION_FT} ft from the house, so none is drawn.`,
+    ts && !noRoom && ts.clearSqft < MIN_FOOTPRINT_SQFT && `Trees: ${ts.large} large and ${ts.medium} medium trees reach this lot, and no open 15 by 20 ft spot behind the house clears them. A DADU here means removing trees, with a tree review and replacement${ts.clearSqftIfMediumRemoved < MIN_FOOTPRINT_SQFT ? "; even then, large trees leave no room" : ""}.`,
     overCoverage && `Together the new footprints (${totalFootprint.toLocaleString("en-US")} sf) are over the ${Math.round(coverageLeft ?? 0).toLocaleString("en-US")} sf of lot coverage left.`,
     overAduCap && `A lot can have 2 ADUs. This one already has ${existingAdus}, so you can add ${Math.max(0, 2 - existingAdus)} more.`,
   ].filter((w): w is string => !!w);
@@ -994,6 +994,11 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
       </div>
 
       <div className="min-w-0 xl:sticky xl:top-[186px] xl:max-h-[calc(100vh-200px)] xl:overflow-y-auto xl:overscroll-contain xl:pr-3">
+      {units.length === 0 && noRoom && (
+        <div role="note" className="mt-3 rounded-xl p-3 text-sm leading-relaxed xl:mt-0" style={{ background: "var(--red-tint)", color: "var(--red)" }}>
+          <strong>No room for a DADU.</strong> The house leaves no 15 by 20 ft spot inside the setbacks, out of the front yard and {HOUSE_SEPARATION_FT} ft from the house, so none is drawn.
+        </div>
+      )}
       {units.length > 0 && (
         <div className="mt-3 flex flex-col gap-2 xl:mt-0" aria-live="polite">
           {units.map((x, idx) => {

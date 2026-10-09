@@ -31,8 +31,6 @@ export const MIN_FOOTPRINT_SQFT = 300;
 export const MIN_FOOTPRINT_SIDE_FT = 15;
 const HOUSE_GAP_FT = 5;
 const SETBACK_FT = 5;
-/** The front yard, between the street and the house, is not a DADU site: the NR front setback (SMC 23.44.090). */
-const FRONT_YARD_FT = FRONT_SETBACK_FT;
 
 /** Which way the address street runs: Seattle avenues north-south, streets east-west. Null for other names. */
 export function streetAxis(address: string | null | undefined): "ns" | "ew" | null {
@@ -122,6 +120,9 @@ export function largestRect(ok: Uint8Array, w: number, h: number, minSide: numbe
  * rectangle that lines up with the lot lines, the way a DADU would be placed.
  */
 export function analyzeTrees(lot: [number, number][], buildings: [number, number][][], crowns: Crown[], streetRuns: "ns" | "ew" | null = null): TreeStats {
+  // The front yard, between the street and the house, is not a DADU site: the NR front setback (SMC 23.44.090).
+  // Read here, not at module load: site-envelope imports this module too.
+  const FRONT_YARD_FT = FRONT_SETBACK_FT;
   const lat0 = lot.reduce((s, p) => s + p[1], 0) / lot.length;
   const lng0 = lot.reduce((s, p) => s + p[0], 0) / lot.length;
   const ftLng = FT_PER_DEG_LAT * Math.cos((lat0 * Math.PI) / 180);
