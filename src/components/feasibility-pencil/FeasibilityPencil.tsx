@@ -20,7 +20,7 @@ import FeasFilterBar from "./FeasFilterBar";
 import FeasCard from "./FeasCard";
 import FeasibilityReportView from "@/components/report/FeasibilityReportView";
 import LoadingSteps from "./LoadingSteps";
-import { isPin, saveParcel } from "@/lib/parcel-context";
+import { isPin, prettyAddress, readParcel, saveParcel } from "@/lib/parcel-context";
 import { NoSearchResults } from "@/components/shared/states";
 import type { FeasSortKey } from "./types";
 
@@ -224,8 +224,11 @@ export default function FeasibilityPencil() {
   /* ---- url prefill ---- */
   const prefillRan = useRef(false);
   useEffect(() => {
-    const prefill = searchParams.get("address");
-    const parcel = searchParams.get("parcel");
+    // No address in the link (the menu's "Check my lot"): reopen the lot this browser last checked, so nobody types
+    // their address twice. A first visit has none and gets the empty search.
+    const remembered = !searchParams.get("address") && !searchParams.get("parcel") && searchParams.get("view") !== "favorites" ? readParcel() : null;
+    const prefill = searchParams.get("address") ?? (remembered?.address ? prettyAddress(remembered.address) + ", Seattle, WA" : null);
+    const parcel = searchParams.get("parcel") ?? remembered?.pin ?? null;
     if (prefill && !prefillRan.current) {
       prefillRan.current = true;
       setSingleAddress(prefill);
