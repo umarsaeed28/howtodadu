@@ -9,6 +9,7 @@ const LINKS: Record<Viewer["role"], { href: string; label: string }[]> = {
     { href: "/admin", label: "Pipeline" },
     { href: "/admin/referrals", label: "Lead routing" },
     { href: "/admin/metrics", label: "Metrics" },
+    { href: "/admin/invest", label: "Invest" },
     ACCOUNT,
   ],
   gc: [{ href: "/gc", label: "Referred projects" }, ACCOUNT],

@@ -21,7 +21,14 @@ export type FunnelEvent =
   | { name: "custom_checkout"; props: { booked: boolean } }
   | { name: "permit_checkout"; props: Record<string, never> }
   | { name: "start_project_click"; props: { source: "report" } }
-  | { name: "consult_requested"; props: { stage: string; help: string } };
+  | { name: "consult_requested"; props: { stage: string; help: string } }
+  | { name: "invest_page_viewed"; props: { count: number } }
+  | { name: "tile_clicked"; props: { listing_id: string; position: number; source: "invest" | "home" } }
+  | { name: "filter_used"; props: { filter: string } }
+  | { name: "assumption_edited"; props: { field: string } }
+  | { name: "add_to_project"; props: { listing_id: string; signed_in: boolean } }
+  | { name: "agent_contact_submitted"; props: { listing_id: string } }
+  | { name: "feasibility_from_invest"; props: { listing_id: string; tier: "instant" | "reviewed" } };
 
 type W = Window & {
   dataLayer?: unknown[];

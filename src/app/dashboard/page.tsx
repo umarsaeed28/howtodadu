@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowRight, Check, Circle, CircleDot, Plus } from "lucide-react";
 import PortalFrame from "@/components/portal/PortalFrame";
 import ClaimOrders from "@/components/dashboard/ClaimOrders";
+import WatchingList, { type WatchRow } from "@/components/dashboard/WatchingList";
 import { homeFor, requireViewer, userClient } from "@/lib/portal/server";
 import { loadCards } from "@/lib/portal/cards";
 import { buildProperties, type Line, type OrderRow } from "@/lib/portal/dashboard";
@@ -45,6 +46,9 @@ export default async function Dashboard() {
     permits: cards.map((c) => c.permit).filter((p): p is PermitPackage => !!p),
     orders: (orders ?? []) as OrderRow[],
   });
+  // Opportunities saved from /invest. Empty until the watchlist table exists (migration 0010).
+  const { data: watching } = await db.from("watchlist").select("id, listing_id, parcel_pin, address, photo, alert, snapshot").eq("status", "watching").order("created_at", { ascending: false });
+  const watchRows = (watching ?? []) as WatchRow[];
 
   return (
     <PortalFrame viewer={viewer} active="/dashboard">
@@ -52,12 +56,12 @@ export default async function Dashboard() {
       <div className="db-head">
         <div>
           <h1 className="pa-display text-3xl" style={{ color: "var(--ink)" }}>Your properties</h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>{properties.length ? "Where each one stands, and the next step." : "Nothing here yet."}</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>{properties.length ? "Where each one stands, and the next step." : watchRows.length ? "Properties you are watching." : "Nothing here yet."}</p>
         </div>
         <Link href="/feasibility" className="pa-btn pa-btn-primary no-underline"><Plus size={15} aria-hidden /> Check a lot</Link>
       </div>
 
-      {properties.length === 0 ? (
+      {properties.length === 0 && watchRows.length > 0 ? null : properties.length === 0 ? (
         <div className="db-empty">
           <p className="db-empty-h">Start with your lot.</p>
           <p>See what you can build in 30 seconds. Reports, plans and permits you buy show up here.</p>
@@ -84,6 +88,7 @@ export default async function Dashboard() {
           ))}
         </ul>
       )}
+      <WatchingList rows={watchRows} />
     </PortalFrame>
   );
 }

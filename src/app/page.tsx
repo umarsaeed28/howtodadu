@@ -5,6 +5,7 @@ import { Section, Container, Heading, Lede } from "@/components/ui";
 import { AddressForm, Term, TrackedLink } from "@/components/home/HomeBits";
 import Faq, { type FaqItem } from "@/components/home/Faq";
 import Journey from "@/components/site/Journey";
+import InvestTeaser from "@/components/home/InvestTeaser";
 import rendering from "../../public/home/dadu-rendering.webp";
 import { CONSTRUCTION_PER_SQFT, PRODUCTS, price, type ProductKind } from "@/lib/pricing";
 
@@ -140,6 +141,9 @@ export default function Home() {
           </div>
         </Container>
       </Section>
+
+      {/* Today's best opportunities, from the Invest feed */}
+      <InvestTeaser />
 
       {/* Why Pencil */}
       <Section soft style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-why">
