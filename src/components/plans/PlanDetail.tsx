@@ -2,7 +2,6 @@
 
 import { useEffect, useId, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowRight, Check, CircleAlert, Loader2, MailCheck, Stamp } from "lucide-react";
 import type { PreApprovedPlan } from "@/lib/preapproved-dadus";
@@ -10,18 +9,20 @@ import { planFitFor } from "@/lib/site-envelope";
 import { lastEmail, rememberEmail } from "@/lib/report-access";
 import { track } from "@/lib/analytics";
 import { price, PRODUCTS } from "@/lib/pricing";
-import type { DaduState } from "@/components/report/MasterPlan";
 import LotBar from "./LotBar";
 import { useLotFrame } from "./useLotFrame";
 
-const MasterPlan = dynamic(() => import("@/components/report/MasterPlan"), { ssr: false, loading: () => <div className="pd-plan-skel" aria-busy>Drawing your lot…</div> });
+/** The feasibility report with this design placed on its master plan (the plan itself sits behind the report's paywall). */
+export const feasibilityWithPlan = (pin: string, address: string, planId: string) => `/feasibility?${new URLSearchParams({ parcel: pin, address, plan: planId }).toString()}`;
 
-/** The interactive half of a plan page: pick a size, see it on your lot, and request it. */
+/**
+ * The interactive half of a plan page: pick a size, check it against your lot, and request it. The design is only
+ * drawn on the lot inside the feasibility report, after the paywall; here the lot check says whether it fits.
+ */
 export default function PlanDetail({ variants }: { variants: PreApprovedPlan[] }) {
   const search = useSearchParams();
   const { state, setAddress, clear } = useLotFrame(search);
   const [variantId, setVariantId] = useState(variants[0].id);
-  const [planState, setPlanState] = useState<DaduState | null>(null);
   const plan = variants.find((v) => v.id === variantId) ?? variants[0];
   const fit = state.status === "ready" && state.frame ? planFitFor(state.frame, plan) : null;
 
@@ -43,40 +44,23 @@ export default function PlanDetail({ variants }: { variants: PreApprovedPlan[] }
       )}
 
       <section className="pd-lot" aria-labelledby="pd-lot-h">
-        <h2 id="pd-lot-h" className="pd-h2">See it on my lot</h2>
-        <LotBar state={state} onAddress={setAddress} onClear={clear} prompt="Enter your address to place this design on your lot" />
+        <h2 id="pd-lot-h" className="pd-h2">Check it on my lot</h2>
+        <LotBar state={state} onAddress={setAddress} onClear={clear} prompt="Enter your address to check this design against your lot" />
         {fit && (
           <p className={`pd-fit${fit.fits ? "" : " pd-fit--no"}`}>
             {fit.fits ? <Check size={16} strokeWidth={3} aria-hidden /> : <CircleAlert size={16} aria-hidden />}
             {fit.fits ? "Fits your lot as drawn." : `${fit.reason}. Pick another size or design, or go custom.`}
           </p>
         )}
-        {state.status === "ready" && (
-          <div className="pd-plan">
-            <MasterPlan
-              key={`${state.parcel.pin}-${plan.id}`}
-              lot={state.data.lot}
-              sitePlan={state.data.sitePlan}
-              feasibility={state.data.feasibility}
-              report={state.adu}
-              pin={state.data.parcel?.pin ?? null}
-              terrain={state.data.terrain ?? null}
-              initialPlanId={plan.id}
-              mode="plans"
-              onDaduState={setPlanState}
-            />
-          </div>
-        )}
-        {planState && !planState.ok && fit?.fits && <p className="pd-note">Drag the design inside the green area to clear: {planState.reasons[0]}</p>}
         {state.status === "ready" && fit?.fits !== false && (
           <div className="pd-start">
-            <p className="pd-start-t">Ready to build {plan.name}? Start a project and we&apos;ll take it from here.</p>
+            <p className="pd-start-t">See {plan.name} on your lot: the feasibility report draws it on the master plan with the setbacks, coverage and FAR checked.</p>
             <Link
-              href={`/start?${new URLSearchParams({ parcel: state.parcel.pin, address: state.parcel.address, design: plan.id }).toString()}`}
-              onClick={() => track("plan_project_started", { plan_id: plan.id })}
+              href={feasibilityWithPlan(state.parcel.pin, state.parcel.address, plan.id)}
+              onClick={() => track("plan_feasibility_started", { plan_id: plan.id })}
               className="s-btn s-btn--primary"
             >
-              Start a project with this design <ArrowRight size={15} aria-hidden />
+              Check feasibility with this plan <ArrowRight size={15} aria-hidden />
             </Link>
           </div>
         )}

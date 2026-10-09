@@ -257,7 +257,7 @@ function SectionTabs() {
  * (drawn by the visitor), property information, jurisdiction, development standards, lot coverage and FAR, DADU
  * rules, site conditions, overhead utilities, risks and the conclusion.
  */
-function ReportBody({ report, row, study, snapshotRef, onDaduChange, onDaduState, initialPlan, onPlanChange }: { report: FeasibilityReport; row: FeasibilityTableRow; study: Study; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null>; onDaduChange: (sf: number | null) => void; onDaduState: (s: DaduState | null) => void; initialPlan: SavedPlan | null; onPlanChange: (p: SavedPlan) => void }) {
+function ReportBody({ report, row, study, snapshotRef, onDaduChange, onDaduState, initialPlan, initialPlanId, onPlanChange }: { report: FeasibilityReport; row: FeasibilityTableRow; study: Study; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null>; onDaduChange: (sf: number | null) => void; onDaduState: (s: DaduState | null) => void; initialPlan: SavedPlan | null; initialPlanId: string | null; onPlanChange: (p: SavedPlan) => void }) {
   return (
     <div className="flex flex-col gap-6">
       {/* The master plan breaks out of the page column to (nearly) the full screen width, so there is room to work. */}
@@ -273,6 +273,7 @@ function ReportBody({ report, row, study, snapshotRef, onDaduChange, onDaduState
           onDaduChange={onDaduChange}
           onDaduState={onDaduState}
           initialPlan={initialPlan}
+          initialPlanId={initialPlanId}
           onPlanChange={onPlanChange}
         />
       </div>
@@ -365,8 +366,11 @@ export default function FeasibilityReportView({
   const [justUnlocked, setJustUnlocked] = useState(false);
   const [purchase, setPurchase] = useState<{ kind: string; dueDate: string | null; email: string } | null>(null);
   const [defaultTier, setDefaultTier] = useState<ProductKind | undefined>(undefined);
+  // A pre-approved design chosen on the plans page (?plan=<id>): placed on the master plan, which opens after payment.
+  const [initialPlanId, setInitialPlanId] = useState<string | null>(null);
   useEffect(() => {
     setPaid(hasFeasibilityAccess(pin, gateAddress));
+    setInitialPlanId(new URLSearchParams(window.location.search).get("plan"));
     const t = new URLSearchParams(window.location.search).get("tier");
     const tier = t === "reviewed" ? "feasibility_reviewed" : t === "instant" ? "feasibility_instant" : t;
     if (isProductKind(tier)) setDefaultTier(tier);
@@ -494,7 +498,7 @@ export default function FeasibilityReportView({
       {report && <Hero report={report} slim={slim} listing={detailRow?.result.listing ?? null} drawnSf={drawnSf} houseSqft={detailRow?.result.listing?.livingSqft ?? detailRow?.result.feasibility?.totalBuildingSqft ?? null} />}
       {report && detailRow && <div className="mb-6"><LimitsStrip adu={detailRow.report} zoning={slim.zoning} lotSqft={slim.lotSizeSqft} buildingSqft={detailRow.result.feasibility?.totalBuildingSqft ?? null} /></div>}
       {report && detailRow && <SectionTabs />}
-      {report && detailRow && study && <ReportBody report={report} row={detailRow} study={study} snapshotRef={snapshotRef} onDaduChange={setDrawnSf} onDaduState={onDaduState} initialPlan={initialPlan} onPlanChange={onPlanChange} />}
+      {report && detailRow && study && <ReportBody report={report} row={detailRow} study={study} snapshotRef={snapshotRef} onDaduChange={setDrawnSf} onDaduState={onDaduState} initialPlan={initialPlan} initialPlanId={initialPlanId} onPlanChange={onPlanChange} />}
 
       <div className="mt-6">
         <Section id="rep-all" title="All property data">

@@ -13,6 +13,7 @@ export default function Field({
   placeholder,
   inputMode = "decimal",
   width,
+  name,
 }: {
   label: string;
   value: string;
@@ -24,6 +25,8 @@ export default function Field({
   placeholder?: string;
   inputMode?: "decimal" | "numeric";
   width?: number | string;
+  /** A stable name so a button elsewhere can focus this field. */
+  name?: string;
 }) {
   const id = useId();
   return (
@@ -35,6 +38,7 @@ export default function Field({
         {prefix && <span className="text-sm" style={{ color: "var(--slate)" }}>{prefix}</span>}
         <input
           id={id}
+          name={name}
           type="text"
           inputMode={inputMode}
           value={value}

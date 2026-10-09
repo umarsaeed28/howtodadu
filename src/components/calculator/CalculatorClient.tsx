@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { RotateCcw } from "lucide-react";
+import { ArrowDown, RotateCcw } from "lucide-react";
 import {
   DEFAULT_FORM,
   fromSearchParams,
@@ -112,7 +112,7 @@ export default function CalculatorClient() {
           </Group>
 
           <Group title="The DADU" note="The report fills in the area from the lot's design. $50,000 soft costs is the team's rule; change it if you know better.">
-            <Field label="DADU area" value={form.sf} onChange={set("sf")} suffix="sf" placeholder="1,000" error={err("sf")} />
+            <Field label="DADU area" name="sf" value={form.sf} onChange={set("sf")} suffix="sf" placeholder="1,000" error={err("sf")} />
             <Field label="Build cost" value={form.costPerSf} onChange={set("costPerSf")} prefix="$" suffix="per sf" error={err("costPerSf")} />
             <Field label="Soft costs" value={form.softFlat} onChange={set("softFlat")} prefix="$" hint="Design, permits, fees, utilities" error={err("softFlat")} />
             <Field label="Site work" value={form.siteWork} onChange={set("siteWork")} prefix="$" error={err("siteWork")} />
@@ -158,10 +158,25 @@ export default function CalculatorClient() {
               </div>
             </details>
           </Group>
+          {/* The numbers update as you type; this button takes you to them (they sit below the form on a phone),
+              or to the one field that is still needed. */}
+          <button
+            type="button"
+            className="pa-btn pa-btn-primary"
+            onClick={() => {
+              if (!parsed.ready && !parsed.errors.length) {
+                document.querySelector<HTMLInputElement>('input[name="sf"]')?.focus();
+                return;
+              }
+              document.getElementById("calc-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            {parsed.ready ? "See the result" : "Calculate"} <ArrowDown size={14} aria-hidden />
+          </button>
         </div>
 
         {/* Results */}
-        <div className="flex flex-col gap-5 lg:sticky lg:top-24" aria-live="polite">
+        <div id="calc-results" className="flex scroll-mt-24 flex-col gap-5 lg:sticky lg:top-24" aria-live="polite">
           <section className="pa-raised p-5" aria-label="Construction estimate">
             <p className="text-xs font-semibold" style={{ color: "var(--slate)" }}>{COST_LABEL}</p>
             {parsed.ready ? (

@@ -16,6 +16,7 @@ export type FunnelEvent =
   | { name: "plan_viewed"; props: { plan_id: string } }
   | { name: "plan_requested"; props: { plan_id: string } }
   | { name: "plan_project_started"; props: { plan_id: string } }
+  | { name: "plan_feasibility_started"; props: { plan_id: string } }
   | { name: "footprint_drawn"; props: { preset: string; fits: boolean } }
   | { name: "draft_generated"; props: { source: "ai" | "rules" } }
   | { name: "custom_checkout"; props: { booked: boolean } }

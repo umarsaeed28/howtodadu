@@ -62,8 +62,13 @@ export default function PlanCards({ families = planFamilies(), fits, parcel }: {
                 <div><dt>Stories</dt><dd>{[...new Set(vs.map((v) => v.stories))].join(" or ")}</dd></div>
               </dl>
               <TrackedLink href={withParcel(`/plans/${encodeURIComponent(p.family)}`, parcel)} event="plan_viewed" props={{ plan_id: p.id }} className="s-btn s-btn--outline pc-btn" ariaLabel={`See ${familyName(p)} by ${p.designer}`}>
-                {parcel ? "See it on my lot" : "See the plan"}
+                See the plan
               </TrackedLink>
+              {parcel && (
+                <TrackedLink href={`/feasibility?${new URLSearchParams({ parcel, plan: p.id }).toString()}`} event="plan_feasibility_started" props={{ plan_id: p.id }} className="s-btn s-btn--primary pc-btn" ariaLabel={`Check feasibility with ${familyName(p)}`}>
+                  Check feasibility with this plan
+                </TrackedLink>
+              )}
             </div>
           </li>
         );
