@@ -6,7 +6,7 @@ import { AddressForm, Term, TrackedLink } from "@/components/home/HomeBits";
 import Faq, { type FaqItem } from "@/components/home/Faq";
 import Journey from "@/components/site/Journey";
 import rendering from "../../public/home/dadu-rendering.webp";
-import { PRODUCTS, PRODUCT_ORDER, price, type ProductKind } from "@/lib/pricing";
+import { CONSTRUCTION_PER_SQFT, PRODUCTS, price, type ProductKind } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Pencil — Seattle DADU feasibility, plans, and permits",
@@ -30,6 +30,11 @@ const PRICE_HREF: Record<ProductKind, string> = {
   custom_plan: "/feasibility",
   permit: "/permit",
 };
+
+/** The two reports get a card each; the custom plan and the permit service share one card as design, or design + permit. */
+const REPORT_TIERS: ProductKind[] = ["feasibility_instant", "feasibility_reviewed"];
+const PLAN = PRODUCTS.custom_plan;
+const PERMIT = PRODUCTS.permit;
 
 const WHY = [
   { Icon: ShieldCheck, title: "Code first.", body: "Every result is checked against current Seattle DADU rules before you see it." },
@@ -86,7 +91,7 @@ export default function Home() {
           <Heading level={2} id="hm-pricing" style={{ maxWidth: "22ch" }}>Clear prices. No surprise invoices.</Heading>
           <Lede style={{ marginTop: 14 }}>Most architects charge $100 to $250 an hour just to tell you what&apos;s possible. We start at $200, flat.</Lede>
           <ul className="hm-prices">
-            {PRODUCT_ORDER.map((k) => {
+            {REPORT_TIERS.map((k) => {
               const p = PRODUCTS[k];
               return (
                 <li key={k} className="hm-price" data-popular={p.popular || undefined}>
@@ -103,6 +108,30 @@ export default function Home() {
                 </li>
               );
             })}
+            <li className="hm-price hm-price--plan">
+              <h3 className="hm-price-name">{PLAN.name}</h3>
+              <p className="hm-price-body hm-price-body--lead">{PLAN.body}</p>
+              <ul className="hm-options">
+                <li className="hm-option">
+                  <span className="hm-option-name">Design</span>
+                  <span className="hm-option-amount">{price(PLAN.amountCents)}</span>
+                  <span className="hm-option-when">{PLAN.turnaround}</span>
+                </li>
+                <li className="hm-option">
+                  <span className="hm-option-name">Design + permit</span>
+                  <span className="hm-option-amount">{price(PLAN.amountCents + PERMIT.amountCents)}</span>
+                  <span className="hm-option-when">{PERMIT.turnaround}</span>
+                </li>
+                <li className="hm-option hm-option--build">
+                  <span className="hm-option-name">Build with Pencil</span>
+                  <span className="hm-option-amount">${CONSTRUCTION_PER_SQFT}/sq ft</span>
+                  <span className="hm-option-when">Construction in Seattle. We take care of the permitting; you only pay for the architecture.</span>
+                </li>
+              </ul>
+              <TrackedLink href={PRICE_HREF.custom_plan} event="pricing_card_click" props={{ tier: "custom_plan" }} className="s-btn s-btn--outline hm-price-cta">
+                {PLAN.cta}
+              </TrackedLink>
+            </li>
           </ul>
           <p className="hm-note">Pre-approved partner plans are priced by each design firm.</p>
         </Container>

@@ -53,6 +53,12 @@ export const PRODUCTS: Record<ProductKind, Product> = {
 
 export const PRODUCT_ORDER: ProductKind[] = ["feasibility_instant", "feasibility_reviewed", "custom_plan", "permit"];
 
+/**
+ * Construction with Pencil, per square foot of DADU, in Seattle. Clients who build with us get the permit service
+ * included: they pay for the architecture (the custom plan) and construction only.
+ */
+export const CONSTRUCTION_PER_SQFT = 375;
+
 export const isProductKind = (v: unknown): v is ProductKind => typeof v === "string" && v in PRODUCTS;
 
 /** "$200", "$3,000". Whole dollars only: every price here is round. */
