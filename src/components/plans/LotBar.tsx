@@ -5,6 +5,7 @@ import { Loader2, MapPin } from "lucide-react";
 import type { LotState } from "./useLotFrame";
 import { track } from "@/lib/analytics";
 import { prettyAddress } from "@/lib/parcel-context";
+import AddressAutocomplete from "@/components/search/AddressAutocomplete";
 
 /**
  * The lot a page is working on: its address when known, or a box to enter one. Used by the plans and custom
@@ -31,24 +32,17 @@ export default function LotBar({ state, onAddress, onClear, prompt }: { state: L
       </div>
     );
   }
+  const go = (raw: string) => {
+    const a = raw.trim();
+    if (a.length < 5) return setErr("Enter a Seattle street address.");
+    track("address_submitted", { source: "feasibility" });
+    onAddress(/seattle/i.test(a) ? a : `${a}, Seattle, WA`);
+  };
   return (
-    <form
-      className="lb"
-      noValidate
-      onSubmit={(e) => {
-        e.preventDefault();
-        const a = value.trim();
-        if (a.length < 5) return setErr("Enter a Seattle street address.");
-        track("address_submitted", { source: "feasibility" });
-        onAddress(/seattle/i.test(a) ? a : `${a}, Seattle, WA`);
-      }}
-    >
-      <label htmlFor={id} className="lb-prompt">{prompt}</label>
+    <form className="lb" noValidate onSubmit={(e) => { e.preventDefault(); go(value); }}>
+      <p className="lb-prompt" id={`${id}-p`}>{prompt}</p>
       <div className="lb-row">
-        <span className="fa-field">
-          <MapPin size={18} aria-hidden />
-          <input id={id} value={value} onChange={(e) => { setValue(e.target.value); setErr(null); }} placeholder="Enter your Seattle address" autoComplete="street-address" aria-invalid={!!err} />
-        </span>
+        <AddressAutocomplete value={value} onChange={(v) => { setValue(v); setErr(null); }} onPick={go} label={prompt} invalid={!!err} describedBy={`${id}-p`} />
         <button type="submit" className="s-btn s-btn--primary">Use my lot</button>
       </div>
       {(err || state.status === "error") && <p role="alert" className="fa-err">{err ?? (state.status === "error" ? state.message : "")}</p>}

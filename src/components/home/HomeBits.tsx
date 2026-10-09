@@ -3,7 +3,8 @@
 import { useId, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, MapPin } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import AddressAutocomplete from "@/components/search/AddressAutocomplete";
 import { track, type FunnelEvent } from "@/lib/analytics";
 
 /** A link that records one funnel event when clicked. Styled by the caller. */
@@ -40,33 +41,26 @@ export function Term({ word }: { word: keyof typeof TERMS }) {
 }
 
 /**
- * An address box that opens the feasibility check for that address. Used in the hero and the footer CTA.
- * Records the hero CTA click and the address submission; the address itself is never sent to analytics.
+ * An address box that opens the feasibility check for that address, with Seattle autocomplete. Used in the hero
+ * and the footer CTA. Picking a suggestion starts the check at once. Records the hero CTA click and the address
+ * submission; the address itself is never sent to analytics.
  */
 export function AddressForm({ source, label, placeholder = "Enter your Seattle address", size = "lg" }: { source: "hero" | "footer_cta"; label: string; placeholder?: string; size?: "lg" | "xl" }) {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const id = useId();
+  const go = (raw: string) => {
+    const a = raw.trim();
+    if (a.length < 5) return setErr("Enter a Seattle street address, like 1234 N 45th St.");
+    if (source === "hero") track("hero_cta_click", { cta: "check_my_lot" });
+    track("address_submitted", { source });
+    router.push(`/feasibility?address=${encodeURIComponent(/seattle/i.test(a) ? a : `${a}, Seattle, WA`)}`);
+  };
   return (
-    <form
-      className={`fa fa--${size}`}
-      onSubmit={(e) => {
-        e.preventDefault();
-        const a = value.trim();
-        if (a.length < 5) return setErr("Enter a Seattle street address, like 1234 N 45th St.");
-        if (source === "hero") track("hero_cta_click", { cta: "check_my_lot" });
-        track("address_submitted", { source });
-        router.push(`/feasibility?address=${encodeURIComponent(/seattle/i.test(a) ? a : `${a}, Seattle, WA`)}`);
-      }}
-      noValidate
-    >
-      <label htmlFor={id} className="sr-only">{label}</label>
+    <form className={`fa fa--${size}`} onSubmit={(e) => { e.preventDefault(); go(value); }} noValidate>
       <div className="fa-row">
-        <span className="fa-field">
-          <MapPin size={18} aria-hidden />
-          <input id={id} value={value} onChange={(e) => { setValue(e.target.value); setErr(null); }} placeholder={placeholder} autoComplete="street-address" aria-invalid={!!err} aria-describedby={err ? `${id}-err` : undefined} />
-        </span>
+        <AddressAutocomplete value={value} onChange={(v) => { setValue(v); setErr(null); }} onPick={go} label={label} placeholder={placeholder} invalid={!!err} describedBy={err ? `${id}-err` : undefined} />
         <button type="submit" className="s-btn s-btn--primary s-btn--lg">Check my lot <ArrowRight size={16} aria-hidden /></button>
       </div>
       {err && <p id={`${id}-err`} role="alert" className="fa-err">{err}</p>}
