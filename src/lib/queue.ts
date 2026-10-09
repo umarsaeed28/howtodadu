@@ -1,7 +1,6 @@
 /**
- * The custom-plan drafting queue: CAPACITY plans start each week (weeks start Monday). A plan bought this week
- * joins this week's batch if there is room, otherwise the first week with a free slot. Plans are ready by the
- * Friday of the week they start (the "under a week" promise).
+ * The custom-plan drafting queue: CAPACITY plans start each week (weeks start Monday). A plan joins the next
+ * drafting week with room. Plans are ready by the Friday of the week they start (the "under a week" promise).
  */
 export const CAPACITY = 5;
 
@@ -36,13 +35,13 @@ export type Slot = {
 };
 
 /**
- * The slot a new order gets. `countsByWeek` maps a Monday (YYYY-MM-DD) to the plans already in it. From Saturday
- * on, this week's batch has closed, so the search starts next Monday.
+ * The slot a new order gets. `countsByWeek` maps a Monday (YYYY-MM-DD) to the plans already in it. A drafting week
+ * runs Monday to Friday, so only an order placed on a Monday joins the current week; any later day starts the
+ * search at next Monday. A full week pushes the order to the first week with room.
  */
 export function slotFor(now: Date, countsByWeek: Record<string, number>, capacity = CAPACITY): Slot {
   const thisWeek = weekOf(now);
-  const weekend = now.getDay() === 6 || now.getDay() === 0;
-  let week = weekend ? addDays(thisWeek, 7) : thisWeek;
+  let week = now.getDay() === 1 ? thisWeek : addDays(thisWeek, 7);
   let booked = false;
   for (let i = 0; i < 104 && (countsByWeek[week] ?? 0) >= capacity; i++) {
     week = addDays(week, 7);

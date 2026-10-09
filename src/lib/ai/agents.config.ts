@@ -12,7 +12,7 @@
  * Override any model per environment with the env vars named in `tiers`.
  */
 
-export type Tier = "small" | "mid" | "large";
+export type Tier = "small" | "mid" | "large" | "draft";
 
 export interface TierConfig {
   /** "openai-compatible" covers Ollama, vLLM, Groq, Cloudflare Workers AI and other hosts of open models. */
@@ -80,6 +80,8 @@ export const AGENTS = {
     },
     mid: { provider: "anthropic", model: env("AI_MID_MODEL", HAIKU) },
     large: { provider: "anthropic", model: env("AI_REASONING_MODEL", "claude-sonnet-5-5") },
+    /** Custom DADU draft layouts: one spatial-reasoning call ahead of a $3,000 sale, so the most capable model. */
+    draft: { provider: "anthropic", model: env("AI_DRAFT_MODEL", "claude-opus-5-5"), fallback: { provider: "anthropic", model: env("AI_REASONING_MODEL", "claude-sonnet-5-5") } },
   } satisfies Record<Tier, TierConfig>,
 } as const;
 

@@ -11,16 +11,18 @@ describe("drafting queue", () => {
     expect(weekOf(at("2026-10-11"))).toBe("2026-10-05"); // Sunday belongs to the week that started Monday
   });
 
-  it("joins this week when there is room, ready that Friday", () => {
-    expect(slotFor(at("2026-10-07"), { "2026-10-05": 2 })).toEqual({ week: "2026-10-05", readyBy: "2026-10-09", booked: false });
+  it("a Monday order joins this week when there is room, ready that Friday", () => {
+    expect(slotFor(at("2026-10-05"), { "2026-10-05": 2 })).toEqual({ week: "2026-10-05", readyBy: "2026-10-09", booked: false });
   });
 
-  it("moves to the first open week when this week is full", () => {
-    expect(slotFor(at("2026-10-07"), { "2026-10-05": CAPACITY, "2026-10-12": CAPACITY })).toEqual({ week: "2026-10-19", readyBy: "2026-10-23", booked: true });
-  });
-
-  it("from the weekend, starts next Monday without calling it booked", () => {
+  it("a later order starts next Monday, so it is never ready the next day", () => {
+    expect(slotFor(at("2026-10-08"), {})).toEqual({ week: "2026-10-12", readyBy: "2026-10-16", booked: false });
     expect(slotFor(at("2026-10-10"), {})).toEqual({ week: "2026-10-12", readyBy: "2026-10-16", booked: false });
+  });
+
+  it("moves to the first open week when the next one is full", () => {
+    expect(slotFor(at("2026-10-07"), { "2026-10-12": CAPACITY, "2026-10-19": CAPACITY })).toEqual({ week: "2026-10-26", readyBy: "2026-10-30", booked: true });
+    expect(slotFor(at("2026-10-05"), { "2026-10-05": CAPACITY })).toMatchObject({ week: "2026-10-12", booked: true });
   });
 });
 
