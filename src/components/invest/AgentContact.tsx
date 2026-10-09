@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import { Loader2, MailCheck } from "lucide-react";
 import { track } from "@/lib/analytics";
 
-/** "Talk to an agent about this property": goes to Umar, Pencil's licensed broker. */
+/** "Talk to an agent about this property": goes to Pencil's team. */
 export default function AgentContact({ listingId, street }: { listingId: string; street: string }) {
   const [phase, setPhase] = useState<"form" | "sending" | "sent">("form");
   const [err, setErr] = useState<string | null>(null);
@@ -32,13 +32,13 @@ export default function AgentContact({ listingId, street }: { listingId: string;
 
   if (phase === "sent")
     return (
-      <p className="iv-sent" aria-live="polite"><MailCheck size={18} aria-hidden /> Sent. Umar will reach out about {street} soon.</p>
+      <p className="iv-sent" aria-live="polite"><MailCheck size={18} aria-hidden /> Sent. Pencil's team will reach out about {street} soon.</p>
     );
 
   return (
     <form className="iv-contact" onSubmit={submit} noValidate aria-labelledby={`${id}-h`}>
       <h3 id={`${id}-h`} className="iv-h3">Talk to an agent about this property</h3>
-      <p className="iv-note">Umar Saeed, Pencil&apos;s licensed real estate broker, can tour it with you and talk through the numbers and an offer.</p>
+      <p className="iv-note">We can tour it with you and talk through the numbers and an offer.</p>
       <div className="iv-fields">
         <label><span>Name</span><input name="name" autoComplete="name" required /></label>
         <label><span>Email</span><input name="email" type="email" autoComplete="email" required /></label>
@@ -47,7 +47,7 @@ export default function AgentContact({ listingId, street }: { listingId: string;
       </div>
       {err && <p role="alert" className="iv-watch-err">{err}</p>}
       <button type="submit" className="pa-btn pa-btn-primary" disabled={phase === "sending"}>
-        {phase === "sending" && <Loader2 size={15} className="animate-spin" aria-hidden />} Send to Umar
+        {phase === "sending" && <Loader2 size={15} className="animate-spin" aria-hidden />} Send
       </button>
     </form>
   );

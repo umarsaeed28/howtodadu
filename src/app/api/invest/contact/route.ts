@@ -6,7 +6,7 @@ import { getOpportunity } from "@/lib/server/invest";
 export const runtime = "nodejs";
 
 /**
- * "Talk to an agent about this property": recorded as a contact sign-up and sent to Pencil's broker, Umar
+ * "Talk to an agent about this property": recorded as a contact sign-up and sent to Pencil's team
  * (INVEST_AGENT_EMAIL, else PORTAL_ADMIN_EMAIL). The visitor gets a copy.
  */
 export async function POST(req: Request) {
@@ -35,6 +35,6 @@ export async function POST(req: Request) {
   const agent = process.env.INVEST_AGENT_EMAIL || process.env.PORTAL_ADMIN_EMAIL;
   const text = `${name} <${email}>${phone ? `, ${phone}` : ""} asked about ${property}.\n\n${message || "(no message)"}`;
   if (agent) void sendMail({ to: [agent], subject: `Invest inquiry: ${o?.street ?? "a listing"}`, text });
-  void sendMail({ to: [email], subject: "Pencil: we got your question", text: `Thank you, ${name}. Umar, Pencil's licensed broker, will reach out about ${o?.street ?? "the property"} within one business day.\n\n${message}` });
+  void sendMail({ to: [email], subject: "Pencil: we got your question", text: `Thank you, ${name}. Pencil's team will reach out about ${o?.street ?? "the property"} within one business day.\n\n${message}` });
   return Response.json({ ok: true });
 }
