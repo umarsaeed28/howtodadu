@@ -1,0 +1,176 @@
+{
+  "$comment": "Every factual default the proforma (and later the site) relies on. A claim with verified:false is shown as unverified in the UI and never silently used as a default. dateChecked is when a person last confirmed the source.",
+  "claims": [
+    {
+      "id": "reet_state_tiers_2023",
+      "kind": "tax",
+      "statement": "Washington state REET is graduated: 1.10% to $525,000; 1.28% to $1,525,000; 2.75% to $3,025,000; 3.00% above, for sales 2023-01-01 to 2026-12-31.",
+      "value": { "tiers": [[52500000, 1.1], [152500000, 1.28], [302500000, 2.75], [null, 3.0]], "unit": "cents, percent" },
+      "source": "Washington Department of Revenue, Real estate excise tax (RCW 82.45.060); Pierce County Treasurer excise tax rate sheet for 2023-01-01 to 2026-12-31",
+      "url": "https://dor.wa.gov/taxes-rates/other-taxes/real-estate-excise-tax",
+      "dateChecked": "2026-10-09",
+      "verified": true
+    },
+    {
+      "id": "reet_state_tiers_2027",
+      "kind": "tax",
+      "statement": "From 2027-01-01 the thresholds move to $551,000 / $1,551,000 / $3,051,000 under the RCW 82.45.060 four-year adjustment; rates unchanged.",
+      "value": { "tiers": [[55100000, 1.1], [155100000, 1.28], [305100000, 2.75], [null, 3.0]], "unit": "cents, percent" },
+      "source": "RCW 82.45.060 adjustment formula; figures from a law-firm summary, not yet published by DOR",
+      "url": "https://app.leg.wa.gov/RCW/default.aspx?cite=82.45.060",
+      "dateChecked": "2026-10-09",
+      "verified": false,
+      "note": "Confirm on dor.wa.gov once the 2027 threshold notice is posted."
+    },
+    {
+      "id": "reet_local_seattle",
+      "kind": "tax",
+      "statement": "Local REET for the City of Seattle (location code 1726) is 0.50%, in addition to the state tax.",
+      "value": { "pct": 0.5 },
+      "source": "Washington Department of Revenue, Local Real Estate Excise Tax Rates, effective May 1, 2026, King County section",
+      "url": "https://dor.wa.gov/sites/default/files/2026-03/84-0013-May26_REET.pdf",
+      "dateChecked": "2026-10-09",
+      "verified": true
+    },
+    {
+      "id": "reet_seller_pays",
+      "kind": "law",
+      "statement": "REET is the seller's obligation; the proforma charges it at the sale, not at the purchase, unless the buyer agrees to pay it.",
+      "value": { "buyerPaysByDefault": false },
+      "source": "RCW 82.45.080 (tax is an obligation of the seller)",
+      "url": "https://app.leg.wa.gov/RCW/default.aspx?cite=82.45.080",
+      "dateChecked": "2026-10-09",
+      "verified": true
+    },
+    {
+      "id": "king_county_property_tax",
+      "kind": "tax",
+      "statement": "King County publishes no single citywide levy rate; the rate depends on the parcel's levy code. The proforma requires the parcel's actual annual tax, from the Assessor's eReal Property search.",
+      "value": null,
+      "source": "King County Assessor, 2026 taxes overview and eReal Property search",
+      "url": "https://kingcounty.gov/en/dept/assessor/buildings-and-property/property-taxes/property-tax-overview/2026-taxes",
+      "dateChecked": "2026-10-09",
+      "verified": true,
+      "note": "No default. The field is blank and required."
+    },
+    {
+      "id": "sdci_dadu_permit_time",
+      "kind": "timeline",
+      "statement": "SDCI's 75th-percentile intake-to-issuance time in City control for pre-approved DADU plans is 60 calendar days (goal 30); the applicant's total elapsed time is roughly twice the days in City control, about 4 months.",
+      "value": { "cityControlDays75th": 60, "elapsedMultiplier": 2, "typicalMonths": 4 },
+      "source": "SDCI, Construction Permit Performance (PACT), data as of October 1, 2025",
+      "url": "https://seattle.gov/sdci/about-us/construction-permit-performance",
+      "dateChecked": "2026-10-09",
+      "verified": true,
+      "note": "Custom designs take longer; the risk flag uses 4 months."
+    },
+    {
+      "id": "sdci_permit_fees",
+      "kind": "fee",
+      "statement": "SDCI permit and review fees for a DADU.",
+      "value": null,
+      "source": "{{TODO: source needed}} SDCI Fee Subtitle (Seattle Municipal Code Title 22, Subtitle IX)",
+      "url": null,
+      "dateChecked": null,
+      "verified": false,
+      "note": "No default. The field is blank and required."
+    },
+    {
+      "id": "irs_residential_depreciation",
+      "kind": "tax",
+      "statement": "Residential rental property is depreciated straight-line over 27.5 years; land is not depreciable.",
+      "value": { "years": 27.5 },
+      "source": "IRS Publication 946, How To Depreciate Property (residential rental property, GDS recovery period)",
+      "url": "https://www.irs.gov/publications/p946",
+      "dateChecked": "2026-10-09",
+      "verified": true
+    },
+    {
+      "id": "seattle_short_term_rental",
+      "kind": "law",
+      "statement": "Seattle short-term rental rules for a DADU (operator licence, unit limits).",
+      "value": null,
+      "source": "{{TODO: source needed}} SMC 6.600 and SDCI/FAS guidance",
+      "url": null,
+      "dateChecked": null,
+      "verified": false,
+      "note": "The short-term rental strategy stays hidden until this claim is verified."
+    },
+    {
+      "id": "nr_adu_not_subdividable",
+      "kind": "law",
+      "statement": "An accessory dwelling unit may not be separated from the principal unit through subdivision; a separately saleable second unit must be a second principal dwelling on its own unit lot.",
+      "value": null,
+      "source": "SDCI, Summary of Updated Rules in Neighborhood Residential Zones (Council Bill 120993), January 2026, Subdivision",
+      "url": "https://www.seattle.gov/documents/departments/opcd/seattleplan/oneseattleplanupdatednrzonestandardsjanuary2026.pdf",
+      "dateChecked": "2026-10-09",
+      "verified": true
+    },
+    {
+      "id": "pencil_hard_cost_per_sf",
+      "kind": "estimate",
+      "statement": "DADU construction cost of $350 per square foot, construction only.",
+      "value": { "centsPerSf": 35000 },
+      "source": "Pencil estimate (src/lib/config/costs.ts), as of October 2026",
+      "url": null,
+      "dateChecked": "2026-10-09",
+      "verified": true,
+      "label": "Pencil estimate, as of October 2026"
+    },
+    {
+      "id": "pencil_soft_costs",
+      "kind": "estimate",
+      "statement": "Design, permits, fees and utility connections of about $50,000 for a DADU.",
+      "value": { "cents": 5000000 },
+      "source": "Pencil estimate (src/lib/dadu-value.ts), as of October 2026",
+      "url": null,
+      "dateChecked": "2026-10-09",
+      "verified": true,
+      "label": "Pencil estimate, as of October 2026"
+    },
+    {
+      "id": "pencil_dadu_resale_curve",
+      "kind": "estimate",
+      "statement": "A finished DADU resells for about $800 per sf at 800 sf and $680 per sf at 1,000 sf, interpolated between, flat outside 500 to 1,000 sf.",
+      "value": { "at800": 80000, "at1000": 68000, "unit": "cents per sf" },
+      "source": "Pencil market read (src/lib/dadu-value.ts), October 2026",
+      "url": null,
+      "dateChecked": "2026-10-09",
+      "verified": true,
+      "label": "Pencil estimate, as of October 2026"
+    },
+    {
+      "id": "pencil_timeline_defaults",
+      "kind": "estimate",
+      "statement": "Default schedule of 1 month design, 4 months permit, 8 months construction, 2 months lease-up or sale.",
+      "value": { "designMo": 1, "permitMo": 4, "buildMo": 8, "leaseUpOrSaleMo": 2 },
+      "source": "Pencil team rule (src/lib/calculator/inputs.ts DEFAULT_FORM, home page timeline), October 2026",
+      "url": null,
+      "dateChecked": "2026-10-09",
+      "verified": true,
+      "label": "Pencil estimate, as of October 2026"
+    },
+    {
+      "id": "pencil_financing_defaults",
+      "kind": "estimate",
+      "statement": "Construction loan 10% interest, 1 point; permanent loan 70% LTV, 6.75% rate, 30-year amortization, 1.25x minimum DSCR; 6% selling costs; 5% vacancy; 8% management; 5% hard-cost contingency.",
+      "value": { "constructionRatePct": 10, "pointsPct": 1, "permLtvPct": 70, "permRatePct": 6.75, "amortYears": 30, "minDscr": 1.25, "sellingPct": 6, "vacancyPct": 5, "mgmtPct": 8, "hardContPct": 5 },
+      "source": "Pencil underwriting conventions (src/lib/calculator/inputs.ts DEFAULT_FORM), October 2026",
+      "url": null,
+      "dateChecked": "2026-10-09",
+      "verified": true,
+      "label": "Pencil estimate, as of October 2026"
+    },
+    {
+      "id": "pencil_scenario_presets",
+      "kind": "estimate",
+      "statement": "Downside: hard cost +10%, rent -5%, exit cap +0.5 pt, permit +2 months. Upside: hard cost -5%, rent +5%, exit cap -0.25 pt.",
+      "value": { "downside": { "hardPct": 10, "rentPct": -5, "exitCapPts": 0.5, "permitMo": 2 }, "upside": { "hardPct": -5, "rentPct": 5, "exitCapPts": -0.25, "permitMo": 0 } },
+      "source": "Pencil scenario presets, October 2026. Editable on the page.",
+      "url": null,
+      "dateChecked": "2026-10-09",
+      "verified": true,
+      "label": "Pencil preset"
+    }
+  ]
+}
