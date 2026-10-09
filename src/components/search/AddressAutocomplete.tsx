@@ -45,6 +45,11 @@ export type AddressAutocompleteProps = {
   autoFocus?: boolean;
   invalid?: boolean;
   describedBy?: string;
+  /**
+   * Choosing a suggestion only fills the box; the surrounding form's button does the rest. Enter with the list
+   * closed submits that form, the same as pressing its button.
+   */
+  fillOnly?: boolean;
 };
 
 /**
@@ -52,7 +57,7 @@ export type AddressAutocompleteProps = {
  * server has a key, Esri otherwise. Arrow keys move, Enter takes the highlighted match (the top one by default),
  * Escape closes. Each focus starts a session token so Google bills a typing session once.
  */
-export default function AddressAutocomplete({ value, onChange, onPick, label, placeholder = "Enter your Seattle address", loading = false, variant = "site", autoFocus, invalid, describedBy }: AddressAutocompleteProps) {
+export default function AddressAutocomplete({ value, onChange, onPick, label, placeholder = "Enter your Seattle address", loading = false, variant = "site", autoFocus, invalid, describedBy, fillOnly = false }: AddressAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
@@ -144,10 +149,15 @@ export default function AddressAutocomplete({ value, onChange, onPick, label, pl
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
-      e.preventDefault();
       // Like a maps search box: Enter takes the highlighted suggestion (the top match by default), else what was typed.
-      if (showPanel && list.length > 0) commit(list[active >= 0 ? active : 0]);
-      else commit(value);
+      if (showPanel && list.length > 0) {
+        e.preventDefault();
+        commit(list[active >= 0 ? active : 0]);
+        return;
+      }
+      if (fillOnly) return; // the list is closed: let the form submit, as its button would
+      e.preventDefault();
+      commit(value);
       return;
     }
     if (e.key === "Escape") {

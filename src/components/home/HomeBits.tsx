@@ -42,7 +42,7 @@ export function Term({ word }: { word: keyof typeof TERMS }) {
 
 /**
  * An address box that opens the feasibility check for that address, with Seattle autocomplete. Used in the hero
- * and the footer CTA. Picking a suggestion starts the check at once. Records the hero CTA click and the address
+ * and the footer CTA. Picking a suggestion fills the box; the check starts from the button. Records the hero CTA click and the address
  * submission; the address itself is never sent to analytics.
  */
 export function AddressForm({ source, label, placeholder = "Enter your Seattle address", size = "lg" }: { source: "hero" | "footer_cta"; label: string; placeholder?: string; size?: "lg" | "xl" }) {
@@ -60,7 +60,7 @@ export function AddressForm({ source, label, placeholder = "Enter your Seattle a
   return (
     <form className={`fa fa--${size}`} onSubmit={(e) => { e.preventDefault(); go(value); }} noValidate>
       <div className="fa-row">
-        <AddressAutocomplete value={value} onChange={(v) => { setValue(v); setErr(null); }} onPick={go} label={label} placeholder={placeholder} invalid={!!err} describedBy={err ? `${id}-err` : undefined} />
+        <AddressAutocomplete value={value} onChange={(v) => { setValue(v); setErr(null); }} onPick={(a) => { setValue(a); setErr(null); }} fillOnly label={label} placeholder={placeholder} invalid={!!err} describedBy={err ? `${id}-err` : undefined} />
         <button type="submit" className="s-btn s-btn--primary s-btn--lg">Check my lot <ArrowRight size={16} aria-hidden /></button>
       </div>
       {err && <p id={`${id}-err`} role="alert" className="fa-err">{err}</p>}
