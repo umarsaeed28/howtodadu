@@ -29,7 +29,7 @@ describe("dashboard properties", () => {
   it("says when the permit intake is still to do, and when the permit is issued", () => {
     const paidOnly = buildProperties({ projects: [], feasibility: [], permits: [], orders: [order({}), order({ id: "r", kind: "plan_request", firm: "Fivedot Architects" }), order({ id: "pm", kind: "permit" })] })[0];
     expect(paidOnly.plan.detail).toBe("Requested from Fivedot Architects");
-    expect(paidOnly.next.text).toBe("Next: finish the permit intake");
+    expect(paidOnly.next.text).toBe("Next: talk to us to start your permit");
     const pkg = { id: "k", project_id: "p1", status: "approved", fee_cents: 500000, payment_id: "o", paid_at: "x", correction_rounds: 1, submitted_at: null, approved_at: null, created_at: "", updated_at: "" } as PermitPackage;
     const issued = buildProperties({ projects: [project({})], feasibility: [], permits: [pkg], orders: [order({}), order({ id: "c", kind: "custom_plan", status: "delivered" })] })[0];
     expect(issued.permit).toMatchObject({ detail: "Permit issued", state: "done" });

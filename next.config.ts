@@ -21,6 +21,8 @@ const nextConfig: NextConfig = {
       { source: "/about", destination: "/", permanent: true },
       // Drawing your own DADU now happens on the feasibility report's master plan.
       { source: "/custom", destination: "/feasibility", permanent: true },
+      // The permit page was removed: the permit is sold with the custom plan, through the free consult.
+      { source: "/permit", destination: "/contact", permanent: true },
     ];
   },
 };

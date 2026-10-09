@@ -28,7 +28,7 @@ const PRICE_HREF: Record<ProductKind, string> = {
   feasibility_instant: "/feasibility",
   feasibility_reviewed: "/feasibility?tier=reviewed",
   custom_plan: "/feasibility",
-  permit: "/permit",
+  permit: "/contact",
 };
 
 /** The two reports get a card each; the custom plan and the permit service share one card as design, or design + permit. */

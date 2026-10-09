@@ -9,7 +9,6 @@ import ProfileMenu from "./ProfileMenu";
 
 const NAV = [
   { href: "/feasibility", label: "Check my lot" },
-  { href: "/permit", label: "Permits" },
   { href: "/search", label: "Search" },
   { href: "/company", label: "About us" },
 ];

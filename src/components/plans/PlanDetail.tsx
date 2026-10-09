@@ -7,7 +7,6 @@ import Link from "next/link";
 import { ArrowRight, Check, CircleAlert, Loader2, MailCheck, Stamp } from "lucide-react";
 import type { PreApprovedPlan } from "@/lib/preapproved-dadus";
 import { planFitFor } from "@/lib/site-envelope";
-import { withParcel } from "@/lib/parcel-context";
 import { lastEmail, rememberEmail } from "@/lib/report-access";
 import { track } from "@/lib/analytics";
 import { price, PRODUCTS } from "@/lib/pricing";
@@ -115,7 +114,7 @@ function RequestPlan({ plan, pin, address }: { plan: PreApprovedPlan; pin: strin
             <p className="pd-upsell-h">Skip the permit paperwork. We&apos;ll take it from here.</p>
             <p className="pd-upsell-b">{PRODUCTS.permit.name}, {price(PRODUCTS.permit.amountCents)}. We prepare the set, submit it to SDCI, and handle every round of corrections.</p>
           </div>
-          <Link href={withParcel("/permit", pin)} className="s-btn s-btn--primary">Get permitted <ArrowRight size={15} aria-hidden /></Link>
+          <Link href="/contact" className="s-btn s-btn--primary">Talk to us <ArrowRight size={15} aria-hidden /></Link>
         </div>
       </section>
     );

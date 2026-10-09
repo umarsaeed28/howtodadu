@@ -88,10 +88,10 @@ export function buildProperties(input: { projects: Project[]; feasibility: Feasi
     const next =
       feasibility.state === "todo" ? { text: "Next: check your lot", href: withParcel("/feasibility", g.pin) }
       : plan.state === "todo" ? { text: "Next: choose your plan", href: withParcel("/plans", g.pin) }
-      : permitOrder && !pkg ? { text: "Next: finish the permit intake", href: withParcel("/permit", g.pin) }
-      : permit.state === "todo" ? { text: plan.state === "done" ? "Next: start your permit" : "Next: start your permit when your plan is ready", href: withParcel("/permit", g.pin) }
+      : permitOrder && !pkg ? { text: "Next: talk to us to start your permit", href: "/contact" }
+      : permit.state === "todo" ? { text: plan.state === "done" ? "Next: start your permit" : "Next: start your permit when your plan is ready", href: "/contact" }
       : step === "issued" ? { text: "Next: get a build quote", href: g.project ? `/portal/projects/${g.project.id}` : "/contact" }
-      : { text: "Next: we'll email you at each step", href: g.project ? `/portal/projects/${g.project.id}` : withParcel("/permit", g.pin) };
+      : { text: "Next: we'll email you at each step", href: g.project ? `/portal/projects/${g.project.id}` : "/contact" };
 
     const times = [g.project?.updated_at, ...g.orders.map((o) => o.created_at)].filter((t): t is string => !!t).sort();
     out.push({ key, pin: g.pin, address: g.address, projectId: g.project?.id ?? null, feasibility, plan, permit, next, updatedAt: times[times.length - 1] ?? "" });
