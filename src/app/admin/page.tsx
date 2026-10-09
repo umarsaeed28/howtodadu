@@ -25,7 +25,6 @@ export default async function AdminBoard() {
           <h1 className="pa-display text-3xl" style={{ color: "var(--ink)" }}>Pipeline</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>{cards.length} project{cards.length === 1 ? "" : "s"} across four stages.</p>
         </div>
-        <Link href="/portal/new" className="pa-btn no-underline">New project</Link>
       </div>
       <div className="pa-scroll mt-5 grid gap-3 overflow-x-auto md:grid-cols-4">
         {STAGES.map((s) => {
