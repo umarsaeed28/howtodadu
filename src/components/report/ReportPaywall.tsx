@@ -189,6 +189,7 @@ export default function ReportPaywall({ address, onUnlock }: { address: string; 
                   )}
                   <span className="pa-display text-lg leading-none tabular-nums" style={{ color: "var(--ink)" }}>{usd(p.amountCents)}</span>
                   <span className="mt-1.5 text-sm font-semibold leading-tight" style={{ color: "var(--ink)" }}>{pid === "pack5" ? "5 feasibility reports" : "This one report"}</span>
+                  {p.credits > 1 && <span className="mt-0.5 text-xs font-semibold tabular-nums" style={{ color: "var(--green)" }}>{`$${(p.amountCents / 100 / p.credits).toFixed(2)} a report`}</span>}
                   <span className="mt-1 text-[11px] leading-snug" style={{ color: "var(--slate)" }}>
                     {pid === "pack5" ? "Plus the weekly newsletter of the best DADU opportunities in Seattle." : "Just this address."}
                   </span>

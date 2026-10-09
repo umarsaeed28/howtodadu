@@ -18,8 +18,8 @@ describe("payments", () => {
     expect(r.receipt.id).toMatch(/^mock_/);
   });
 
-  it("the five-pack is $30 for 5 credits with the newsletter", async () => {
-    expect(PRODUCTS.pack5).toMatchObject({ amountCents: 3000, credits: 5, newsletter: true });
+  it("the five-pack is $99 for 5 credits with the newsletter", async () => {
+    expect(PRODUCTS.pack5).toMatchObject({ amountCents: 9900, credits: 5, newsletter: true });
     expect(productOf("pack5")).toBe("pack5");
     expect(productOf("anything")).toBe("single");
     const r = await getPaymentProvider({}).startCheckout({ address: "x", product: "pack5" });
@@ -56,7 +56,7 @@ describe("POST /api/checkout", () => {
 
   it("sells the five-pack and answers 402 to a simulated decline", async () => {
     const pack = await (await call({ address: "A St", product: "pack5" })).json();
-    expect(pack.receipt).toMatchObject({ product: "pack5", credits: 5, amountCents: 3000 });
+    expect(pack.receipt).toMatchObject({ product: "pack5", credits: 5, amountCents: 9900 });
     const declined = await call({ address: "A St", product: "single", simulate: "fail" });
     expect(declined.status).toBe(402);
     expect(await declined.json()).toEqual({ ok: false, error: "card_declined" });

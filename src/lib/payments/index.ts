@@ -17,7 +17,7 @@ export type ProductId = "single" | "pack5";
 /** The two things on sale: one report, or five reports plus the weekly newsletter. */
 export const PRODUCTS: Record<ProductId, { id: ProductId; name: string; amountCents: number; credits: number; newsletter: boolean }> = {
   single: { id: "single", name: "One report", amountCents: REPORT_PRICE_CENTS, credits: 1, newsletter: false },
-  pack5: { id: "pack5", name: "5 reports + weekly newsletter", amountCents: 3000, credits: 5, newsletter: true },
+  pack5: { id: "pack5", name: "5 reports + weekly newsletter", amountCents: 9900, credits: 5, newsletter: true },
 };
 
 export function productOf(v: unknown): ProductId {
