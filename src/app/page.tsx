@@ -73,7 +73,6 @@ export default function Home() {
             </div>
             <figure className="lp-hero-art">
               <Image src={rendering} alt="A Seattle craftsman house with a new two-story backyard cottage behind it, drawn as an architect's rendering." priority sizes="(min-width: 900px) 50vw, 100vw" placeholder="blur" />
-              <figcaption>A craftsman with a two-story DADU behind it: the kind of project Pencil takes from lot to keys.</figcaption>
             </figure>
           </div>
           <dl className="lp-stats" aria-label="Pencil by the numbers">

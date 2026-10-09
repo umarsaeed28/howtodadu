@@ -824,8 +824,3 @@
   height: auto;
   border-radius: 10px;
 }
-.site .lp-hero-art figcaption {
-  margin-top: 10px;
-  font-size: 0.85rem;
-  color: var(--slate);
-}
