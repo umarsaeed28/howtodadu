@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ClipboardCheck, Hammer, KeyRound, LayoutDashboard, MapPin, Ruler, Search } from "lucide-react";
 import { Section, Container, Heading, Lede, Body, Button, Card, Eyebrow } from "@/components/ui";
+import Image from "next/image";
 import HomeAddressBar from "@/components/site/HomeAddressBar";
-import Plat from "@/components/site/Plat";
+import rendering from "../../public/home/dadu-rendering.webp";
 
 export const metadata: Metadata = {
   title: "Pencil — Seattle DADUs from lot to keys",
@@ -70,7 +71,10 @@ export default function Home() {
                 </Link>
               </p>
             </div>
-            <Plat />
+            <figure className="lp-hero-art">
+              <Image src={rendering} alt="A Seattle craftsman house with a new two-story backyard cottage behind it, drawn as an architect's rendering." priority sizes="(min-width: 900px) 50vw, 100vw" placeholder="blur" />
+              <figcaption>A craftsman with a two-story DADU behind it: the kind of project Pencil takes from lot to keys.</figcaption>
+            </figure>
           </div>
           <dl className="lp-stats" aria-label="Pencil by the numbers">
             {([

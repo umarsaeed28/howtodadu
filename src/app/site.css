@@ -811,3 +811,21 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
+.site .lp-hero-art {
+  margin: 0;
+  padding: clamp(10px, 1.4vw, 14px);
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: var(--nm-out);
+}
+.site .lp-hero-art img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+.site .lp-hero-art figcaption {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: var(--slate);
+}
