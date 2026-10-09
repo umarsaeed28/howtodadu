@@ -72,11 +72,6 @@ export default function Home() {
               <AddressForm source="hero" label="Your Seattle address" />
             </div>
             <p className="hm-trust"><Check size={15} aria-hidden /> Built on current Seattle code. No signup to start.</p>
-            <p className="hm-alt">
-              <TrackedLink href="/plans" event="hero_cta_click" props={{ cta: "browse_plans" }} className="hm-link">Browse pre-approved plans</TrackedLink>
-              <span aria-hidden className="hm-sep">|</span>
-              <TrackedLink href="/custom" event="hero_cta_click" props={{ cta: "draw_my_dadu" }} className="hm-link">Draw my own DADU</TrackedLink>
-            </p>
           </div>
           <figure className="hm-hero-art">
             <Image src={HERO_IMAGE.src} alt={HERO_IMAGE.alt} priority sizes="(min-width: 960px) 52vw, 100vw" placeholder="blur" />
