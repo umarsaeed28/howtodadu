@@ -32,7 +32,7 @@ function Feasibility() {
       <rect x="44" y="18" width="20" height="16" rx="1.5" fill="#F3D27A" stroke={INK} strokeOpacity=".6" />
       <circle cx="68" cy="30" r="5" fill="none" stroke={G} strokeOpacity=".7" strokeDasharray="2 2" />
       <g transform="translate(84 10)">
-        <circle cx="12" cy="12" r="12" fill={INK} />
+        <circle cx="12" cy="12" r="12" fill={G} />
         <text x="12" y="16" textAnchor="middle" fontSize="11" fontWeight="800" fill="#fff" fontFamily="var(--font-display), system-ui">86</text>
       </g>
       <defs>
@@ -136,27 +136,31 @@ const STEPS: JourneyStep[] = [
 
 export const ART = { Acquire, Feasibility, Paths, Plans, Permit, Build, Keys };
 
+/**
+ * The stages drawn as one plan sheet: a single white sheet split into panels like a drawing set, one continuous
+ * line through the numbered markers, the drawing, then the stage, its terms in green and one line of copy.
+ */
 export default function Journey({ tone = "light", steps = STEPS, label = "Acquisition to construction, in five stages" }: { tone?: "light" | "dark"; steps?: JourneyStep[]; label?: string }) {
   return (
-    <ol className={`jr${tone === "dark" ? " jr--dark" : ""}`} data-n={steps.length} aria-label={label}>
-      {steps.map(({ Art, title, tag, body }, i) => (
-        <li key={title} className="jr-step">
-          <div className="jr-art">
-            <Art />
-          </div>
-          <div className="jr-node" aria-hidden>
-            <span>{i + 1}</span>
-          </div>
-          <div className="jr-text">
-            <h3 className="s-h3">
-              <span className="sr-only">Step {i + 1}: </span>
-              {title}
-            </h3>
-            {tag && <span className="s-pill jr-tag">{tag}</span>}
-            <p className="s-body">{body}</p>
-          </div>
-        </li>
-      ))}
-    </ol>
+    <div className={`jr-sheet${tone === "dark" ? " jr-sheet--dark" : ""}`}>
+      <ol className="jr" style={{ "--n": steps.length } as React.CSSProperties} aria-label={label}>
+        {steps.map(({ Art, title, tag, body }, i) => (
+          <li key={title} className="jr-step">
+            <span className="jr-node" aria-hidden>{i + 1}</span>
+            <div className="jr-art">
+              <Art />
+            </div>
+            <div className="jr-text">
+              <h3 className="jr-title">
+                <span className="sr-only">Stage {i + 1}: </span>
+                {title}
+              </h3>
+              {tag && <p className="jr-tag">{tag}</p>}
+              <p className="jr-body">{body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }

@@ -69,9 +69,12 @@ export default function Home() {
       {/* How it works */}
       <section className="hm-band" aria-labelledby="hm-how">
         <Container>
-          <Heading level={2} id="hm-how" style={{ maxWidth: "22ch" }}>From the lot to construction in five stages</Heading>
+          <div className="hm-how-head">
+            <Heading level={2} id="hm-how" className="hm-how-h">From buying the lot to the final inspection</Heading>
+            <p className="hm-how-lede">One team runs every stage of your DADU. Hire us for all five, or only the ones you need. Each picks up where the last one ended, so nothing is done twice.</p>
+          </div>
           <div style={{ marginTop: 40 }}>
-            <Journey tone="dark" label="From the lot to construction in five stages" />
+            <Journey tone="dark" label="Five stages, from buying the lot to the final inspection" />
           </div>
           <p className="cf-band-note">Builders we refer may pay Pencil a referral fee. We tell you before you choose one.</p>
         </Container>
