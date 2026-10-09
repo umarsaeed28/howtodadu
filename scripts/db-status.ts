@@ -24,7 +24,6 @@ const TABLES: [string, string[]][] = [
   ["0009_service_orders", ["service_orders"]],
   ["0010_invest", ["invest_settings", "invest_snapshots", "watchlist"]],
   ["0011_purchases", ["purchases"]],
-  ["0012_report_credits", ["report_credits", "report_pdfs", "admin_audit_log"]],
 ];
 
 async function main() {
