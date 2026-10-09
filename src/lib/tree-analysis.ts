@@ -1,4 +1,5 @@
 import { lotRotation, turn, unturn } from "./lot-orientation";
+import { FRONT_SETBACK_FT } from "./site-envelope";
 
 /**
  * Tree-by-tree read of a lot from the city's 2021 LiDAR tree crowns: how many medium and large trees there are, how much
@@ -30,8 +31,8 @@ export const MIN_FOOTPRINT_SQFT = 300;
 export const MIN_FOOTPRINT_SIDE_FT = 15;
 const HOUSE_GAP_FT = 5;
 const SETBACK_FT = 5;
-/** The front yard, between the street and the house, is not a DADU site. */
-const FRONT_YARD_FT = 20;
+/** The front yard, between the street and the house, is not a DADU site: the NR front setback (SMC 23.44.090). */
+const FRONT_YARD_FT = FRONT_SETBACK_FT;
 
 /** Which way the address street runs: Seattle avenues north-south, streets east-west. Null for other names. */
 export function streetAxis(address: string | null | undefined): "ns" | "ew" | null {
@@ -162,7 +163,7 @@ export function analyzeTrees(lot: [number, number][], buildings: [number, number
     behind = front.behind;
     pastFront = front.past;
   } else if (streetRuns) {
-    // No house on record, so the front cannot be told from the back: keep 20 ft clear on both street-facing sides.
+    // No house on record, so the front cannot be told from the back: keep the front setback clear on both street-facing sides.
     behind = pastFront = streetRuns === "ns" ? (p) => p.x > x0 + FRONT_YARD_FT && p.x < x1 - FRONT_YARD_FT : (p) => p.y > y0 + FRONT_YARD_FT && p.y < y1 - FRONT_YARD_FT;
   }
 

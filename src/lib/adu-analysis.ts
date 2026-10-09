@@ -113,25 +113,50 @@ function zoneFamily(zoning: string | null): string | null {
   return null;
 }
 
+/** NR maximum lot coverage for structures: 50 percent of the lot (SMC 23.44.080.A). */
+export const NR_MAX_LOT_COVERAGE = 0.5;
+
 /**
- * Seattle residential max lot coverage (sq ft), aligned with SDCI ADU guidance:
- * lots under 5,000 sf → 1,000 sq ft + 15% of lot area; lots 5,000 sf+ → 35% of lot area.
- * (Continuity: at exactly 5,000 sf both formulas yield 1,750 sq ft.)
+ * Seattle residential max lot coverage (sq ft): 50% of the lot in Neighborhood Residential zones (SMC 23.44.080.A,
+ * as amended by Council Bill 120993, January 2026). This replaced the old single-family curve (1,000 sf + 15% under
+ * 5,000 sf, 35% above). Not modeled: the 60% for stacked units or courtyard development (23.44.080.F-G), and leaving
+ * riparian, wetland, shoreline and steep-slope areas out of the lot size (23.44.080.B), which needs ECA geometry.
  */
 export function maxLotCoverageSqft(lotSqft: number): number {
   if (lotSqft <= 0) return 0;
-  if (lotSqft >= 5000) return Math.round(0.35 * lotSqft);
-  return Math.round(1000 + 0.15 * lotSqft);
+  return Math.round(NR_MAX_LOT_COVERAGE * lotSqft);
 }
 
-function heightLimits(width: number) {
+/**
+ * DADU height. Since Ordinance 127211 repealed SMC 23.44.041, an accessory dwelling unit has the same height limit as
+ * a principal dwelling unit (SMC 23.42.022.E). In NR that is 32 ft (23.44.070.A.1), plus 5 ft for the ridge of a
+ * pitched roof of 4:12 or steeper, or 3 ft for the high side of a shed or butterfly roof (23.44.070.B). The 42 ft
+ * limit for tree retention or three or more principal units (23.44.070.A.2) is not assumed.
+ */
+export const NR_HEIGHT = { base: 32, pitched: 5, shed: 3 } as const;
+
+/**
+ * Other zones keep the width-based DADU heights of the repealed SMC 23.44.041 until their own rules are modeled.
+ * Under 23.42.022.E these zones also take the principal-unit height, so treat these as unconfirmed.
+ */
+function legacyHeightLimits(width: number) {
   if (width >= 50) return { base: 18, pitched: 7, shed: 4 };
   if (width >= 40) return { base: 18, pitched: 5, shed: 4 };
   if (width >= 30) return { base: 16, pitched: 7, shed: 4 };
   return { base: 14, pitched: 3, shed: 3 };
 }
 
-/* ── DADU Footprint Calculation (SMC 23.44.041) ── */
+function heightLimits(family: string | null, width: number) {
+  return family === "NR" || family === "SF" ? { ...NR_HEIGHT } : legacyHeightLimits(width);
+}
+
+/**
+ * ADU gross floor area limit: 1,000 sf with up to two bedrooms (SMC 23.42.022.G.1.a); 1,200 sf with three or more
+ * (G.1.b) is not assumed. Underground stories do not count (G.2.b). No longer depends on lot size.
+ */
+export const DADU_MAX_GROSS_SQFT = 1000;
+
+/* ── DADU Footprint Calculation (SMC 23.42.022, 23.44) ── */
 
 function computeDADUFootprint(
   lot: number,
@@ -141,7 +166,7 @@ function computeDADUFootprint(
 ): DADUFootprint | null {
   if (lot < MIN_LOT_SIZE) return null;
 
-  const codeMax = lot >= 4000 ? 1000 : 800;
+  const codeMax = DADU_MAX_GROSS_SQFT;
   const buildable = Math.min(codeMax, availCov);
   if (buildable <= 0) return null;
 
@@ -163,8 +188,8 @@ function computeDADUFootprint(
     suggestedWidth: dims.w,
     suggestedDepth: dims.d,
     maxHeight: maxH,
-    rearSetback: 5,
-    sideSetback: 5,
+    rearSetback: 5, // ADU rear setback (SMC 23.44.090 Table A, note 3)
+    sideSetback: 5, // NR side setback: 5 ft average, 3 ft minimum (SMC 23.44.090 Table A); the average is used
     garageConversion: false,
     garageNote: null,
     note:
@@ -588,7 +613,7 @@ export function generateADUReport(
         }
       : null;
 
-  const hl = w > 0 ? heightLimits(w) : null;
+  const hl = w > 0 || family === "NR" || family === "SF" ? heightLimits(family, w) : null;
   const height: HeightData | null = hl
     ? { ...hl, total: hl.base + hl.pitched, lotWidth: w }
     : null;
@@ -728,7 +753,7 @@ export function generateADUReport(
   const daduFootprint = zoningOk
     ? computeDADUFootprint(lot, availCov, w, hl)
     : null;
-  // A rear lot line on an alley needs no setback (team rule; SMC 23.44.041 measures the DADU setback from the alley).
+  // An ADU needs no rear setback where the rear lot line abuts an alley (SMC 23.44.090 Table A, note 3).
   if (daduFootprint && factors?.hasAlley) daduFootprint.rearSetback = 0;
 
   const housingOptions = computeHousingOptions(family, zone, lot, totalADU);

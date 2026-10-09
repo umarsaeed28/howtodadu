@@ -20,10 +20,10 @@ describe("site frame", () => {
     expect(frame.lw).toBeCloseTo(50, 0);
     expect(frame.ld).toBeCloseTo(100, 0);
     expect(frame.swap).toBe(false);
-    expect([frame.sideL, frame.sideR, frame.rearSb, frame.frontSb]).toEqual([5, 5, 5, 20]);
+    expect([frame.sideL, frame.sideR, frame.rearSb, frame.frontSb]).toEqual([5, 5, 5, 15]);
     const env = envelopeSize(frame);
     expect(env.w).toBeCloseTo(40, 0);
-    expect(env.d).toBeCloseTo(75, 0);
+    expect(env.d).toBeCloseTo(80, 0);
     expect(frame.polyEnvelope).toBe(true);
     expect(frame.lotEdges.map((e) => e.kind).sort()).toEqual(["front", "rear", "side", "side"]);
   });

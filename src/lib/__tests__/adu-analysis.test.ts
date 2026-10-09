@@ -328,9 +328,9 @@ describe("Coverage Calculation", () => {
     const report = generateADUReport(makeParcel({ lotSqft: 5400 }), makeFactors({ lotCoveragePercent: 0.22 }));
     expect(report.coverage).not.toBeNull();
     expect(report.coverage!.currentPercent).toBeCloseTo(22, 0);
-    expect(report.coverage!.maxPercent).toBe(35);
+    expect(report.coverage!.maxPercent).toBe(50);
     expect(report.coverage!.usedSqft).toBe(Math.round(0.22 * 5400));
-    expect(report.coverage!.maxSqft).toBe(Math.round(0.35 * 5400));
+    expect(report.coverage!.maxSqft).toBe(2700);
     expect(report.coverage!.availableSqft).toBe(report.coverage!.maxSqft - report.coverage!.usedSqft);
   });
 
@@ -341,17 +341,17 @@ describe("Coverage Calculation", () => {
     expect(report.coverage!.usedSqft).toBe(Math.round(0.22 * 5400));
   });
 
-  it("uses 35% max coverage for lots >= 5000 sqft", () => {
+  it("uses 50% max coverage for lots >= 5000 sqft (SMC 23.44.080.A)", () => {
     const report = generateADUReport(makeParcel({ lotSqft: 6000 }), makeFactors());
-    expect(report.coverage!.maxPercent).toBe(35);
+    expect(report.coverage!.maxPercent).toBe(50);
+    expect(report.coverage!.maxSqft).toBe(3000);
   });
 
-  it("uses 1,000 + 15% lot area max coverage for lots < 5000 sqft (SDCI ADU rule)", () => {
+  it("uses 50% max coverage for lots < 5000 sqft too, not the old 1,000 + 15% curve", () => {
     const lot = 3500;
     const report = generateADUReport(makeParcel({ lotSqft: lot, zoning: "SF 5000" }), makeFactors());
-    const expectedMax = Math.round(1000 + 0.15 * lot);
-    expect(report.coverage!.maxSqft).toBe(expectedMax);
-    expect(report.coverage!.maxPercent).toBeCloseTo((expectedMax / lot) * 100, 1);
+    expect(report.coverage!.maxSqft).toBe(1750);
+    expect(report.coverage!.maxPercent).toBeCloseTo(50, 5);
   });
 
   it("matches ADUniverse-style coverage headroom for a ~3916 sf lot at 17.5% coverage", () => {
@@ -360,7 +360,7 @@ describe("Coverage Calculation", () => {
       makeParcel({ lotSqft: lot, zoning: "NR3" }),
       makeFactors({ lotCoveragePercent: 0.175 })
     );
-    const maxSqft = Math.round(1000 + 0.15 * lot);
+    const maxSqft = 1958;
     expect(report.coverage!.maxSqft).toBe(maxSqft);
     expect(report.coverage!.usedSqft).toBe(Math.round(0.175 * lot));
     expect(report.coverage!.availableSqft).toBe(maxSqft - Math.round(0.175 * lot));
@@ -413,10 +413,10 @@ describe("DADU Footprint", () => {
     expect(report.daduFootprint!.maxAllowedSqft).toBe(1000);
   });
 
-  it("allows up to 800 sqft for lots between 3200-3999 sqft", () => {
+  it("allows up to 1000 sqft for lots between 3200-3999 sqft too (SMC 23.42.022.G.1.a has no lot-size tier)", () => {
     const report = generateADUReport(makeParcel({ lotSqft: 3500 }), makeFactors({ lotCoveragePercent: 0.1 }));
     expect(report.daduFootprint).not.toBeNull();
-    expect(report.daduFootprint!.maxAllowedSqft).toBe(800);
+    expect(report.daduFootprint!.maxAllowedSqft).toBe(1000);
   });
 
   it("caps buildable area at available coverage", () => {
@@ -425,6 +425,15 @@ describe("DADU Footprint", () => {
       makeFactors({ lotCoveragePercent: 0.3 })
     );
     expect(report.daduFootprint!.buildableSqft).toBeLessThanOrEqual(report.coverage!.availableSqft);
+  });
+
+  it("selects 2 stories on a narrow NR lot, whose height no longer depends on width", () => {
+    const report = generateADUReport(
+      makeParcel({ lotSqft: 5400, zoning: "NR3" }),
+      makeFactors({ lotWidth: 25, lotCoveragePercent: 0.1 })
+    );
+    expect(report.daduFootprint!.stories).toBe(2);
+    expect(report.daduFootprint!.maxHeight).toBe(37);
   });
 
   it("selects 2 stories when height allows and buildable >= 500", () => {
@@ -437,9 +446,9 @@ describe("DADU Footprint", () => {
     expect(report.daduFootprint!.livingSqft).toBe(1000);
   });
 
-  it("selects 1 story for narrow lots with low height", () => {
+  it("selects 1 story for narrow lots with low height (outside NR, on the legacy width table)", () => {
     const report = generateADUReport(
-      makeParcel({ lotSqft: 5400 }),
+      makeParcel({ lotSqft: 5400, zoning: "LR2", zoningCategory: "LR2", baseZone: "LR2" }),
       makeFactors({ lotWidth: 25, lotCoveragePercent: 0.1 })
     );
     expect(report.daduFootprint!.stories).toBe(1);
@@ -464,34 +473,48 @@ describe("DADU Footprint", () => {
    ═══════════════════════════════════════════════════════════ */
 
 describe("Height Limits", () => {
-  it("returns 18+7=25 for lots >= 50ft wide", () => {
-    const report = generateADUReport(makeParcel(), makeFactors({ lotWidth: 55 }));
-    expect(report.height).not.toBeNull();
+  it("gives an NR DADU the principal-unit height, 32 ft plus 5 ft for a pitched roof, at any width (SMC 23.42.022.E, 23.44.070)", () => {
+    for (const lotWidth of [25, 35, 45, 55]) {
+      for (const zoning of ["NR3", "SF 5000"]) {
+        const report = generateADUReport(makeParcel({ zoning }), makeFactors({ lotWidth }));
+        expect(report.height).toMatchObject({ base: 32, pitched: 5, shed: 3, total: 37 });
+        expect(report.daduFootprint!.maxHeight).toBe(37);
+      }
+    }
+  });
+
+  it("gives an NR DADU its height even when the lot width is unknown", () => {
+    const report = generateADUReport(makeParcel({ zoning: "NR2" }), makeFactors({ lotWidth: 0 }));
+    expect(report.height!.total).toBe(37);
+  });
+
+  const lr = (lotWidth: number) =>
+    generateADUReport(makeParcel({ zoning: "LR2", zoningCategory: "LR2", baseZone: "LR2" }), makeFactors({ lotWidth }));
+
+  it("keeps the legacy width table outside NR: 18+7=25 for lots >= 50ft wide", () => {
+    const report = lr(55);
     expect(report.height!.base).toBe(18);
     expect(report.height!.pitched).toBe(7);
     expect(report.height!.total).toBe(25);
   });
 
-  it("returns 18+5=23 for lots 40-49ft wide", () => {
-    const report = generateADUReport(makeParcel(), makeFactors({ lotWidth: 45 }));
-    expect(report.height!.total).toBe(23);
+  it("keeps the legacy width table outside NR: 18+5=23 for lots 40-49ft wide", () => {
+    expect(lr(45).height!.total).toBe(23);
   });
 
-  it("returns 16+7=23 for lots 30-39ft wide", () => {
-    const report = generateADUReport(makeParcel(), makeFactors({ lotWidth: 35 }));
+  it("keeps the legacy width table outside NR: 16+7=23 for lots 30-39ft wide", () => {
+    const report = lr(35);
     expect(report.height!.base).toBe(16);
     expect(report.height!.pitched).toBe(7);
     expect(report.height!.total).toBe(23);
   });
 
-  it("returns 14+3=17 for lots < 30ft wide", () => {
-    const report = generateADUReport(makeParcel(), makeFactors({ lotWidth: 25 }));
-    expect(report.height!.total).toBe(17);
+  it("keeps the legacy width table outside NR: 14+3=17 for lots < 30ft wide", () => {
+    expect(lr(25).height!.total).toBe(17);
   });
 
-  it("returns null height when width is 0", () => {
-    const report = generateADUReport(makeParcel(), makeFactors({ lotWidth: 0 }));
-    expect(report.height).toBeNull();
+  it("returns null height outside NR when width is 0", () => {
+    expect(lr(0).height).toBeNull();
   });
 });
 

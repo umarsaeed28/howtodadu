@@ -604,7 +604,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
 
   /* ---- the sentence under the plan, also printed in the PDF ---- */
   const notes = [
-    `The front yard is drawn at ${FRONT_SETBACK_FT} ft, the Neighborhood Residential standard (the city can allow less where the neighbours sit closer)${lotEdges.some((e) => e.onStreet) ? `, and a side or rear line on a street at ${STREET_SIDE_SETBACK_FT} ft; confirm both with the city` : ""}. ECA outlines are not drawn: this data has no geometry for them.`,
+    `The front yard is drawn at ${FRONT_SETBACK_FT} ft, the Neighborhood Residential standard for a lot with one or two homes (SMC 23.44.090)${lotEdges.some((e) => e.onStreet) ? `, and a side or rear line on a street at ${STREET_SIDE_SETBACK_FT} ft; confirm that one with the city` : ""}. ECA outlines are not drawn: this data has no geometry for them.`,
     daduConflict && " The DADU breaks a rule where it sits now (see the checks below). Drag it clear.",
     access?.kind === "alley" && " Cars and construction reach the back from the alley.",
     access?.kind === "side" && access.width != null && access.width < MIN_ACCESS_FT && ` The side yard fits a ${DRIVEWAY_FT} ft driveway but is under the ${MIN_ACCESS_FT} ft construction heuristic.`,

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { ArrowRight, BadgeCheck, CircleAlert, Lock, Mail, UserRoundCheck } from "lucide-react";
 import type { ADUReport } from "@/lib/adu-analysis";
-import { computeFar, maxFarForZone } from "@/lib/feasibility/far";
+import { computeFar, isNeighborhoodResidential, maxFarForZone } from "@/lib/feasibility/far";
+import { FRONT_SETBACK_FT, STREET_SIDE_SETBACK_FT } from "@/lib/site-envelope";
 import { Term, TrackedLink } from "@/components/home/HomeBits";
 import { longDate } from "@/lib/pricing";
 import { currentZone } from "@/lib/report/study";
@@ -34,13 +35,15 @@ export function ReportTeaser({ eligible, lotSqft, zoning }: { eligible: boolean;
 
 /** The zoning limits that sit behind the paywall: FAR, setbacks, height and lot coverage. */
 export function LimitsStrip({ adu, zoning, lotSqft, buildingSqft }: { adu: ADUReport | null; zoning: string | null; lotSqft: number | null; buildingSqft: number | null }) {
-  const maxFar = maxFarForZone(currentZone(zoning));
+  const zone = currentZone(zoning);
+  const nr = isNeighborhoodResidential(zone);
+  const maxFar = maxFarForZone(zone, lotSqft);
   const far = computeFar(buildingSqft, lotSqft);
   const fp = adu?.daduFootprint;
   const items: [React.ReactNode, string, string][] = [
-    [<Term key="far" word="FAR" />, maxFar != null ? `${maxFar.toFixed(1)} max (est.)` : "n/a", far.ratio != null ? `${far.display} used today` : "Existing floor area unknown"],
-    ["Setbacks", fp ? `${fp.rearSetback} ft rear · ${fp.sideSetback} ft side` : "n/a", "Front 20 ft, street side 10 ft"],
-    ["Height limit", fp ? `${fp.maxHeight} ft` : adu?.height ? `${adu.height.total} ft` : "n/a", "Tied to lot width"],
+    [<Term key="far" word="FAR" />, maxFar != null ? `${maxFar.toFixed(1)} max${nr ? "" : " (est.)"}` : "n/a", far.ratio != null ? `${far.display} used today` : "Existing floor area unknown"],
+    ["Setbacks", fp ? `${fp.rearSetback} ft rear · ${fp.sideSetback} ft side` : "n/a", `Front ${FRONT_SETBACK_FT} ft, street side ${STREET_SIDE_SETBACK_FT} ft`],
+    ["Height limit", fp ? `${fp.maxHeight} ft` : adu?.height ? `${adu.height.total} ft` : "n/a", nr ? "Same as the house" : "Tied to lot width"],
     ["Lot coverage", adu?.coverage ? `${Math.round(adu.coverage.currentPercent)}% of ${Math.round(adu.coverage.maxPercent)}%` : "n/a", adu?.coverage ? `${sf(adu.coverage.availableSqft)} still open` : ""],
   ];
   return (

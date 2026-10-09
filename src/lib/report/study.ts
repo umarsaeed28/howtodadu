@@ -6,9 +6,9 @@
  * Every figure comes from the engine's own outputs (adu-analysis, the site envelope, far.ts) or city records; this
  * file only words them. Where the engine has no data (overhead lines, porch areas) the section says what to check.
  */
-import type { ADUReport } from "@/lib/adu-analysis";
+import { NR_HEIGHT, type ADUReport } from "@/lib/adu-analysis";
 import type { FeasibilityData } from "@/lib/feasibility";
-import { maxFarForZone } from "@/lib/feasibility/far";
+import { isNeighborhoodResidential, maxFarForZone, maxFloorAreaForZone } from "@/lib/feasibility/far";
 import { FRONT_SETBACK_FT, STREET_SIDE_SETBACK_FT } from "@/lib/site-envelope";
 import { GRADE_STEEP_PCT } from "@/lib/grade";
 
@@ -113,15 +113,26 @@ export function buildStudy(i: StudyInput): Study {
     { item: "Zoning", value: zoneName(i.zoning) },
   ];
 
-  const maxFar = maxFarForZone(currentZone(i.zoning));
+  const zone = currentZone(i.zoning);
+  const nr = isNeighborhoodResidential(zone);
+  // The house, any ADUs already there, and the new DADU: density sets the NR FAR (SMC 23.42.022.J, 23.44.050).
+  const units = 1 + Math.min(adus, 1) + 1;
+  const maxFar = maxFarForZone(zone, lot, units);
+  const allowedFloor = maxFloorAreaForZone(zone, lot, units);
+  const farValue = maxFar == null
+    ? "Not available"
+    : nr
+      ? `${maxFar.toFixed(1)} for the house and a DADU on this lot`
+      : `${maxFar.toFixed(1)} (estimate for the zone)`;
+  const nrHeight = nr ? `${NR_HEIGHT.base} ft, plus ${NR_HEIGHT.pitched} ft for a pitched roof (${NR_HEIGHT.base + NR_HEIGHT.pitched} ft to the ridge)` : null;
   const standards: StudyRow[] = [
-    { item: "Front setback", value: `${FRONT_SETBACK_FT} ft`, ref: "Seattle NR front yard, as Pencil models it" },
-    { item: "Side setback", value: `${fp?.sideSetback ?? 5} ft${STREET_SIDE_SETBACK_FT ? ` (${STREET_SIDE_SETBACK_FT} ft on a street side)` : ""}`, ref: "SMC 23.44.041" },
-    { item: "Rear setback", value: alley ? "0 ft on the alley" : `${fp?.rearSetback ?? 5} ft (no alley)`, ref: "SMC 23.44.041" },
-    { item: "DADU height", value: fp ? `${fp.maxHeight} ft (from the lot's width)` : "Not available", ref: "SMC 23.44.041" },
-    { item: "Floor area ratio (FAR)", value: maxFar != null ? `${maxFar.toFixed(1)} (estimate for the zone)` : "Not available", ref: "Seattle NR FAR, estimate" },
-    { item: "Lot coverage", value: cov ? `${Math.round(cov.maxPercent)}% maximum (${sf(cov.maxSqft)})` : "Not available", ref: "Seattle NR lot coverage, as Pencil models it" },
-    { item: "Building separation", value: "5 ft minimum between the DADU and the house", ref: "SMC 23.44.041" },
+    { item: "Front setback", value: `${FRONT_SETBACK_FT} ft (one or two dwelling units)`, ref: "SMC 23.44.090" },
+    { item: "Side setback", value: `${fp?.sideSetback ?? 5} ft${STREET_SIDE_SETBACK_FT ? ` (${STREET_SIDE_SETBACK_FT} ft on a street side, Pencil's assumption)` : ""}`, ref: "SMC 23.44.090" },
+    { item: "Rear setback", value: alley ? "0 ft on the alley" : `${fp?.rearSetback ?? 5} ft (no alley)`, ref: "SMC 23.44.090, note 3" },
+    { item: "DADU height", value: nrHeight ?? (fp ? `${fp.maxHeight} ft (from the lot's width)` : "Not available"), ref: nr ? "SMC 23.42.022.E, 23.44.070" : "Repealed SMC 23.44.041, confirm" },
+    { item: "Floor area ratio (FAR)", value: farValue, ref: nr ? "SMC 23.44.050" : "Estimate" },
+    { item: "Lot coverage", value: cov ? `${Math.round(cov.maxPercent)}% maximum (${sf(cov.maxSqft)})` : "Not available", ref: "SMC 23.44.080" },
+    { item: "Building separation", value: "5 ft minimum between the DADU and the house", ref: "SMC 23.44.100" },
   ];
 
   const coverage = cov && lot
@@ -141,28 +152,29 @@ export function buildStudy(i: StudyInput): Study {
       }
     : null;
 
-  const allowedFloor = maxFar != null && lot ? Math.round(maxFar * lot) : null;
-  const far = allowedFloor != null
+  const farWord = nr ? "FAR" : "FAR (estimate)";
+  const atFar = nr ? "under SMC 23.44.050" : "at the estimated FAR";
+  const far = allowedFloor != null && maxFar != null
     ? {
         rows: [
-          { item: "FAR (estimate)", value: maxFar!.toFixed(1) },
+          { item: farWord, value: maxFar.toFixed(1) },
           { item: "Allowed floor area", value: sf(allowedFloor) },
           ...(existingFloor ? [{ item: "Existing house (footprint on record)", value: sf(existingFloor) }] : []),
           ...(existingFloor ? [{ item: "Remaining floor area, at most", value: sf(Math.max(0, allowedFloor - existingFloor)) }] : []),
           ...(proposedLiving ? [{ item: "Proposed DADU", value: sf(proposedLiving) }] : []),
         ],
         summary: existingFloor && proposedLiving
-          ? `The lot allows about ${sf(allowedFloor)} of floor area at the estimated FAR. City records give the house a ${sf(existingFloor)} footprint; a house of more than one story has more floor area than that, so take its finished area from the assessor's record. ${allowedFloor - existingFloor >= proposedLiving ? `Even so, there is room for ${proposedLabel} unless the house's total floor area exceeds ${sf(allowedFloor - proposedLiving)}.` : `On the footprint alone, ${proposedLabel} already exceeds what remains; confirm the FAR and any exemptions with SDCI.`}`
-          : `The lot allows about ${sf(allowedFloor)} of floor area at the estimated FAR.`,
+          ? `The lot allows about ${sf(allowedFloor)} of floor area ${atFar}, counting the house and the DADU. City records give the house a ${sf(existingFloor)} footprint; a house of more than one story has more floor area than that, so take its finished area from the assessor's record. ${allowedFloor - existingFloor >= proposedLiving ? `Even so, there is room for ${proposedLabel} unless the house's total floor area exceeds ${sf(allowedFloor - proposedLiving)}.` : `On the footprint alone, ${proposedLabel} already exceeds what remains; confirm the FAR and any exemptions with SDCI.`}`
+          : `The lot allows about ${sf(allowedFloor)} of floor area ${atFar}.`,
       }
     : null;
 
   const dadu: StudyRow[] = [
-    { item: "Number of ADUs", value: `Up to two accessory dwelling units on a lot with a house.${adus ? ` ${adus} already on record.` : ""}`, ref: "SMC 23.42.022" },
-    { item: "Maximum DADU size", value: maxDadu ? `${sf(maxDadu)} of floor area on this lot` : "Not available", ref: "SMC 23.44.041" },
-    { item: "Maximum height", value: fp ? `${fp.maxHeight} ft for this lot's width` : "Not available", ref: "SMC 23.44.041" },
-    { item: "Floor area ratio", value: "The DADU's floor area counts toward the lot's FAR." },
-    { item: "Parking", value: "No off-street parking is required for a DADU.", ref: "SMC 23.54.015" },
+    { item: "Number of ADUs", value: `Up to two accessory dwelling units on a lot with a house.${adus ? ` ${adus} already on record.` : ""}`, ref: "SMC 23.42.022.C" },
+    { item: "Maximum DADU size", value: maxDadu ? `${sf(maxDadu)} of gross floor area with up to two bedrooms (1,200 SF with three or more)` : "Not available", ref: "SMC 23.42.022.G" },
+    { item: "Maximum height", value: nrHeight ? `${nrHeight}, the same as the house` : fp ? `${fp.maxHeight} ft for this lot's width` : "Not available", ref: nr ? "SMC 23.42.022.E, 23.44.070" : "Repealed SMC 23.44.041, confirm" },
+    { item: "Floor area ratio", value: "The DADU's floor area counts toward the lot's FAR.", ref: "SMC 23.44.050" },
+    { item: "Parking", value: "No off-street parking is required for a DADU.", ref: "SMC 23.42.022.I" },
     { item: "Owner occupancy", value: "Not required." },
     { item: "Utilities", value: "The DADU may share the house's services or have its own. Coordinate with Seattle Public Utilities and Seattle City Light; an electrical service upgrade may be needed." },
     { item: "Building code", value: "Must meet the Seattle Residential, Energy, Mechanical, Electrical, critical areas and shoreline codes." },

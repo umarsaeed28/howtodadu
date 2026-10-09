@@ -34,7 +34,8 @@ const SURVEY_REQUIRED = [
   "Exact grade beyond DEM resolution",
 ];
 
-const DADU_SECTION = "SMC 23.44.041";
+/** ADU standards moved to SMC 23.42.022 when Ordinance 127211 repealed 23.44.041. */
+const DADU_SECTION = "SMC 23.42.022";
 
 function unverified(section: string): Citation {
   return { section, effective_from: null, status: "unverified", chunk_id: null, quote: null };
