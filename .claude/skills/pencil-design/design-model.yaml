@@ -2,7 +2,7 @@
 name: "Pencil"
 philosophy: "Zillow's clarity with a builder's precision: flat white surfaces, photo- and number-led hierarchy, one green accent."
 primary_mode: "light"
-brand_domain: "Seattle DADU (backyard cottage) feasibility and lot search"
+brand_domain: "Seattle DADU feasibility, design, permit and construction"
 brand_type: "ui-rich"
 reference_layout: "Home-search portal patterns (map + results split, photo cards, price-first detail pages, sticky section tabs). Layout and hierarchy only; no third-party branding."
 primitives:
