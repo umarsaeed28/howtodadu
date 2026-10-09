@@ -11,7 +11,6 @@ const LINKS: Record<Viewer["role"], { href: string; label: string }[]> = {
     { href: "/admin/metrics", label: "Metrics" },
     { href: "/admin/revenue", label: "Revenue" },
     { href: "/admin/invest", label: "Invest" },
-    ACCOUNT,
   ],
   gc: [{ href: "/gc", label: "Referred projects" }, ACCOUNT],
 };
@@ -39,7 +38,7 @@ export default function PortalFrame({ viewer, active, children, wide }: { viewer
             {viewer.name || viewer.email}
             {viewer.role !== "client" && <span className="ml-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: "var(--green-tint)", color: "var(--green)" }}>{viewer.role}</span>}
           </span>
-          <form action="/auth/signout" method="post">
+          <form action={viewer.role === "admin" ? "/api/admin/logout" : "/auth/signout"} method="post">
             <button type="submit" className="pa-btn pa-btn-sm" aria-label="Sign out"><LogOut size={14} aria-hidden /> <span className="hidden sm:inline">Sign out</span></button>
           </form>
         </div>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import PortalFrame from "@/components/portal/PortalFrame";
-import { requireViewer, userClient } from "@/lib/portal/server";
+import { adminDb, requireAdmin } from "@/lib/admin/server";
 import { computeMetrics } from "@/lib/portal/metrics";
 import { STAGES, STAGE_LABELS, usd, type Activity, type FeasibilityRow, type PermitPackage, type Project, type Referral } from "@/lib/portal/types";
 
@@ -17,8 +17,8 @@ function Tile({ k, v, note }: { k: string; v: string; note?: string }) {
 }
 
 export default async function MetricsPage() {
-  const viewer = await requireViewer("/admin/metrics", ["admin"]);
-  const db = await userClient();
+  const viewer = await requireAdmin("/admin/metrics");
+  const db = adminDb();
   const [projects, feas, permits, referrals, activity] = await Promise.all([
     db.from("projects").select("*"),
     db.from("feasibility_reports").select("*"),

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import PortalFrame from "@/components/portal/PortalFrame";
-import { requireViewer, userClient } from "@/lib/portal/server";
+import { adminDb, requireAdmin } from "@/lib/admin/server";
 import { listPurchases } from "@/lib/server/purchases";
 import { PRODUCT_LABELS, revenueTotals } from "@/lib/portal/revenue";
 import { usd } from "@/lib/portal/types";
@@ -21,8 +21,8 @@ const when = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "sh
 
 /** Total revenue and every purchase, from the purchases ledger (migration 0011). */
 export default async function RevenuePage() {
-  const viewer = await requireViewer("/admin/revenue", ["admin"]);
-  const db = await userClient();
+  const viewer = await requireAdmin("/admin/revenue");
+  const db = adminDb();
   const { rows, error } = await listPurchases(db);
   const t = revenueTotals(rows);
   const max = Math.max(1, ...t.byMonth.map((m) => m.amountCents));

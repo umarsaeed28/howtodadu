@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import PortalFrame from "@/components/portal/PortalFrame";
 import InvestSettingsForm from "@/components/invest/InvestSettingsForm";
-import { requireViewer } from "@/lib/portal/server";
+import { requireAdmin } from "@/lib/admin/server";
 import { getInvestAssumptions } from "@/lib/server/invest";
 
 export const metadata: Metadata = { title: "Invest settings — Pencil admin" };
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 /** The cost assumptions behind every Invest tile. Saving reruns today's feed. */
 export default async function InvestSettingsPage() {
-  const viewer = await requireViewer("/admin/invest", ["admin"]);
+  const viewer = await requireAdmin("/admin/invest");
   const { assumptions, stored } = await getInvestAssumptions();
   return (
     <PortalFrame viewer={viewer} active="/admin/invest">

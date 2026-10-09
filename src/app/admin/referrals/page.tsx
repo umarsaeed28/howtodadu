@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import PortalFrame from "@/components/portal/PortalFrame";
 import ReferralRow from "@/components/portal/ReferralRow";
-import { requireViewer, userClient } from "@/lib/portal/server";
+import { adminDb, requireAdmin } from "@/lib/admin/server";
 import { referralFeeCents, usd, type GcPartner, type Project, type Referral } from "@/lib/portal/types";
 
 export const metadata: Metadata = { title: "Lead routing — Pencil admin" };
@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 
 /** Every referral: who got the lead, the contract value, the fee owed and whether it was paid. */
 export default async function ReferralsPage() {
-  const viewer = await requireViewer("/admin/referrals", ["admin"]);
-  const db = await userClient();
+  const viewer = await requireAdmin("/admin/referrals");
+  const db = adminDb();
   const [{ data: referrals }, { data: gcs }, { data: projects }] = await Promise.all([
     db.from("referrals").select("*").order("created_at", { ascending: false }),
     db.from("gc_partners").select("*").order("company"),

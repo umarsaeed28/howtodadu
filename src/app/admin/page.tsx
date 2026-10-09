@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PortalFrame from "@/components/portal/PortalFrame";
-import { requireViewer, userClient } from "@/lib/portal/server";
+import { adminDb, requireAdmin } from "@/lib/admin/server";
 import { loadCards } from "@/lib/portal/cards";
 import { nextAction, STAGES, STAGE_LABELS } from "@/lib/portal/types";
 
@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 
 /** Every project, one column per stage. Leads without an address sit in Acquire. */
 export default async function AdminBoard() {
-  const viewer = await requireViewer("/admin", ["admin"]);
-  const db = await userClient();
+  const viewer = await requireAdmin("/admin");
+  const db = adminDb();
   const cards = await loadCards(db);
   const { data: owners } = await db.from("profiles").select("id, full_name, email");
   const ownerName = (id: string) => {

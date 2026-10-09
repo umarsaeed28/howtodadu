@@ -49,8 +49,8 @@ export const updateSession = async (request: NextRequest) => {
   return supabaseResponse;
 };
 
-/** Signed-in only. The pages check the role themselves; this just keeps visitors out. */
-const PORTAL_PREFIXES = ["/portal", "/dashboard", "/start", "/admin", "/gc"];
+/** Signed-in only. The pages check the role themselves; this just keeps visitors out. /admin has its own gate (src/proxy.ts). */
+const PORTAL_PREFIXES = ["/portal", "/dashboard", "/start", "/gc"];
 
 function toLogin(request: NextRequest) {
   const url = request.nextUrl.clone();
