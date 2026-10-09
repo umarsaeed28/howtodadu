@@ -7,7 +7,7 @@ export type OwnedOrder = { orderId: string; token: string; kind: string; key: st
 
 const ORDERS_KEY = "pencil.orders.v1";
 const EMAIL_KEY = "pencil.email.v1";
-/** Reports bought before the $200/$600 tiers ($29 single or the 5-pack): still honored. */
+/** Reports bought before the current tiers ($29 single or the 5-pack): still honored. */
 const LEGACY_PAID_KEY = "pencil.reportPaid.v1";
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

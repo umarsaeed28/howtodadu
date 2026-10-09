@@ -12,7 +12,7 @@ const parseDay = (s: string) => {
 };
 
 /**
- * The paywall over the blurred report: the instant report ($200) or the architect-reviewed one ($600).
+ * The paywall over the locked report: the instant report or the architect-reviewed one (prices in src/lib/pricing.ts).
  * Both open the full report at once; the reviewed tier also puts the lot in an architect's queue.
  */
 export default function ReportPaywall({ pin, address, defaultTier, onUnlock }: { pin: string | null; address: string; defaultTier?: ProductKind; onUnlock: (r: Receipt, email: string) => void }) {

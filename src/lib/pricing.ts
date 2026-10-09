@@ -19,7 +19,7 @@ export const PRODUCTS: Record<ProductKind, Product> = {
   feasibility_instant: {
     kind: "feasibility_instant",
     name: "Instant Feasibility Report",
-    amountCents: 20_000,
+    amountCents: 5_000,
     turnaround: "Delivered instantly",
     body: "Your lot's full DADU picture: FAR, setbacks, height, lot coverage, and a site plan showing exactly where it fits.",
     cta: "Get my report",

@@ -99,7 +99,7 @@ export default function Home() {
       <Section style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-pricing">
         <Container>
           <Heading level={2} id="hm-pricing" style={{ maxWidth: "22ch" }}>Clear prices. No surprise invoices.</Heading>
-          <Lede style={{ marginTop: 14 }}>Most architects charge $100 to $250 an hour just to tell you what&apos;s possible. We start at $200, flat.</Lede>
+          <Lede style={{ marginTop: 14 }}>The feasibility report is {price(PRODUCTS.feasibility_instant.amountCents)}, flat. Every price below is the whole price.</Lede>
           <ul className="hm-prices">
             {REPORT_TIERS.map((k) => {
               const p = PRODUCTS[k];

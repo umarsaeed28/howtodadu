@@ -28,7 +28,7 @@ describe("drafting queue", () => {
 
 describe("price list", () => {
   it("holds the four published prices", () => {
-    expect(Object.values(PRODUCTS).map((p) => price(p.amountCents))).toEqual(["$200", "$600", "$3,000", "$5,000"]);
+    expect(Object.values(PRODUCTS).map((p) => price(p.amountCents))).toEqual(["$50", "$600", "$3,000", "$5,000"]);
     expect(PRODUCTS.feasibility_reviewed.popular).toBe(true);
   });
 

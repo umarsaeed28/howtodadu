@@ -41,7 +41,7 @@ describe("POST /api/checkout", () => {
     const res = await call({ ...base, kind: "feasibility_instant", cardNumber: "4242", cvc: "123" });
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.receipt).toMatchObject({ orderId: "order-1", token: "tok", kind: "feasibility_instant", amountCents: 20_000, provider: "mock", dueDate: null });
+    expect(json.receipt).toMatchObject({ orderId: "order-1", token: "tok", kind: "feasibility_instant", amountCents: 5_000, provider: "mock", dueDate: null });
     expect(JSON.stringify(json)).not.toContain("4242");
   });
 

@@ -373,7 +373,7 @@ export default function FeasibilityReportView({
   }, [onBack]);
 
   const snapshotRef = useRef<(() => PlanSnapshot) | null>(null);
-  // The free teaser is open to everyone; the full report opens after either paid tier ($200 or $600).
+  // The teaser is open to everyone; the full report opens after either paid tier (prices in src/lib/pricing.ts).
   // Read after mount so the server render and the first client render agree.
   const gateAddress = slim.streetLine || slim.address;
   const pin = slim.pin;
