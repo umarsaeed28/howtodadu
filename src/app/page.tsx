@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 const HERO_IMAGE = { src: rendering, alt: "A Seattle craftsman house with a modern two-story DADU (backyard cottage) at the rear of the lot." };
 
 const PATHS = [
-  { Icon: Handshake, title: "Not sure yet?", body: "Talk to us first, free. We help you find and buy a lot, design, permit, and build: one step or all of them.", cta: "Book a free consult", href: "/contact", path: "consult" },
+  { Icon: Handshake, title: "Not sure yet?", body: "Hand us the whole project. One team from acquisition to construction: the lot, the design, the permit, the build.", cta: "Book a free consult", href: "/contact", path: "consult" },
   { Icon: LayoutTemplate, title: "Want a proven design?", body: "Choose from plans already reviewed by the City of Seattle. The fastest path from idea to permit.", cta: "Browse plans", href: "/plans", path: "plans" },
 ] as const;
 

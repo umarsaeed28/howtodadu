@@ -5,7 +5,7 @@ import { Check, Loader2, ArrowRight } from "lucide-react";
 import { track } from "@/lib/analytics";
 
 const STAGES = ["Looking for a lot", "I own a lot", "I have plans", "Ready to build"] as const;
-const HELP = ["Find and buy", "Check what fits", "Design", "Permit", "Build", "Sell or rent"] as const;
+const HELP = ["All of it, end to end", "Acquisition", "Feasibility", "Design", "Permit", "Construction"] as const;
 
 /**
  * The free consult request: who they are, where they are in the project, what they want help with.
@@ -90,7 +90,7 @@ export default function ContactForm({ address = "" }: { address?: string }) {
       </fieldset>
 
       <fieldset className="cf-set">
-        <legend className="s-label">What do you want help with? <span className="cf-opt">(pick any)</span></legend>
+        <legend className="s-label">Which stages should we run? <span className="cf-opt">(pick any)</span></legend>
         <div className="cf-chips">
           {HELP.map((h) => (
             <label key={h} className="cf-chip">

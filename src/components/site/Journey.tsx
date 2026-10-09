@@ -1,3 +1,5 @@
+import { PRODUCTS, price } from "@/lib/pricing";
+
 /**
  * "How it works" as a drawn rail: five small line-art scenes on one connecting line, numbered nodes, a tag
  * and one line of copy each. Pure SVG and CSS, in the plat's drawing language (ink lines, one green).
@@ -123,17 +125,18 @@ function Plans() {
 
 export type JourneyStep = { Art: () => React.ReactElement; title: string; tag?: string; body: string };
 
+/** Pencil's service end to end, acquisition to construction. Prices come from the one price list. */
 const STEPS: JourneyStep[] = [
-  { Art: Acquire, title: "Acquire", tag: "Your lot or ours", body: "Start with a property you own, or we find a lot that takes a cottage." },
-  { Art: Feasibility, title: "Feasibility", tag: "Free", body: "Score, buildable area, site plan and the numbers, in a minute." },
-  { Art: Permit, title: "Permit", tag: "$15,000 fixed", body: "Design options, permit drawings, submittal and corrections." },
-  { Art: Build, title: "Build", tag: "Vetted builders", body: "Bids side by side, then a tracker to the certificate of occupancy." },
-  { Art: Keys, title: "Sell or rent", tag: "The payoff", body: "Priced and listed, or leased. Earning from day one." },
+  { Art: Acquire, title: "Acquisition", tag: "Your lot or ours", body: "We find a Seattle lot that takes a DADU and help you buy it, or start from the one you own." },
+  { Art: Feasibility, title: "Feasibility", tag: "Free first look", body: "What fits, where it goes, and whether the numbers work, before you commit." },
+  { Art: Plans, title: "Design", tag: "City-reviewed or custom", body: "A pre-approved plan, or a custom design for your lot finished by our architects." },
+  { Art: Permit, title: "Permit", tag: `${price(PRODUCTS.permit.amountCents)} fixed`, body: "We submit to SDCI and handle every round of corrections." },
+  { Art: Build, title: "Construction", tag: "Vetted builders", body: "Bids side by side, then one tracker from groundbreaking to final inspection." },
 ];
 
 export const ART = { Acquire, Feasibility, Paths, Plans, Permit, Build, Keys };
 
-export default function Journey({ tone = "light", steps = STEPS, label = "How it works, in five steps" }: { tone?: "light" | "dark"; steps?: JourneyStep[]; label?: string }) {
+export default function Journey({ tone = "light", steps = STEPS, label = "Acquisition to construction, in five stages" }: { tone?: "light" | "dark"; steps?: JourneyStep[]; label?: string }) {
   return (
     <ol className={`jr${tone === "dark" ? " jr--dark" : ""}`} data-n={steps.length} aria-label={label}>
       {steps.map(({ Art, title, tag, body }, i) => (

@@ -1424,3 +1424,7 @@ body { background: #F6F7F6; }
 .site .cf-help li { display: flex; gap: 10px; align-items: flex-start; color: var(--ink); line-height: 1.5; }
 .site .cf-help svg { color: var(--flag); flex-shrink: 0; margin-top: 2px; }
 .site .cf-alt { color: var(--flag-deep, var(--flag)); font-weight: 600; text-underline-offset: 3px; }
+.site .cf-sub { margin: 28px 0 0; font-size: 1rem; font-weight: 700; color: var(--ink); }
+.site .cf-sub + .cf-help { margin-top: 12px; }
+.site .cf-band-lede { margin: 14px 0 0; max-width: 60ch; line-height: 1.6; color: rgba(255,255,255,.82); }
+.site .cf-band-note { margin: 32px 0 0; font-size: 0.88rem; color: rgba(255,255,255,.72); }
