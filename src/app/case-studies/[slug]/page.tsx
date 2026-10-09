@@ -38,7 +38,8 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
             <div><dt>Total invested</dt><dd>{usdK(t.invested)}</dd></div>
             <div><dt>Combined value after</dt><dd>{usdK(t.arv)}</dd></div>
             <div><dt>Equity created</dt><dd>+{usdK(t.equity)}</dd></div>
-            <div><dt>Return on cost</dt><dd>{t.returnOnCostPct}%</dd></div>
+            <div><dt>Rent a year</dt><dd>{usdK(t.annualRent)}</dd></div>
+            <div><dt>Rent yield on cost</dt><dd>{t.grossYieldPct}%</dd></div>
           </dl>
         </Container>
       </Section>
@@ -71,7 +72,8 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
               <table className="cs-table">
                 <tbody>
                   <tr><th scope="row">Purchase price</th><td>{usd(c.purchase)}</td></tr>
-                  <tr><th scope="row">Renovation</th><td>{usd(c.houseRenovation)}</td></tr>
+                  <tr><th scope="row">Renovation, including {c.rental.basementBeds} bedrooms in the old unfinished basement</th><td>{usd(c.houseRenovation)}</td></tr>
+                  <tr><th scope="row">Bedrooms after</th><td>{c.rental.houseBeds}</td></tr>
                   <tr><th scope="row">After-repair value</th><td>{usd(c.houseArv)}</td></tr>
                   <tr data-strong=""><th scope="row">Value added</th><td>+{usd(t.houseLift)}</td></tr>
                 </tbody>
@@ -81,7 +83,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
               <Heading level={2} id="cs-dadu" style={{ fontSize: "1.5rem" }}>The DADU</Heading>
               <table className="cs-table">
                 <tbody>
-                  <tr><th scope="row">Size</th><td>{c.dadu.sqft.toLocaleString("en-US")} sf</td></tr>
+                  <tr><th scope="row">Size</th><td>{c.dadu.sqft.toLocaleString("en-US")} sf, {c.rental.daduBeds} bedrooms</td></tr>
                   <tr><th scope="row">Build cost</th><td>{usd(c.dadu.buildCost)} ({usd(t.daduBuildPerSf)} per sf)</td></tr>
                   <tr><th scope="row">After-repair value</th><td>{usd(c.dadu.arv)} ({usd(t.daduArvPerSf)} per sf)</td></tr>
                   <tr data-strong=""><th scope="row">Value added</th><td>+{usd(t.daduLift)}</td></tr>
@@ -103,12 +105,29 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
             <p className="cs-note">ARV is the after-repair value. Equity and return are before financing, holding and selling costs.</p>
           </section>
 
+          <section aria-labelledby="cs-rent" className="cs-whole">
+            <Heading level={2} id="cs-rent" style={{ fontSize: "1.5rem" }}>The rent</Heading>
+            <table className="cs-table">
+              <tbody>
+                <tr><th scope="row">Rooms</th><td>{c.rental.houseBeds} in the house + {c.rental.daduBeds} in the DADU = {t.rooms}</td></tr>
+                <tr><th scope="row">Tenants</th><td>{c.rental.tenants}</td></tr>
+                <tr><th scope="row">Rent per room</th><td>{usd(c.rental.rentPerRoom)} a month</td></tr>
+                <tr><th scope="row">Rent, all rooms</th><td>{usd(t.monthlyRent)} a month · {usd(t.annualRent)} a year</td></tr>
+                <tr data-strong=""><th scope="row">Gross yield on the {usdK(t.invested)} invested</th><td>{t.grossYieldPct}%</td></tr>
+                <tr><th scope="row">Gross yield on the {usdK(t.arv)} value after</th><td>{t.yieldOnValuePct}%</td></tr>
+                <tr><th scope="row">Years of rent to repay the cost</th><td>About {t.paybackYears}</td></tr>
+              </tbody>
+            </table>
+            <p className="cs-note">Gross rent: before vacancy, utilities, taxes, insurance, upkeep and financing.</p>
+          </section>
+
           <section aria-labelledby="cs-lot" className="cs-whole">
             <Heading level={2} id="cs-lot" style={{ fontSize: "1.5rem" }}>Why the lot worked</Heading>
             <ul className="cs-list">
               <li>{c.lot.sqft.toLocaleString("en-US")} sf lot, {c.lot.widthFt} × {c.lot.depthFt} ft, zoned {c.lot.zoning}: room for the largest DADU the code allows, {c.dadu.sqft.toLocaleString("en-US")} sf.</li>
               {c.lot.alley && <li>An alley along the rear lot line: construction access, utilities and the DADU&apos;s front door, with no setback on the alley side.</li>}
-              <li>A {c.lot.yearBuilt} house worth renovating, so the front of the lot earns its keep too.</li>
+              <li>A {c.lot.yearBuilt} house with an unfinished basement: room for {c.rental.basementBeds} more bedrooms inside the walls already there.</li>
+              <li>Close to the University of Washington, so every bedroom rents by the room to students.</li>
             </ul>
           </section>
         </Container>

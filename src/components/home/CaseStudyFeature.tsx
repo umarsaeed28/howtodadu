@@ -24,8 +24,8 @@ export default function CaseStudyFeature() {
             <dl className="hm-case-nums">
               <div><dt>Invested</dt><dd>{usdK(t.invested)}</dd></div>
               <div><dt>Value after</dt><dd>{usdK(t.arv)}</dd></div>
-              <div><dt>Equity created</dt><dd>+{usdK(t.equity)}</dd></div>
-              <div><dt>Return on cost</dt><dd>{t.returnOnCostPct}%</dd></div>
+              <div><dt>Rent a year</dt><dd>{usdK(t.annualRent)}</dd></div>
+              <div><dt>Rent yield on cost</dt><dd>{t.grossYieldPct}%</dd></div>
             </dl>
             <Link href={href} className="s-btn s-btn--primary hm-case-cta">Read the case study <ArrowRight size={15} aria-hidden /></Link>
           </div>

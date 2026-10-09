@@ -21,8 +21,8 @@ const POSTS: { tag: string; title: string; body: string; href?: string }[] = [
   },
   {
     tag: "Case study",
-    title: "5519 12th Ave NE: a renovated house and a 1,000 sf DADU",
-    body: "$1.225M in, $2.0M after: the purchase, the renovation and the DADU on the alley, line by line.",
+    title: "5519 12th Ave NE: 12 student rooms from one lot",
+    body: "$1.225M in, $2.0M after, and $187,200 a year in room rents: the purchase, the basement, the DADU, line by line.",
     href: "/case-studies/5519-12th-ave-ne",
   },
   {
