@@ -38,7 +38,7 @@ export const PRODUCTS: Record<ProductKind, Product> = {
     name: "Custom DADU Plan",
     amountCents: 300_000,
     turnaround: "Under a week",
-    body: "Your footprint, your layout, finished by our architect team. Starts from a code-checked draft, so nothing is wasted.",
+    body: "Your footprint, your layout, finished by our licensed architects and designers. Starts from a code-checked draft, so nothing is wasted.",
     cta: "Start my plan",
   },
   permit: {

@@ -11,7 +11,7 @@ import { PRODUCTS, PRODUCT_ORDER, price, type ProductKind } from "@/lib/pricing"
 export const metadata: Metadata = {
   title: "Pencil — Seattle DADU feasibility, plans, and permits",
   description:
-    "See exactly what you can build on your Seattle lot in 30 seconds. Then get real plans, drawn by real architects, in under a week. Pre-approved plans, custom designs and permit service.",
+    "See exactly what you can build on your Seattle lot in 30 seconds. Then get permit-ready plans in under a week, and we'll see them through to your permit. Pre-approved plans, custom designs and permit service.",
 };
 
 /*
@@ -34,7 +34,7 @@ const PRICE_HREF: Record<ProductKind, string> = {
 const WHY = [
   { Icon: ShieldCheck, title: "Code first.", body: "Every result is checked against current Seattle DADU rules before you see it." },
   { Icon: Timer, title: "Days, not months.", body: "Feasibility in seconds, plans in under a week. Traditional design takes weeks just to start." },
-  { Icon: Users, title: "Humans in the loop.", body: "AI does the heavy lifting. Licensed architects make the calls." },
+  { Icon: Users, title: "Humans in the loop.", body: "AI does the heavy lifting. Licensed architects and designers, real people, make the calls." },
 ];
 
 const FAQ: FaqItem[] = [
@@ -54,7 +54,7 @@ export default function Home() {
           <div className="hm-hero-copy">
             <p className="hm-eyebrow">Seattle <Term word="DADU" /> feasibility, plans, and permits</p>
             <Heading level={1} id="hm-h1">Your backyard is worth more than you think.</Heading>
-            <Lede style={{ marginTop: 18 }}>See exactly what you can build on your lot in 30 seconds. Then get real plans, drawn by real architects, in under a week.</Lede>
+            <Lede style={{ marginTop: 18 }}>See exactly what you can build on your lot in 30 seconds. Then get permit-ready plans in under a week, and we&apos;ll see them through to your permit.</Lede>
             <div style={{ marginTop: 26 }}>
               <AddressForm source="hero" label="Your Seattle address" />
             </div>

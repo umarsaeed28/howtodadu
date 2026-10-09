@@ -28,7 +28,7 @@ async function allowed(ip: string): Promise<boolean> {
 /**
  * POST /api/custom/draft { w, d, stories } → { blocks, source: "ai" | "rules", notes }.
  * Claude (the draft tier, metered against the daily token budget) proposes room blocks; code validates them; the
- * rule-based layout covers any failure. The visitor sees "Draft layout. Our architects finalize every plan."
+ * rule-based layout covers any failure. The visitor sees "Draft layout. Our licensed architects and designers finalize every plan."
  */
 export async function POST(req: Request) {
   let body: unknown;
