@@ -71,7 +71,7 @@ export default function Home() {
         <Container>
           <div className="hm-how-head">
             <Heading level={2} id="hm-how" className="hm-how-h">From buying the lot to the final inspection</Heading>
-            <p className="hm-how-lede">One team runs every stage of your DADU. Hire us for all five, or only the ones you need. Each picks up where the last one ended, so nothing is done twice.</p>
+            <p className="hm-how-lede">One team runs every stage of your DADU. Hire us for all five, or only the ones you need.</p>
           </div>
           <div style={{ marginTop: 40 }}>
             <Journey tone="dark" label="Five stages, from buying the lot to the final inspection" />
