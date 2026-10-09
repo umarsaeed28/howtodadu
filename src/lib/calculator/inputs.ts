@@ -46,6 +46,8 @@ export interface CalcForm {
   permitMonths: string;
   buildMonths: string;
   exitMonths: string;
+  /** The cash the buyer has: the loan is everything above it. Wins over the loan amount and loan to cost. */
+  cashDown: string;
   ltcPct: string;
   /** A fixed loan amount; when set it replaces loan to cost. */
   loanAmount: string;
@@ -87,6 +89,7 @@ export const FORM_KEYS = {
   permitMonths: "permit",
   buildMonths: "build",
   exitMonths: "exit",
+  cashDown: "cash",
   ltcPct: "ltc",
   loanAmount: "loan",
   ratePct: "rate",
@@ -126,6 +129,7 @@ export const DEFAULT_FORM: CalcForm = {
   permitMonths: "4",
   buildMonths: "8",
   exitMonths: "2",
+  cashDown: "",
   ltcPct: "",
   loanAmount: "",
   ratePct: "10",
@@ -173,6 +177,7 @@ const SPECS: Record<NumericKey, Spec> = {
   permitMonths: { min: 0, max: 120, int: true, label: "Permit months" },
   buildMonths: { min: 0, max: 120, int: true, label: "Build months" },
   exitMonths: { min: 0, max: 120, int: true, label: "Sale or lease-up months" },
+  cashDown: { min: 0, max: 100_000_000, label: "Cash you have" },
   ltcPct: { min: 0, max: 100, label: "Loan to cost" },
   loanAmount: { min: 0, max: 100_000_000, label: "Loan amount" },
   ratePct: { min: 0, max: 100, label: "Interest rate" },
@@ -318,6 +323,7 @@ export function parseForm(form: CalcForm): ParsedCalc {
 
   const o = (k: NumericKey) => v(k) ?? 0;
   const loan = v("loanAmount");
+  const cash = v("cashDown");
   const base = (strategy: DealInputs["exit"]["strategy"]): DealInputs => ({
     acquisition: { purchasePrice: price ?? 0, closingCostsPct: o("closingPct"), demoSitePrep: o("siteWork") },
     hard: {
@@ -340,6 +346,7 @@ export function parseForm(form: CalcForm): ParsedCalc {
     financing: {
       loanToCostPct: o("ltcPct"),
       loanAmount: loan != null && loan > 0 ? loan : undefined,
+      equityCash: cash != null && cash > 0 ? cash : undefined,
       interestRatePct: o("ratePct"),
       buildMonths: o("buildMonths"),
       propertyTaxMonthly: o("taxMonthly") + o("insuranceMonthly"),

@@ -72,6 +72,19 @@ describe("proforma", () => {
     // carry 800 a month x 14 months = 11,200; permit interest on land only (none here); build 8 months at 60% drawn; sale 2 months fully drawn
     expect(r.costBreakdown.financing).toBe(Math.round(11_200 + 200_000 * 0.12 * ((8 / 12) * 0.6 + 2 / 12)));
   });
+  it("the cash you have sets the loan: everything above it is borrowed, and the interest is reported on its own", () => {
+    const p = parseForm(form({ sf: "1000", price: "775000", cashDown: "300000", ratePct: "12", buildMonths: "8", permitMonths: "0", exitMonths: "0" }));
+    const r = p.costOnly!;
+    const preFinancing = r.costBreakdown.total - r.costBreakdown.financing;
+    expect(r.loanAmount).toBe(preFinancing - 300_000);
+    expect(r.interest).toBe(Math.round(r.loanAmount * 0.12 * (8 / 12) * 0.6));
+    expect(r.interestMonthlyPeak).toBe(Math.round((r.loanAmount * 0.12) / 12));
+    expect(r.equityRequired).toBe(300_000 + r.costBreakdown.financing);
+    // More cash than cost: no loan.
+    expect(parseForm(form({ sf: "1000", cashDown: "9000000" })).costOnly!.loanAmount).toBe(0);
+    // Cash wins over a typed loan amount.
+    expect(parseForm(form({ sf: "1000", price: "775000", cashDown: "300000", loanAmount: "100000" })).costOnly!.loanAmount).toBe(preFinancing - 300_000);
+  });
   it("the link carries price, house area, rehab and ARV", () => {
     const href = calculatorHref({ sf: 870, address: "1 A St", price: 1_225_000, houseSqft: 2300, rehab: "heavy", houseArv: 1_500_000 });
     const f = fromSearchParams(new URLSearchParams(href.split("?")[1]));

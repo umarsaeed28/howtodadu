@@ -121,10 +121,11 @@ export default function CalculatorClient() {
             <Field label="Contingency" value={form.contingencyPct} onChange={set("contingencyPct")} suffix="% of build" error={err("contingencyPct")} />
           </Group>
 
-          <Group title="Financing and holding" note="Loan amount wins over loan to cost. Blank loan means all cash. Holding costs run for the whole timeline.">
-            <Field label="Loan amount" value={form.loanAmount} onChange={set("loanAmount")} prefix="$" error={err("loanAmount")} />
-            <Field label="Or loan to cost" value={form.ltcPct} onChange={set("ltcPct")} suffix="%" error={err("ltcPct")} />
+          <Group title="Financing and holding" note="Enter the cash you have and the rest is borrowed. Or set a loan amount or loan to cost. All blank means all cash. Holding costs run for the whole timeline.">
+            <Field label="Cash you have" value={form.cashDown} onChange={set("cashDown")} prefix="$" hint="The loan covers everything above this" error={err("cashDown")} />
             <Field label="Interest rate" value={form.ratePct} onChange={set("ratePct")} suffix="%" error={err("ratePct")} />
+            <Field label="Or loan amount" value={form.loanAmount} onChange={set("loanAmount")} prefix="$" error={err("loanAmount")} />
+            <Field label="Or loan to cost" value={form.ltcPct} onChange={set("ltcPct")} suffix="%" error={err("ltcPct")} />
             <div className="grid grid-cols-3 gap-2">
               <Field label="Permits" value={form.permitMonths} onChange={set("permitMonths")} suffix="mo" inputMode="numeric" error={err("permitMonths")} />
               <Field label="Build" value={form.buildMonths} onChange={set("buildMonths")} suffix="mo" inputMode="numeric" error={err("buildMonths")} />
@@ -216,7 +217,7 @@ export default function CalculatorClient() {
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Stat label="Total project cost" value={usd(cost.costBreakdown.total)} sub={`${cost.timelineMonths} months`} />
                   <Stat label="Cash you put in" value={usd(cost.equityRequired)} />
-                  <Stat label="Borrowed" value={usd(cost.loanAmount)} />
+                  <Stat label="Borrowed" value={usd(cost.loanAmount)} sub={cost.loanAmount > 0 ? `${usd(cost.interest)} interest, ≈ ${usd(cost.interestMonthlyPeak)} a month at full draw` : undefined} />
                 </div>
                 <div className="mt-5">
                   <CostStack

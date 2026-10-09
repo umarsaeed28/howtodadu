@@ -49,7 +49,14 @@ export function fromCalculator(form: CalcForm, address = ""): ProformaInputs {
   i.timeline.designMo = 0;
   const ltc = num(form.ltcPct);
   const loan = num(form.loanAmount);
-  if ((ltc != null && ltc > 0) || (loan != null && loan > 0)) {
+  const cash = num(form.cashDown);
+  const preFinancing = parsed.costOnly ? parsed.costOnly.costBreakdown.total - parsed.costOnly.costBreakdown.financing : 0;
+  if (cash != null && cash > 0 && preFinancing > 0) {
+    // The cash in hand sets the loan: everything above it, as a loan-to-cost share.
+    i.financing.mode = "construction_loan";
+    i.financing.construction.ltcPct = Math.round(Math.max(0, Math.min(95, ((preFinancing - cash) / preFinancing) * 100)) * 10) / 10;
+    if (i.financing.construction.ltcPct === 0) i.financing.mode = "all_cash";
+  } else if ((ltc != null && ltc > 0) || (loan != null && loan > 0)) {
     i.financing.mode = "construction_loan";
     i.financing.construction.ltcPct = ltc != null && ltc > 0 ? ltc : 50;
   } else i.financing.mode = "all_cash";

@@ -31,7 +31,7 @@ export default function Proforma({ inputs, result, rehabCost, soft, sellingPct, 
   const contingency = (build + rehabCost) * (inputs.hard.contingencyPct / 100);
   const months = result.timelineMonths;
   const carry = (inputs.financing.propertyTaxMonthly + inputs.financing.utilitiesMaintMonthly) * months;
-  const interest = c.financing - carry;
+  const interest = result.interest;
   const sell = result.exits.sell;
   const net = sell ? sell.netRevenue : null;
   const profit = sell ? sell.profit : null;
@@ -45,13 +45,13 @@ export default function Proforma({ inputs, result, rehabCost, soft, sellingPct, 
     ...(aadu ? [{ k: "AADU construction", v: aadu.construction, note: `${aadu.sf.toLocaleString("en-US")} sf × ${usd(inputs.hard.costPerSqft)}` }] : []),
     ...(contingency > 0 ? [{ k: "Contingency", v: contingency, sub: true, note: `${inputs.hard.contingencyPct}%` }] : []),
     ...(c.soft > 0 ? [{ k: "Soft costs", v: c.soft, note: [soft.permits > 0 && `permits ${usd(soft.permits)}`, soft.pct > 0 && `${soft.pct}% of build`].filter(Boolean).join(" + ") || undefined }] : []),
-    ...(interest > 0 ? [{ k: "Loan interest", v: interest, note: `${inputs.financing.interestRatePct}% over ${months} months` }] : []),
+    ...(interest > 0 ? [{ k: "Loan interest", v: interest, note: `${inputs.financing.interestRatePct}% over ${months} months, about ${usd(result.interestMonthlyPeak)} a month at full draw` }] : []),
     ...(carry > 0 ? [{ k: "Holding costs", v: carry, note: `${usd(inputs.financing.propertyTaxMonthly + inputs.financing.utilitiesMaintMonthly)} a month × ${months}` }] : []),
     { k: "Total cost", v: c.total, strong: true },
   ];
   const sources: Line[] = [
     { k: "Loan", v: result.loanAmount, note: c.total > 0 ? `${Math.round((result.loanAmount / Math.max(1, c.total - c.financing)) * 100)}% of cost` : undefined },
-    { k: "Your cash", v: result.equityRequired, strong: true },
+    { k: "Your cash", v: result.equityRequired, strong: true, note: inputs.financing.equityCash != null ? `${usd(inputs.financing.equityCash)} down plus interest and holding costs` : undefined },
   ];
   const exit: Line[] = sell
     ? [
