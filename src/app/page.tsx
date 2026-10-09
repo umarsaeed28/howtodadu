@@ -13,7 +13,7 @@ import { CONSTRUCTION_PER_SQFT, PRODUCTS, price, type ProductKind } from "@/lib/
 export const metadata: Metadata = {
   title: "Pencil — Seattle DADU feasibility, plans, and permits",
   description:
-    "See exactly what you can build on your Seattle lot in 30 seconds. Then get permit-ready plans in under a week, and we'll see them through to your permit. Pre-approved plans, custom designs and permit service.",
+    "See exactly what you can build on your Seattle lot in 30 seconds. Then get permit-ready plans, and we'll see them through to your permit. Pre-approved plans, custom designs and permit service.",
 };
 
 /*
@@ -40,7 +40,7 @@ const PERMIT = PRODUCTS.permit;
 
 const WHY = [
   { Icon: ShieldCheck, title: "Code first.", body: "Every result is checked against current Seattle DADU rules before you see it." },
-  { Icon: Timer, title: "Days, not months.", body: "Feasibility in seconds, plans in under a week. Traditional design takes weeks just to start." },
+  { Icon: Timer, title: "Answers in seconds.", body: "Feasibility in seconds, so you know what fits before you spend a dollar on design." },
   { Icon: Users, title: "Humans in the loop.", body: "AI does the heavy lifting. Licensed architects and designers, real people, make the calls." },
 ];
 
