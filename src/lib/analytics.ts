@@ -23,7 +23,7 @@ export type FunnelEvent =
   | { name: "start_project_click"; props: { source: "report" } }
   | { name: "consult_requested"; props: { stage: string; help: string } }
   | { name: "invest_page_viewed"; props: { count: number } }
-  | { name: "tile_clicked"; props: { listing_id: string; position: number; source: "invest" | "home" } }
+  | { name: "tile_clicked"; props: { listing_id: string; position: number; source: "invest" | "home" | "map" } }
   | { name: "filter_used"; props: { filter: string } }
   | { name: "assumption_edited"; props: { field: string } }
   | { name: "add_to_project"; props: { listing_id: string; signed_in: boolean } }

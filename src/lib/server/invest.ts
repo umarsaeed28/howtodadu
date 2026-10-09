@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { DEFAULT_ASSUMPTIONS, mergeAssumptions, type InvestAssumptions } from "@/lib/invest/assumptions";
 import { buildOpportunity, rankOpportunities, type Opportunity } from "@/lib/invest/opportunity";
-import { screenListings } from "@/lib/server/screened-listings";
+import { screenListings, type ScreenedListing } from "@/lib/server/screened-listings";
 import { libraryAvailable } from "@/lib/server/lot-library-store";
 import { aerialPhoto, propertyPhoto } from "@/lib/property-image";
 
@@ -14,7 +14,7 @@ import { aerialPhoto, propertyPhoto } from "@/lib/property-image";
  * 2. Screen each one against the lot library, which already ran the parcel through the engine (eligibility, max
  *    DADU sf, buildable envelope), and the buy box.
  * 3. Underwrite with the assumptions admins set in /admin/invest.
- * 4. Rank by cash-on-cash ROI; the top five eligible ones are Top Picks, and the feed shows those five.
+ * 4. Rank: lots that take the largest DADU first, then by DADU score. The map shows every one as a card.
  * 5. Store the day's snapshot so tiles show "as of" and the next run can flag price changes and delistings.
  */
 export interface InvestFeed {
@@ -51,25 +51,24 @@ function photoSet(listing: string[], address: string, lat: number, lng: number):
 /** Seattle's calendar day, so "today" turns over at local midnight. */
 export const seattleDay = (d = new Date()) => d.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 
-/** Runs the pipeline now. */
+/** A screened listing as an opportunity, with the given assumptions. The map and the feed both build them here. */
+export function opportunityFromScreened(l: ScreenedListing, assumptions: InvestAssumptions): Opportunity {
+  return buildOpportunity(
+    {
+      id: l.mlsId, address: l.address, zip: l.zip, lat: l.lat, lng: l.lng, price: l.price, photo: l.photo, photos: photoSet(l.photos, l.address, l.lat, l.lng), beds: l.beds, baths: l.baths,
+      sqft: l.sqft, lotSqft: l.lotSqft, daysOnMarket: l.daysOnMarket, pin: l.pin, score: l.score, tier: l.tier, alley: l.alley, corner: l.corner,
+      lotWidth: l.lot.lotWidth, lotDepth: l.lot.lotDepth, sideClearanceFt: l.lot.sideClearanceFt, daduSqft: l.daduSqft, brokerage: l.brokerage, listingUrl: l.listingUrl, pending: l.pending,
+    },
+    assumptions,
+  );
+}
+
+/** Runs the pipeline now: every screened listing, ranked. */
 export async function computeFeed(): Promise<InvestFeed> {
   const generatedAt = new Date().toISOString();
   if (!libraryAvailable()) return { generatedAt, source: "none", connected: false, fromSnapshot: false, opportunities: [] };
   const [{ assumptions }, screened] = await Promise.all([getInvestAssumptions(), screenListings()]);
-  const opportunities = rankOpportunities(
-    screened.listings
-      .filter((l) => !l.pending && l.price > 0) // under contract is not an opportunity
-      .map((l) =>
-        buildOpportunity(
-          {
-            id: l.mlsId, address: l.address, zip: l.zip, lat: l.lat, lng: l.lng, price: l.price, photo: l.photo, photos: photoSet(l.photos, l.address, l.lat, l.lng), beds: l.beds, baths: l.baths,
-            sqft: l.sqft, lotSqft: l.lotSqft, daysOnMarket: l.daysOnMarket, pin: l.pin, score: l.score, tier: l.tier, alley: l.alley, corner: l.corner,
-            lotWidth: l.lot.lotWidth, lotDepth: l.lot.lotDepth, sideClearanceFt: l.lot.sideClearanceFt, daduSqft: l.daduSqft, brokerage: l.brokerage, listingUrl: l.listingUrl,
-          },
-          assumptions,
-        ),
-      ),
-  );
+  const opportunities = rankOpportunities(screened.listings.filter((l) => l.price > 0).map((l) => opportunityFromScreened(l, assumptions)));
   return { generatedAt, source: screened.source, connected: screened.connected, fromSnapshot: false, opportunities };
 }
 
@@ -112,8 +111,13 @@ export async function getInvestFeed(): Promise<InvestFeed> {
   return feed;
 }
 
+/** One opportunity by listing id. A listing newer than the feed triggers a live run, so every map card resolves. */
 export async function getOpportunity(id: string): Promise<{ opportunity: Opportunity; feed: InvestFeed } | null> {
   const feed = await getInvestFeed();
   const opportunity = feed.opportunities.find((o) => o.id === id);
-  return opportunity ? { opportunity, feed } : null;
+  if (opportunity) return { opportunity, feed };
+  const fresh = await computeFeed();
+  live = { feed: fresh, at: Date.now() };
+  const found = fresh.opportunities.find((o) => o.id === id);
+  return found ? { opportunity: found, feed: fresh } : null;
 }

@@ -17,7 +17,7 @@ export async function saveInvestSettings(_: { error?: string; ok?: boolean }, fd
   if (error) return { error: error.message.includes("invest_settings") ? "The invest_settings table is missing. Apply supabase/migrations/0010_invest.sql first." : error.message };
   clearLiveFeed();
   await storeSnapshot(await computeFeed()).catch(() => false);
-  revalidatePath("/invest");
+  revalidatePath("/search");
   revalidatePath("/admin/invest");
   return { ok: true };
 }

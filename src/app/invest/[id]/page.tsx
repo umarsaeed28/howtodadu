@@ -40,14 +40,15 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
   return (
     <main className="pencil-app">
       <div className="iv-page">
-        <Link href="/invest" className="iv-back"><ArrowLeft size={15} aria-hidden /> All opportunities</Link>
+        <Link href="/search" className="iv-back"><ArrowLeft size={15} aria-hidden /> Back to the map</Link>
 
         <section className="iv-hero" aria-labelledby="iv-h1">
           <PhotoGallery photos={o.photos?.length ? o.photos : o.photo ? [o.photo] : []} alt={`${o.street}, Seattle`} zillowHref={zillowUrl(`${o.street}, Seattle, WA ${o.zip}`)} />
           <div className="iv-hero-text">
-            {(o.topPick || o.newToday) && (
+            {(o.topPick || o.newToday || o.pending) && (
               <p className="iv-badges iv-badges--inline">
-                {o.topPick && <span className="iv-badge iv-badge--pick"><Star size={11} aria-hidden fill="currentColor" /> Top Pick</span>}
+                {o.topPick && <span className="iv-badge iv-badge--pick"><Star size={11} aria-hidden fill="currentColor" /> Top pick</span>}
+                {o.pending && <span className="iv-badge iv-badge--pending">Pending</span>}
                 {o.newToday && <span className="iv-badge">New today</span>}
               </p>
             )}

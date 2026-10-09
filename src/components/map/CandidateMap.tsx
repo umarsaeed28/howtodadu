@@ -10,6 +10,7 @@ import { COST_LABEL, COST_PER_SF, constructionEstimate } from "@/lib/config/cost
 import { calculatorHref } from "@/lib/calculator/inputs";
 import { downloadListingsCsv, downloadSavedCsv } from "@/lib/listings-csv";
 import SaveButton from "@/components/listing/SaveButton";
+import OpportunityTile from "@/components/invest/OpportunityTile";
 import { useSavedListings } from "@/hooks/useSavedListings";
 import { gradeOf } from "@/lib/dadu-score";
 import { zillowUrl } from "@/lib/property-image";
@@ -71,7 +72,7 @@ export default function CandidateMap() {
   const [detail, setDetail] = useState<Candidate | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [price, setPrice] = useState({ min: startFilters.current.min, max: startFilters.current.max });
-  const [topOnly, setTopOnly] = useState(false);
+  const [topOnly, setTopOnly] = useState(() => initial.current.get("top") === "1");
   const [savedOnly, setSavedOnly] = useState(false);
   const [hidePending, setHidePending] = useState(false);
   // Off-market lots (the buy box, not listed) show as dots only when this is on. Remembered for the browser session.
@@ -155,10 +156,11 @@ export default function CandidateMap() {
     if (zipSel.length) q.set("zip", zipSel.join(","));
     if (price.min) q.set("min", String(price.min));
     if (price.max) q.set("max", String(price.max));
+    if (topOnly) q.set("top", "1");
     if (selectedPin) q.set("pin", selectedPin);
     const next = `${window.location.pathname}${q.toString() ? `?${q.toString().replace(/%2C/g, ",")}` : ""}`;
     if (next !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(null, "", next);
-  }, [zipSel, selectedPin, price]);
+  }, [zipSel, selectedPin, price, topOnly]);
 
   /* ---- what is on the map right now ---- */
   const shown = useMemo(() => {
@@ -324,6 +326,17 @@ export default function CandidateMap() {
               {searching ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <button type="submit" aria-label="Search" className="-mr-1 flex h-8 w-8 items-center justify-center rounded-lg" style={{ color: "var(--ink)" }}><Search size={16} aria-hidden /></button>}
             </div>
           </form>
+          <button
+            type="button"
+            aria-pressed={topOnly}
+            onClick={() => setTopOnly((v) => !v)}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-sm font-bold transition-colors"
+            style={{ minHeight: 40, background: topOnly ? "#145A40" : "var(--green-tint)", color: topOnly ? "#fff" : "#145A40", boxShadow: `inset 0 0 0 1.5px #145A40` }}
+            title="Top picks: a DADU score of 93 or more"
+          >
+            <Star size={15} aria-hidden fill={topOnly ? "#fff" : "#145A40"} color={topOnly ? "#fff" : "#145A40"} />
+            Top picks{listings.length ? ` (${listings.filter((l) => l.tier === 3).length})` : ""}
+          </button>
           <div className="w-[min(78vw,340px)] shrink-0">
             <ZipChips zips={zipSel} onChange={(z) => { setZipSel(z); setError(null); }} placeholder="ZIP codes (up to 5)" />
           </div>
@@ -338,7 +351,6 @@ export default function CandidateMap() {
             </div>
           </details>
           <div className="flex shrink-0 gap-2" role="group" aria-label="Filter listings">
-            <Chip on={topOnly} onClick={() => setTopOnly((v) => !v)}>Top picks</Chip>
             <Chip on={cornerOnly} onClick={() => setCornerOnly((v) => !v)}>Corner lot</Chip>
             <Chip on={alleyOnly} onClick={() => setAlleyOnly((v) => !v)}>Alley access</Chip>
             {listings.some((l) => l.pending) && (
@@ -486,7 +498,21 @@ export default function CandidateMap() {
                     <button type="button" className="font-semibold underline" style={{ color: "var(--green)" }} onClick={() => setSavedOnly(false)}>Show all homes</button>
                   </li>
                 )}
-                {shown.map((l) => <ListingCard key={l.mlsId} l={l} onSelect={() => selectPin(l.pin)} />)}
+                {shown.map((l, i) =>
+                  l.invest ? (
+                    <OpportunityTile
+                      key={l.mlsId}
+                      o={l.invest}
+                      position={i + 1}
+                      source={loaded?.source ?? ""}
+                      watched={false}
+                      from="map"
+                      overlay={<SaveButton variant="overlay" item={{ mlsId: l.mlsId, address: cleanAddress(l.address), price: l.price, photo: l.photo, score: l.score, market: "on", pin: l.pin, tier: l.tier, lotSqft: l.lotSqft, daduSqft: l.daduSqft, daysOnMarket: l.daysOnMarket }} />}
+                    />
+                  ) : (
+                    <ListingCard key={l.mlsId} l={l} onSelect={() => selectPin(l.pin)} />
+                  ),
+                )}
                 {savedOnly && saved.filter((x) => x.market === "off" || !listings.some((l) => l.mlsId === x.mlsId)).map((x) => {
                   const t = tierOf(x.tier ?? gradeOf(x.score).tier);
                   const status = x.market === "off" ? "Off market" : "No longer listed";
@@ -636,8 +662,8 @@ function LotPanel({ pin, lot, error, listing, onBack }: { pin: string | null; lo
 
           <div className="mt-5 flex flex-col gap-2">
             {listing && (
-              <Link href={`/listing/${encodeURIComponent(listing.mlsId)}`} className="pa-btn pa-btn-primary w-full no-underline">
-                View the listing <ArrowRight size={15} aria-hidden />
+              <Link href={`/invest/${encodeURIComponent(listing.mlsId)}`} className="pa-btn pa-btn-primary w-full no-underline">
+                View the investment summary <ArrowRight size={15} aria-hidden />
               </Link>
             )}
             {listing && (

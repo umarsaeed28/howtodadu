@@ -3,7 +3,7 @@ import type { InvestAssumptions } from "./assumptions";
 import { areaFor } from "./areas";
 import { underwrite, type Underwriting } from "./underwriting";
 
-/** One listing on the Invest feed, with the lot facts it was screened on and its underwriting. */
+/** One screened listing with the lot facts it was screened on and its underwriting: a map card and an investment summary. */
 export interface Opportunity {
   /** The listing id. */
   id: string;
@@ -38,8 +38,11 @@ export interface Opportunity {
   listingUrl: string | null;
   insight: string;
   u: Underwriting;
+  /** The map's "Top pick" grade: a DADU score of 93 or more (tier 3). */
   topPick: boolean;
   newToday: boolean;
+  /** Under contract: shown with a tag, never ranked first. */
+  pending: boolean;
 }
 
 /** The screened listing an opportunity is built from (the lot library's facts joined to the listing). */
@@ -68,12 +71,8 @@ export interface OpportunityInput {
   daduSqft: number | null;
   brokerage: string | null;
   listingUrl: string | null;
+  pending: boolean;
 }
-
-export type SortKey = "score" | "cash" | "newest";
-
-/** How many opportunities carry the Top Pick badge, and how many the feed shows. */
-export const TOP_PICKS = 5;
 
 const titleCase = (s: string) => s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 export const streetOf = (address: string) => titleCase(address.split(",")[0].trim());
@@ -100,7 +99,7 @@ export function buildOpportunity(i: OpportunityInput, a: InvestAssumptions): Opp
     daduSqft,
     insight: insightFor({ ...i, daduSqft }),
     u: underwrite({ price: i.price, daduSqft, houseSqft: i.sqft }, a),
-    topPick: false,
+    topPick: i.tier === 3,
     newToday: i.daysOnMarket != null && i.daysOnMarket <= 1,
   };
 }
@@ -109,39 +108,24 @@ export function buildOpportunity(i: OpportunityInput, a: InvestAssumptions): Opp
 export const takesMaxDadu = (o: Pick<Opportunity, "daduSqft">) => o.daduSqft >= DADU_MAX_GROSS_SQFT;
 
 /**
- * Keeps the lots that take the largest DADU, ranks them by Pencil's DADU score (lower cash required breaks a tie)
- * and badges the top five. TODO(comps): rank by return on cost once MLS comps give the DADU's sale value.
+ * Orders the feed: lots that take the largest DADU first, then by Pencil's DADU score, with lower cash required
+ * breaking a tie; pending listings go last. TODO(comps): rank by return on cost once MLS comps give sale values.
  */
 export function rankOpportunities(list: Opportunity[]): Opportunity[] {
-  return list
-    .filter(takesMaxDadu)
-    .sort((x, y) => y.score - x.score || x.u.cashRequired - y.u.cashRequired)
-    .map((o, i) => ({ ...o, topPick: i < TOP_PICKS }));
-}
-
-export interface InvestFilters {
-  area: string | null;
-  minPrice: number | null;
-  maxPrice: number | null;
-  maxCash: number | null;
-  sort: SortKey;
-}
-
-export const DEFAULT_FILTERS: InvestFilters = { area: null, minPrice: null, maxPrice: null, maxCash: null, sort: "score" };
-
-export function filterOpportunities(list: Opportunity[], f: InvestFilters): Opportunity[] {
-  const out = list.filter(
-    (o) =>
-      (!f.area || o.area === f.area) &&
-      (f.minPrice == null || o.price >= f.minPrice) &&
-      (f.maxPrice == null || o.price <= f.maxPrice) &&
-      (f.maxCash == null || o.u.cashRequired <= f.maxCash),
+  return [...list].sort(
+    (x, y) => Number(x.pending) - Number(y.pending) || Number(takesMaxDadu(y)) - Number(takesMaxDadu(x)) || y.score - x.score || x.u.cashRequired - y.u.cashRequired,
   );
-  const by =
-    f.sort === "cash"
-      ? (x: Opportunity, y: Opportunity) => x.u.cashRequired - y.u.cashRequired
-      : f.sort === "newest"
-        ? (x: Opportunity, y: Opportunity) => (x.daysOnMarket ?? 9999) - (y.daysOnMarket ?? 9999)
-        : (x: Opportunity, y: Opportunity) => y.score - x.score || x.u.cashRequired - y.u.cashRequired;
-  return out.sort(by);
 }
+
+/** The best opportunities for the home page: on the market, taking the largest DADU, in feed order. */
+export const bestOpportunities = (list: Opportunity[], n: number) => list.filter((o) => !o.pending && takesMaxDadu(o)).slice(0, n);
+
+/** What a tile needs: the map's cards and the home section both draw from this. */
+export type TileData = Pick<Opportunity, "id" | "price" | "photo" | "area" | "street" | "score" | "daduSqft" | "insight" | "topPick" | "newToday" | "pending" | "brokerage"> & {
+  u: Pick<Underwriting, "cashRequired" | "totalProjectCost">;
+};
+
+export const toTile = (o: Opportunity): TileData => ({
+  id: o.id, price: o.price, photo: o.photo, area: o.area, street: o.street, score: o.score, daduSqft: o.daduSqft, insight: o.insight,
+  topPick: o.topPick, newToday: o.newToday, pending: o.pending, brokerage: o.brokerage, u: { cashRequired: o.u.cashRequired, totalProjectCost: o.u.totalProjectCost },
+});

@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
   const db = supabaseAdmin();
   if (db) {
-    const { error } = await db.from("signups").insert({ email, kind: "contact", name, message: `[Invest] ${property}\n${phone ? `Phone: ${phone}\n` : ""}${message}`, source_path: o ? `/invest/${o.id}` : "/invest" });
+    const { error } = await db.from("signups").insert({ email, kind: "contact", name, message: `[Invest] ${property}\n${phone ? `Phone: ${phone}\n` : ""}${message}`, source_path: o ? `/invest/${o.id}` : "/search" });
     if (error) console.error("[invest/contact] signup insert failed", error.message);
   }
   const agent = process.env.INVEST_AGENT_EMAIL || process.env.PORTAL_ADMIN_EMAIL;

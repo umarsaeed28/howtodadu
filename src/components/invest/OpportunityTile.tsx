@@ -1,22 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
-import type { Opportunity } from "@/lib/invest/opportunity";
+import type { TileData } from "@/lib/invest/opportunity";
 import { track } from "@/lib/analytics";
 import { sourceLabel, usd, usdShort } from "./format";
 import WatchButton from "./WatchButton";
 
 /**
  * An opportunity tile: photo, price and address, the four numbers that decide it, one line on why the lot works,
- * and the listing attribution the feed rules require.
+ * and the listing attribution the feed rules require. Opens the investment summary. `overlay` sits on the photo
+ * (the map's quick-save heart).
  */
-export default function OpportunityTile({ o, position, source, signedIn, watched, from = "invest" }: { o: Opportunity; position: number; source: string; signedIn?: boolean; watched: boolean; from?: "invest" | "home" }) {
+export default function OpportunityTile({ o, position, source, signedIn, watched, from = "invest", overlay }: { o: TileData; position: number; source: string; signedIn?: boolean; watched: boolean; from?: "invest" | "home" | "map"; overlay?: ReactNode }) {
   const [photoOk, setPhotoOk] = useState(!!o.photo);
   const href = `/invest/${encodeURIComponent(o.id)}`;
   return (
     <li className="iv-tile">
+      {overlay && <span className="iv-overlay">{overlay}</span>}
       <Link href={href} className="iv-tile-link" onClick={() => track("tile_clicked", { listing_id: o.id, position, source: from })}>
         <span className="iv-photo">
           {photoOk && o.photo ? (
@@ -29,9 +31,10 @@ export default function OpportunityTile({ o, position, source, signedIn, watched
               <rect x="98" y="24" width="26" height="22" rx="1.5" fill="#E6C97E" stroke="#17241D" strokeOpacity="0.6" strokeWidth="1.2" />
             </svg>
           )}
-          {(o.topPick || o.newToday) && (
+          {(o.topPick || o.newToday || o.pending) && (
             <span className="iv-badges">
-              {o.topPick && <span className="iv-badge iv-badge--pick"><Star size={11} aria-hidden fill="currentColor" /> Top Pick</span>}
+              {o.topPick && <span className="iv-badge iv-badge--pick"><Star size={11} aria-hidden fill="currentColor" /> Top pick</span>}
+              {o.pending && <span className="iv-badge iv-badge--pending">Pending</span>}
               {o.newToday && <span className="iv-badge">New today</span>}
             </span>
           )}

@@ -10,7 +10,6 @@ import ProfileMenu from "./ProfileMenu";
 const NAV = [
   { href: "/feasibility", label: "Check my lot" },
   { href: "/search", label: "Search" },
-  { href: "/invest", label: "Invest" },
   { href: "/company", label: "About us" },
 ];
 

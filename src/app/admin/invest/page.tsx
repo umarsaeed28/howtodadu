@@ -16,7 +16,7 @@ export default async function InvestSettingsPage() {
       <div className="mx-auto max-w-[720px]">
         <h1 className="pa-display text-3xl" style={{ color: "var(--ink)" }}>Invest settings</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>
-          The cost assumptions behind every opportunity on /invest. {stored ? "Saved values are in use." : "Showing the defaults: nothing is saved yet."} Saving reruns today&apos;s feed.
+          The cost assumptions behind every listing card on the search map and every investment summary. {stored ? "Saved values are in use." : "Showing the defaults: nothing is saved yet."} Saving reruns today&apos;s feed.
         </p>
         <div className="mt-5"><InvestSettingsForm initial={assumptions} /></div>
       </div>

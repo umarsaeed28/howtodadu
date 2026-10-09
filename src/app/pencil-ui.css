@@ -499,3 +499,6 @@
 .iv-sent { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; color: var(--green-bright); }
 .iv-review { margin: 12px 0 0; font-size: 0.875rem; color: var(--slate); }
 .iv-review a { font-weight: 700; color: var(--green-bright); }
+.iv-tile { position: relative; }
+.iv-overlay { position: absolute; right: 10px; top: 10px; z-index: 1; }
+.iv-badge--pending { background: #FFF4D6; color: #7A5A12; }

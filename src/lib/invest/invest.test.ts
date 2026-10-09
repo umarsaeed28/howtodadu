@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ASSUMPTIONS, mergeAssumptions } from "./assumptions";
 import { underwrite } from "./underwriting";
-import { buildOpportunity, DEFAULT_FILTERS, filterOpportunities, insightFor, rankOpportunities, type OpportunityInput } from "./opportunity";
+import { bestOpportunities, buildOpportunity, insightFor, rankOpportunities, toTile, type OpportunityInput } from "./opportunity";
 
 const base: OpportunityInput = {
   id: "a", address: "123 MAIN ST, Seattle, WA 98103", zip: "98103", lat: 47.6, lng: -122.3, price: 900_000, photo: null, photos: [],
   beds: 3, baths: 2, sqft: 1500, lotSqft: 5000, daysOnMarket: 10, pin: "1234567890", score: 90, tier: 2, alley: false,
-  corner: false, lotWidth: 50, lotDepth: 100, sideClearanceFt: null, daduSqft: 1000, brokerage: null, listingUrl: null,
+  corner: false, lotWidth: 50, lotDepth: 100, sideClearanceFt: null, daduSqft: 1000, brokerage: null, listingUrl: null, pending: false,
 };
 
 describe("underwrite", () => {
@@ -46,14 +46,23 @@ describe("opportunities", () => {
     expect(insightFor({ alley: false, corner: false, lotSqft: 4200, lotDepth: 90, sideClearanceFt: null, daduSqft: 450 })).toBe("A 4,200 sf lot. Fits a DADU up to 450 sf.");
   });
 
-  it("keeps only lots that take the largest DADU, ranks by score and badges the top five", () => {
-    const list = Array.from({ length: 9 }, (_, i) => buildOpportunity({ ...base, id: String(i), score: 99 - i, price: 500_000 + i * 100_000, daysOnMarket: i }, DEFAULT_ASSUMPTIONS));
-    const small = buildOpportunity({ ...base, id: "small", score: 100, daduSqft: 800 }, DEFAULT_ASSUMPTIONS);
-    const ranked = rankOpportunities([small, ...list]);
-    expect(ranked.some((o) => o.id === "small")).toBe(false);
-    expect(ranked.filter((o) => o.topPick).map((o) => o.id)).toEqual(["0", "1", "2", "3", "4"]);
-    const cheap = filterOpportunities(ranked, { ...DEFAULT_FILTERS, maxPrice: 700_000, sort: "newest" });
-    expect(cheap.map((o) => o.id)).toEqual(["0", "1", "2"]);
-    expect(ranked.find((o) => o.id === "0")?.newToday).toBe(true);
+  it("ranks lots that take the largest DADU first, then by score; pending last", () => {
+    const list = [
+      buildOpportunity({ ...base, id: "small", score: 100, daduSqft: 800 }, DEFAULT_ASSUMPTIONS),
+      buildOpportunity({ ...base, id: "mid", score: 90 }, DEFAULT_ASSUMPTIONS),
+      buildOpportunity({ ...base, id: "best", score: 96, tier: 3 }, DEFAULT_ASSUMPTIONS),
+      buildOpportunity({ ...base, id: "pending", score: 99, pending: true }, DEFAULT_ASSUMPTIONS),
+    ];
+    const ranked = rankOpportunities(list);
+    expect(ranked.map((o) => o.id)).toEqual(["best", "mid", "small", "pending"]);
+    expect(bestOpportunities(ranked, 3).map((o) => o.id)).toEqual(["best", "mid"]);
+  });
+
+  it("marks a top pick by the map's grade (tier 3) and flags new listings", () => {
+    const o = buildOpportunity({ ...base, tier: 3, daysOnMarket: 0 }, DEFAULT_ASSUMPTIONS);
+    expect(o.topPick).toBe(true);
+    expect(o.newToday).toBe(true);
+    expect(buildOpportunity(base, DEFAULT_ASSUMPTIONS).topPick).toBe(false);
+    expect(toTile(o)).toMatchObject({ id: "a", topPick: true, u: { cashRequired: o.u.cashRequired, totalProjectCost: o.u.totalProjectCost } });
   });
 });

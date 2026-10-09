@@ -4,6 +4,7 @@ import { inBuyBox } from "@/lib/buy-box";
 import { isForSale, isPending } from "@/lib/listings/status";
 import { overrideFor, statusOverrides } from "@/lib/listings/status-overrides";
 import type { Candidate } from "@/lib/server/candidates";
+import type { TileData } from "@/lib/invest/opportunity";
 
 export interface MapListing {
   mlsId: string;
@@ -33,6 +34,8 @@ export interface MapListing {
   pendingNote: string | null;
   /** True for sample listings (the fixture provider). Real listings come from the live feed. */
   test: boolean;
+  /** The investment tile: the same numbers and insight as the listing's investment summary (/invest/[id]). */
+  invest?: TileData;
 }
 
 /** A screened listing with the library lot it sits on, the brokerage and its first five photos, for the Invest feed. */

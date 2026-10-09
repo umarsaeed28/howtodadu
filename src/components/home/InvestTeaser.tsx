@@ -42,7 +42,7 @@ export default function InvestTeaser() {
           ) : (
             <div className="iv-grid" aria-busy="true">{[0, 1, 2].map((k) => <div key={k} className="hm-invest-skel" />)}</div>
           )}
-          <Link href="/invest" className="pa-btn pa-btn-primary hm-invest-cta">See all opportunities <ArrowRight size={15} aria-hidden /></Link>
+          <Link href="/search?top=1" className="pa-btn pa-btn-primary hm-invest-cta">See all opportunities <ArrowRight size={15} aria-hidden /></Link>
         </div>
       </Container>
     </Section>
