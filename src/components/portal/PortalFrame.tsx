@@ -2,14 +2,16 @@ import Link from "next/link";
 import { LogOut } from "lucide-react";
 import type { Viewer } from "@/lib/portal/server";
 
+const ACCOUNT = { href: "/portal/account", label: "Account" };
 const LINKS: Record<Viewer["role"], { href: string; label: string }[]> = {
-  client: [{ href: "/portal", label: "My projects" }],
+  client: [{ href: "/portal", label: "My projects" }, ACCOUNT],
   admin: [
     { href: "/admin", label: "Pipeline" },
     { href: "/admin/referrals", label: "Lead routing" },
     { href: "/admin/metrics", label: "Metrics" },
+    ACCOUNT,
   ],
-  gc: [{ href: "/gc", label: "Referred projects" }],
+  gc: [{ href: "/gc", label: "Referred projects" }, ACCOUNT],
 };
 
 /** The portal's own bar under the site header: role links, who is signed in, sign out. Pages sit in a narrow column. */

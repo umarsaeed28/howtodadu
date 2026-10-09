@@ -363,3 +363,17 @@ export async function recordFile(projectId: string, file: { name: string; path: 
   refresh(projectId);
   return {};
 }
+
+/* ── Account ── */
+
+export async function updateProfile(fd: FormData): Promise<Result> {
+  const v = await currentViewer();
+  if (!v) return { error: "Sign in first." };
+  const full_name = text(fd, "full_name", 120);
+  if (!full_name) return { error: "Enter your name." };
+  const db = await userClient();
+  const { error } = await db.from("profiles").update({ full_name }).eq("id", v.id);
+  if (error) return { error: error.message };
+  revalidatePath("/portal/account");
+  return {};
+}

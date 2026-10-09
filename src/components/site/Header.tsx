@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Heart, Menu, X } from "lucide-react";
 import { useSavedListings } from "@/hooks/useSavedListings";
+import ProfileMenu from "./ProfileMenu";
 
 const NAV = [
   { href: "/search", label: "Search" },
@@ -63,9 +64,7 @@ export default function Header() {
         </nav>
 
         <div className="site-actions">
-          <Link href="/login" className="s-btn s-btn--primary">
-            Sign in
-          </Link>
+          <ProfileMenu />
         </div>
 
         <button
@@ -100,14 +99,7 @@ export default function Header() {
             ))}
           </nav>
           <div style={{ marginTop: "auto", paddingTop: 24 }}>
-            <Link
-              href="/login"
-              className="s-btn s-btn--primary s-btn--lg"
-              style={{ width: "100%" }}
-              onClick={() => setOpen(false)}
-            >
-              Sign in to the portal
-            </Link>
+            <ProfileMenu variant="sheet" />
           </div>
         </div>
       )}

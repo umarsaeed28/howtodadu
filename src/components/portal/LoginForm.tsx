@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2, MailCheck } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 type Mode = "signin" | "signup";
@@ -16,7 +16,6 @@ export default function LoginForm({ next, initialMode = "signin" }: { next: stri
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [checkEmail, setCheckEmail] = useState(false);
   const id = useId();
 
   async function submit(e: React.FormEvent) {
@@ -33,13 +32,15 @@ export default function LoginForm({ next, initialMode = "signin" }: { next: stri
         const { error } = await supabase.auth.signInWithPassword({ email: em, password });
         if (error) return setError(error.message === "Invalid login credentials" ? "That email and password do not match." : error.message);
       } else {
-        const { data, error } = await supabase.auth.signUp({
-          email: em,
-          password,
-          options: { data: { full_name: name.trim() }, emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
-        });
+        // No confirmation email: the server creates the account confirmed, then we sign straight in.
+        const res = await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim(), email: em, password }) });
+        const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+        if (!res.ok || !j.ok) {
+          if (res.status === 409) setMode("signin");
+          return setError(j.error ?? "Could not create the account. Try again.");
+        }
+        const { error } = await supabase.auth.signInWithPassword({ email: em, password });
         if (error) return setError(error.message);
-        if (!data.session) return setCheckEmail(true); // confirmation email is on
       }
       router.replace(next);
       router.refresh();
@@ -48,20 +49,6 @@ export default function LoginForm({ next, initialMode = "signin" }: { next: stri
     } finally {
       setBusy(false);
     }
-  }
-
-  if (checkEmail) {
-    return (
-      <div className="pa-raised p-6 text-center sm:p-8">
-        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "var(--green-tint)", color: "var(--green)" }} aria-hidden>
-          <MailCheck size={22} />
-        </span>
-        <h1 className="pa-display mt-4 text-2xl" style={{ color: "var(--ink)" }}>Check your email</h1>
-        <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--slate)" }}>
-          We sent a confirmation link to <strong style={{ color: "var(--ink)" }}>{email.trim()}</strong>. Open it to finish creating your account.
-        </p>
-      </div>
-    );
   }
 
   return (

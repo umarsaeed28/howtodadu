@@ -25,7 +25,7 @@ export function ZipChips({ zips, onChange, size = "md", placeholder = "Add a ZIP
   const h = size === "lg" ? 52 : 40;
   return (
     <div className="min-w-0">
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-xl px-2" style={{ minHeight: h, background: "var(--card, #fff)", boxShadow: "inset 0 0 0 1px var(--line-strong)" }} onClick={(e) => (e.currentTarget.querySelector("input") as HTMLInputElement | null)?.focus()}>
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-xl px-2" style={{ minHeight: h, background: "var(--surface, #fff)", boxShadow: "inset 0 0 0 1px var(--line-strong)" }} onClick={(e) => (e.currentTarget.querySelector("input") as HTMLInputElement | null)?.focus()}>
         {zips.map((z) => (
           <span key={z} className="inline-flex items-center gap-1 rounded-lg py-1 pl-2 pr-1 text-sm font-semibold tabular-nums" style={{ background: "var(--green-tint, #E6F2EB)", color: "var(--green, #1F7A55)" }}>
             {z}
@@ -44,7 +44,7 @@ export function ZipChips({ zips, onChange, size = "md", placeholder = "Add a ZIP
               inputMode="numeric"
               autoComplete="off"
               placeholder={zips.length ? "Add another" : placeholder}
-              className="min-w-[90px] flex-1 bg-transparent px-1 text-[16px] outline-none sm:text-sm"
+              className="min-w-[90px] flex-1 bg-transparent px-1 text-[16px] outline-none placeholder:text-[#5B6560] sm:text-sm"
               style={{ boxShadow: "none", minHeight: h - 8 }}
               onChange={(e) => {
                 const v = e.target.value;
@@ -79,7 +79,7 @@ export function PriceRange({ min, max, onChange, size = "md" }: { min: number; m
   const id = useId();
   const h = size === "lg" ? 52 : 40;
   const sel = "w-full rounded-xl bg-transparent px-3 text-[16px] font-semibold outline-none sm:text-sm";
-  const box = { minHeight: h, background: "var(--card, #fff)", boxShadow: "inset 0 0 0 1px var(--line-strong)", color: "var(--ink)" };
+  const box = { minHeight: h, background: "var(--surface, #fff)", boxShadow: "inset 0 0 0 1px var(--line-strong)", color: "var(--ink)" };
   return (
     <div className="grid grid-cols-2 gap-2">
       <div>

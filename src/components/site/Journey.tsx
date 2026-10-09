@@ -100,9 +100,9 @@ const STEPS = [
   { Art: Keys, title: "Sell or rent", tag: "The payoff", body: "Priced and listed, or leased. Earning from day one." },
 ];
 
-export default function Journey() {
+export default function Journey({ tone = "light" }: { tone?: "light" | "dark" }) {
   return (
-    <ol className="jr" aria-label="How it works, in five steps">
+    <ol className={`jr${tone === "dark" ? " jr--dark" : ""}`} aria-label="How it works, in five steps">
       {STEPS.map(({ Art, title, tag, body }, i) => (
         <li key={title} className="jr-step">
           <div className="jr-art">
