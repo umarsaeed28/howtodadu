@@ -117,16 +117,6 @@ export default function Home() {
         </Container>
       </Section>
 
-      {/* Footer CTA */}
-      <section className="hm-final" aria-labelledby="hm-final-h">
-        <Container style={{ maxWidth: 860 }}>
-          <Heading level={2} id="hm-final-h" style={{ maxWidth: "22ch" }}>Thirty seconds could change what your property is worth.</Heading>
-          <div style={{ marginTop: 24 }}>
-            <AddressForm source="footer_cta" label="Your Seattle address" size="xl" />
-          </div>
-        </Container>
-      </section>
-
       {/* Pricing */}
       <Section style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-pricing">
         <Container>
