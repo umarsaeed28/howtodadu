@@ -37,12 +37,13 @@ export const CASE_STUDIES: CaseStudy[] = [
     houseRenovation: 150_000,
     houseArv: 1_300_000,
     dadu: { sqft: 1000, buildCost: 300_000, arv: 700_000, note: "At the rear of the lot, opening onto the alley." },
-    // PLACEHOLDER: the owner is supplying photos. Add them as public/case-studies/5519-12th-ave-ne/<name>.webp and set src.
+    // More photos go in public/case-studies/5519-12th-ave-ne/ as the owner supplies them.
     images: [
-      { src: null, alt: "The front house at 5519 12th Ave NE before the renovation", caption: "The front house, before" },
-      { src: null, alt: "The front house at 5519 12th Ave NE after the renovation", caption: "The front house, after" },
-      { src: null, alt: "The 1,000 sf DADU at the rear of the lot, facing the alley", caption: "The DADU from the alley" },
-      { src: null, alt: "Site plan of the lot with the house at the front and the DADU at the rear", caption: "Site plan" },
+      {
+        src: "/case-studies/5519-12th-ave-ne/rendering.webp",
+        alt: "Isometric rendering of a craftsman house at the front of the lot and a modern two-story DADU at the back",
+        caption: "Concept rendering: the renovated front house and the DADU at the back of the lot",
+      },
     ],
   },
 ];

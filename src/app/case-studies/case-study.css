@@ -10,6 +10,8 @@
 .site .cs-photos figure { margin: 0; }
 .site .cs-photos img, .site .cs-photo-empty { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 16px; }
 .site .cs-photo-empty { display: flex; align-items: center; justify-content: center; background: var(--flag-tint); color: var(--flag-deep); }
+.site .cs-photos--one { grid-template-columns: minmax(0, 1fr); max-width: 820px; margin-inline: auto; }
+.site .cs-photos--one img { aspect-ratio: auto; height: auto; }
 .site .cs-photos figcaption { margin-top: 8px; font-size: 0.9rem; color: var(--slate); }
 .site .cs-cols { display: grid; gap: clamp(1.5rem, 3vw, 2.5rem); }
 @media (min-width: 860px) { .site .cs-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

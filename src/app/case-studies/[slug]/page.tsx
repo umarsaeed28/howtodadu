@@ -45,7 +45,7 @@ export default async function CaseStudyPage({ params }: { params: Promise<{ slug
 
       <Section style={{ paddingBlock: "0 clamp(2rem, 4vw, 3rem)" }}>
         <Container style={{ maxWidth: 980 }}>
-          <ul className="cs-photos">
+          <ul className={`cs-photos${c.images.length === 1 ? " cs-photos--one" : ""}`}>
             {c.images.map((img) => (
               <li key={img.caption}>
                 <figure>
