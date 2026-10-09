@@ -57,8 +57,8 @@ export default function Home() {
       <section className="hm-hero" aria-labelledby="hm-h1">
         <div className="hm-hero-inner">
           <div className="hm-hero-copy">
-            <Heading level={1} id="hm-h1">Got DADU issues? We can help.</Heading>
-            <Lede style={{ marginTop: 18 }}>Can&apos;t find the right property. Not sure what a lot can hold. Dreading the permit office. We find the property, design the DADU, and build it, so you can stop overthinking and start owning.</Lede>
+            <Heading level={1} id="hm-h1">Got DADU issues? We&apos;ll work through them together.</Heading>
+            <Lede style={{ marginTop: 18 }}>Not sure where to start? That&apos;s okay. We&apos;ll help you find the right property, show you what it can hold, design the DADU, and stay by your side through permit and build. You&apos;ll never have to figure it out alone.</Lede>
             <div style={{ marginTop: 26 }}>
               <AddressForm source="hero" label="Your Seattle address" />
             </div>
