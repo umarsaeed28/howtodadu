@@ -21,7 +21,7 @@ const MONTHS = 10;
 const PHASES: Phase[] = [
   { title: "Acquisition", start: 0, end: 1, when: "Month 1", body: "We find a Seattle lot that takes a DADU, or start from yours, and get it under contract." },
   { title: "Feasibility and surveys", start: 0.2, end: 1, when: "While under contract", overlap: true, body: "Right after the lot goes under contract: the detailed feasibility and the boundary and topographic surveys, before you close." },
-  { title: "Design", start: 1, end: 2, when: "Month 2", body: "A pre-approved plan, or a custom design for your lot by our licensed architects and designers." },
+  { title: "Design", start: 1, end: 2, when: "Month 2", body: "A pre-approved plan, or a custom design for your lot by our designers." },
   { title: "Permit", start: 2, end: 4, when: "Months 3 to 4, typically", city: true, body: "We submit to SDCI and handle every round of corrections. Review times vary, so we never promise an approval date." },
   { title: "Construction", start: 4, end: 10, when: "Months 5 to 10", body: "Vetted builders, bids side by side, then one tracker from groundbreaking to final inspection." },
 ];

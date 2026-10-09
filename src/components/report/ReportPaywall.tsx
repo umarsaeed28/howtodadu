@@ -28,7 +28,7 @@ export default function ReportPaywall({ pin, address, defaultTier, onUnlock }: {
         successCta="Open my report"
         success={(r) =>
           r.kind === "feasibility_reviewed"
-            ? { title: "Thank you. Your review is booked.", body: `Your lot is in a licensed architect's hands. Expect your review by ${r.dueDate ? longDate(parseDay(r.dueDate)) : "within 3 business days"}.` }
+            ? { title: "Thank you. Your review is booked.", body: `Your lot is in a designer's hands. Expect your review by ${r.dueDate ? longDate(parseDay(r.dueDate)) : "within 3 business days"}.` }
             : { title: "Thank you. Your report is ready.", body: "We emailed you a link to it, so you can come back any time." }
         }
         onDone={(r, email) => {

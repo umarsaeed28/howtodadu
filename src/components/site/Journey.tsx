@@ -128,7 +128,7 @@ export type JourneyStep = { Art: () => React.ReactElement; title: string; tag?: 
 const STEPS: JourneyStep[] = [
   { Art: Acquire, title: "Acquisition", tag: "Your lot or ours", body: "We find a Seattle lot that takes a DADU and help you buy it, or start from the one you own." },
   { Art: Feasibility, title: "Feasibility", tag: "Free first look", body: "What fits, where it goes, and whether the numbers work, before you commit." },
-  { Art: Plans, title: "Design", tag: "Pre-approved or custom", body: "A pre-approved plan, or a custom design for your lot finished by our licensed architects and designers." },
+  { Art: Plans, title: "Design", tag: "Pre-approved or custom", body: "A pre-approved plan, or a custom design for your lot finished by our designers." },
   { Art: Permit, title: "Permit", tag: "Submission to issued permit", body: "We submit to SDCI and handle every round of corrections." },
   { Art: Build, title: "Construction", tag: "Vetted builders", body: "Bids side by side, then one tracker from groundbreaking to final inspection." },
 ];

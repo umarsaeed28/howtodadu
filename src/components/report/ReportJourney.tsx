@@ -76,7 +76,7 @@ export function PurchaseBanner({ kind, dueDate, email }: { kind: string; dueDate
     <section className="pb" aria-live="polite">
       <span className="pb-icon" aria-hidden>{kind === "feasibility_reviewed" ? <UserRoundCheck size={20} /> : <BadgeCheck size={20} />}</span>
       <div className="min-w-0 flex-1">
-        <p className="pb-title">{kind === "feasibility_reviewed" ? `Your lot is in a licensed architect's hands. Expect your review by ${due ?? "3 business days from now"}.` : "Your full report is unlocked."}</p>
+        <p className="pb-title">{kind === "feasibility_reviewed" ? `Your lot is in a designer's hands. Expect your review by ${due ?? "3 business days from now"}.` : "Your full report is unlocked."}</p>
         <p className="pb-sub">{email ? `We emailed the receipt and a link to ${email}.` : "Bookmark this page to come back to it."}</p>
       </div>
       {email && (news === "done" ? (
