@@ -75,9 +75,13 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   const roiPct = e ? Math.round(e.roi * 100) : null;
   // Total ARV: the house at break-even (what it cost plus any rehab) or the user's own figure, plus the DADU's resale
   // value. Shown as its own block beside the headline; the deal profit and ROI tiles use it too.
-  const breakEven = listing && e ? listing.price + e.rehabCost : null;
+  // The house's basis: its list price when for sale, else the county's assessed value (land + building), so every lot
+  // gets a Total ARV, not only listed ones. Break-even is that basis plus any rehab.
+  const assessed = slim.assessedValueNum != null && slim.assessedValueNum > 0 ? slim.assessedValueNum : null;
+  const basis = listing ? { value: listing.price, kind: "list" as const } : assessed != null ? { value: assessed, kind: "assessed" as const } : null;
+  const breakEven = basis && e ? basis.value + e.rehabCost : null;
   const houseArv = houseArvInput ?? breakEven;
-  const arv = listing && e && houseArv != null ? { total: houseArv + e.saleValue, house: houseArv, own: houseArvInput != null } : null;
+  const arv = e && houseArv != null ? { total: houseArv + e.saleValue, house: houseArv, own: houseArvInput != null } : null;
   const money = (n: number) => (n < 0 ? "−" : "") + usd(Math.abs(n));
   // The strip: price when the home is for sale, then what the cottage costs and returns. Numbers lead, one line each.
   const tiles: { label: string; value: string; note?: string; tone?: "green" | "red"; extra?: React.ReactNode }[] = [];
@@ -142,7 +146,7 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
           <p className="text-sm font-semibold" style={{ color: "var(--slate)" }}>Total ARV</p>
           <p className="pa-display leading-none tabular-nums" style={{ color: "var(--ink)", fontSize: "clamp(32px, 4.5vw, 44px)" }}>{usd(arv.total)}</p>
           <p className="mt-1.5 text-xs tabular-nums" style={{ color: "var(--slate)" }}>
-            House {usd(arv.house)}{arv.own ? " (your ARV)" : ` at break-even${e!.rehabCost > 0 ? ` (${REHAB_LABELS[e!.rehab].toLowerCase()} ${usd(e!.rehabCost)})` : ""}`}
+            House {usd(arv.house)}{arv.own ? " (your ARV)" : ` ${basis?.kind === "assessed" ? "at county assessed value" : "at break-even"}${e!.rehabCost > 0 ? ` (${basis?.kind === "assessed" ? "+ " : ""}${REHAB_LABELS[e!.rehab].toLowerCase()} ${usd(e!.rehabCost)})` : ""}`}
             <br />+ DADU resale {usd(e!.saleValue)}
           </p>
         </div>
@@ -151,7 +155,7 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
 
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
         <RehabPicker value={rehab} onChange={setRehab} houseSqft={houseSqft} />
-        {listing && (
+        {basis && (
           <label className="flex items-center gap-2 text-xs font-semibold" style={{ color: "var(--ink)" }}>
             Front house ARV
             <span className="pa-inset flex items-center gap-1 px-2.5" style={{ minHeight: 32 }}>
