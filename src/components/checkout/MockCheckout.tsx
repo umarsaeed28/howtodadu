@@ -6,6 +6,7 @@ import type { Receipt } from "@/lib/payments";
 import { PRODUCTS, price, type ProductKind } from "@/lib/pricing";
 import { EMAIL_RE, lastEmail, rememberEmail, rememberOrder } from "@/lib/report-access";
 import { track } from "@/lib/analytics";
+import { BRAND_LABEL, cardBrand, formatCardNumber, formatCvc, formatExpiry } from "@/lib/card-format";
 
 /** The processing state stays up at least this long so a mock payment reads like a real one. */
 const MIN_PROCESSING_MS = 1200;
@@ -79,6 +80,7 @@ export default function MockCheckout({ kinds, defaultKind, pin, address, title, 
   }
 
   const busy = phase.kind === "processing";
+  const brand = cardBrand(number.replace(/\D/g, ""));
   const err = phase.kind === "form" ? phase.error : undefined;
 
   if (phase.kind === "processing") {
@@ -155,15 +157,18 @@ export default function MockCheckout({ kinds, defaultKind, pin, address, title, 
       </p>
 
       <label htmlFor={`${id}-n`} className="ck-label">Card number</label>
-      <input id={`${id}-n`} type="text" inputMode="numeric" autoComplete="off" data-1p-ignore data-lpignore="true" value={number} onChange={(e) => { setNumber(e.target.value); if (err) setPhase({ kind: "form" }); }} placeholder="Any number" className={input(err === "incomplete" && !number.trim())} />
+      <div className="ck-card">
+        <input id={`${id}-n`} type="text" inputMode="numeric" autoComplete="off" data-1p-ignore data-lpignore="true" value={number} onChange={(e) => { setNumber(formatCardNumber(e.target.value)); if (err) setPhase({ kind: "form" }); }} placeholder="1234 1234 1234 1234" maxLength={23} className={input(err === "incomplete" && !number.trim())} aria-describedby={brand ? `${id}-brand` : undefined} />
+        {brand && <span id={`${id}-brand`} className="ck-brand">{BRAND_LABEL[brand]}</span>}
+      </div>
       <div className="ck-row">
         <div>
           <label htmlFor={`${id}-e`} className="ck-label">Expiry</label>
-          <input id={`${id}-e`} type="text" inputMode="numeric" autoComplete="off" data-1p-ignore data-lpignore="true" value={expiry} onChange={(e) => { setExpiry(e.target.value); if (err) setPhase({ kind: "form" }); }} placeholder="MM / YY" className={input(err === "incomplete" && !expiry.trim())} />
+          <input id={`${id}-e`} type="text" inputMode="numeric" autoComplete="off" data-1p-ignore data-lpignore="true" value={expiry} onChange={(e) => { setExpiry(formatExpiry(e.target.value, expiry)); if (err) setPhase({ kind: "form" }); }} placeholder="MM / YY" maxLength={7} className={input(err === "incomplete" && !expiry.trim())} />
         </div>
         <div>
           <label htmlFor={`${id}-c`} className="ck-label">CVC</label>
-          <input id={`${id}-c`} type="text" inputMode="numeric" autoComplete="off" data-1p-ignore data-lpignore="true" value={cvc} onChange={(e) => { setCvc(e.target.value); if (err) setPhase({ kind: "form" }); }} placeholder="123" className={input(err === "incomplete" && !cvc.trim())} />
+          <input id={`${id}-c`} type="text" inputMode="numeric" autoComplete="off" data-1p-ignore data-lpignore="true" value={cvc} onChange={(e) => { setCvc(formatCvc(e.target.value, brand)); if (err) setPhase({ kind: "form" }); }} placeholder={brand === "amex" ? "1234" : "123"} maxLength={4} className={input(err === "incomplete" && !cvc.trim())} />
         </div>
       </div>
       {err && <p role="alert" className="ck-err">{err === "email" ? "Enter the email for your receipt." : "Fill in all three card fields. In test mode any values work."}</p>}

@@ -1403,3 +1403,6 @@ body { background: #F6F7F6; }
 .site .ac-field input:focus,
 .site .ac-field input:focus-visible { box-shadow: none; outline: none; border-radius: 0; padding-inline: 0; }
 .site .ac-field--app:focus-within { box-shadow: inset 0 0 0 2px var(--flag), 0 0 0 4px rgba(31, 122, 85, 0.14); }
+.site .ck-card { position: relative; }
+.site .ck-card .ck-input { padding-right: 96px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.site .ck-brand { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); margin-top: 3px; padding: 2px 8px; border-radius: 6px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); font-size: 0.75rem; font-weight: 700; color: var(--ink); }
