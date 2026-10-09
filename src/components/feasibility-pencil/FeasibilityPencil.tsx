@@ -20,7 +20,7 @@ import FeasFilterBar from "./FeasFilterBar";
 import FeasCard from "./FeasCard";
 import FeasibilityReportView from "@/components/report/FeasibilityReportView";
 import LoadingSteps from "./LoadingSteps";
-import { isPin, prettyAddress, readParcel, saveParcel } from "@/lib/parcel-context";
+import { isPin, saveParcel } from "@/lib/parcel-context";
 import { NoSearchResults } from "@/components/shared/states";
 import type { FeasSortKey } from "./types";
 
@@ -32,6 +32,7 @@ export default function FeasibilityPencil() {
 
   const [rows, setRows] = useState<DashboardPropertySlim[]>([]);
   const [singleAddress, setSingleAddress] = useState("");
+  const prefillRan = useRef(false);
   const [singleLoading, setSingleLoading] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkPhase, setBulkPhase] = useState("");
@@ -181,6 +182,8 @@ export default function FeasibilityPencil() {
         const sp = new URLSearchParams(window.location.search);
         sp.set("parcel", slim.pin);
         sp.set("address", q);
+        // This lot is now the one in the URL: no second run of it, and the menu link knows a report is open.
+        prefillRan.current = true;
         window.history.replaceState(null, "", `${window.location.pathname}?${sp.toString()}`);
       }
       setRows((prev) => mergeDashboardSlims(prev, [slim], 5000));
@@ -222,13 +225,20 @@ export default function FeasibilityPencil() {
   );
 
   /* ---- url prefill ---- */
-  const prefillRan = useRef(false);
   useEffect(() => {
-    // No address in the link (the menu's "Check my lot"): reopen the lot this browser last checked, so nobody types
-    // their address twice. A first visit has none and gets the empty search.
-    const remembered = !searchParams.get("address") && !searchParams.get("parcel") && searchParams.get("view") !== "favorites" ? readParcel() : null;
-    const prefill = searchParams.get("address") ?? (remembered?.address ? prettyAddress(remembered.address) + ", Seattle, WA" : null);
-    const parcel = searchParams.get("parcel") ?? remembered?.pin ?? null;
+    // "Check my lot" in the menu links here with nothing in the URL: it always opens the empty search, even when
+    // a report is already open on this page.
+    const prefill = searchParams.get("address");
+    const parcel = searchParams.get("parcel");
+    if (!prefill && !parcel && searchParams.get("view") !== "favorites" && prefillRan.current) {
+      prefillRan.current = false;
+      setRows([]);
+      setSingleAddress("");
+      setSelectedId(null);
+      setDetailRow(null);
+      setErrorBanner("");
+      return;
+    }
     if (prefill && !prefillRan.current) {
       prefillRan.current = true;
       setSingleAddress(prefill);
