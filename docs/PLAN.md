@@ -91,6 +91,22 @@ cascade vs anonymize projects; hard delete is a second confirmed action that als
 
 Stripe stays behind `PAYMENTS_PROVIDER=stripe`; the mock provider keeps working locally and in E2E. `stripeProvider.charge` is finished for the one-time products (Checkout, `mode: "payment"`, order marked paid by the webhook), which also closes the `TODO(payment)` in the checkout route.
 
+### Accounts, reports and free slots (requirement added 2026-10-09)
+
+- **Account before the report.** A visitor runs the free check and sees the teaser; before any feasibility report
+  (paid or free) is shown they create an account (Supabase email sign-up, already in place). Guest checkout goes
+  away; the paywall sits behind the account.
+- **My reports.** The account page lists every feasibility report the user has paid for (or redeemed), each with
+  its PDF (rendered server-side from the same `buildReportPdf`, stored in the private `project-files` bucket and
+  served through a signed URL). Reports that are not paid for never appear there, not even as "pending".
+- **Newsletter in the account.** The account shows the newsletter subscription (plan, status, renewal, portal
+  link) and its free feasibility slot: one per calendar month while active, "used" once redeemed, back to one on
+  the first of the next month, non-rolling. The slot is the `report_credits` ledger balance for the current
+  period, shown as a counter.
+- **Admin-granted slots.** In the admin Users table, an action "Add feasibility slots" inserts `+n` ledger rows
+  (`reason: "admin"`, with the admin as actor, audited). Admin slots carry over until used (period `null`), unlike
+  the newsletter's monthly slot; the balance shown to the user is the sum of both.
+
 ## 5. Schema changes (migration `0011_admin_monetization.sql`, with `supabase/migrations/down/0011.sql`)
 
 ```
@@ -100,7 +116,9 @@ admin_audit_log    id, created_at, actor, action, environment, target_table, tar
 subscriptions      id, user_id, email, stripe_customer_id, stripe_subscription_id unique, plan (newsletter),
                    status, current_period_start/end, cancel_at, created_at, updated_at
 stripe_events      id (stripe event id, pk), type, received_at            -- idempotency
-report_credits     id, user_id, period char(7), delta int, reason (grant|redeem|refund|admin), order_id, created_at
+report_credits     id, user_id, period char(7) null (null = carries over), delta int, reason (grant|redeem|refund|admin),
+                   order_id, actor (admin user for grants), created_at
+report_pdfs        order_id, storage_path, bytes, rendered_at         -- the PDF of each paid report
 profiles           + deleted_at, + persona (investor|homeowner|null), + newsletter_only bool
 projects           + deleted_at
 views              admin_daily_signups, admin_daily_llm, admin_mrr
