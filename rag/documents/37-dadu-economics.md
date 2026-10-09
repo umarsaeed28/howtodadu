@@ -1,6 +1,6 @@
 # DADU resale value, cost and return
 
-What a finished backyard cottage sells for, what it costs, and the return. Team market read, October 2026. Resale value, not rent.
+What a finished DADU sells for, what it costs, and the return. Team market read, October 2026. Resale value, not rent.
 
 ## Sale price
 - About $800 per sf for an 800 sf DADU and about $680 per sf for a 1,000 sf DADU. Smaller units sell for more per foot.
@@ -13,4 +13,4 @@ What a finished backyard cottage sells for, what it costs, and the return. Team 
 ## Return
 - Profit = sale value − all-in cost. ROI = profit ÷ all-in cost.
 - 1,000 sf: $280,000 profit, about 70% ROI. 800 sf: $310,000 profit, about 94% ROI.
-- A smaller cottage can return more per dollar; the larger one returns more in total. These are estimates, not appraisals.
+- A smaller DADU can return more per dollar; the larger one returns more in total. These are estimates, not appraisals.

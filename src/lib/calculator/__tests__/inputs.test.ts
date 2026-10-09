@@ -79,7 +79,7 @@ describe("parseForm", () => {
     expect(p.costOnly).toBeNull();
   });
 
-  it("gives cost results plus the DADU's own resale value when there is no purchase price (an owner adding a cottage)", () => {
+  it("gives cost results plus the DADU's own resale value when there is no purchase price (an owner adding a DADU)", () => {
     const p = parseForm(form({ sf: "1000" }));
     expect(p.ready).toBe(true);
     expect(p.construction).toBe(350_000);

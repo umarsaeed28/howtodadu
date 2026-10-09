@@ -244,12 +244,12 @@ export function NearbyAdus({ row }: { row: FeasibilityTableRow }) {
   const max = 1320;
   const marks = [
     { label: "Nearest attached ADU", d: f.nearestAADUDist, color: "var(--flag)" },
-    { label: "Nearest backyard cottage", d: f.nearestDADUDist, color: "#B9573F" },
+    { label: "Nearest DADU", d: f.nearestDADUDist, color: "#B9573F" },
   ].filter((m) => m.d != null);
   return (
     <Card title="Nearby ADUs" source="Permitted ADUs within 1,320 ft (quarter mile)">
       <div className="flex gap-6 text-sm" style={{ color: "var(--ink)" }}>
-        <p><span className="pa-display text-2xl tabular-nums">{f.nearbyDADU ?? 0}</span> backyard cottages</p>
+        <p><span className="pa-display text-2xl tabular-nums">{f.nearbyDADU ?? 0}</span> DADUs</p>
         <p><span className="pa-display text-2xl tabular-nums">{f.nearbyAADU ?? 0}</span> attached units</p>
       </div>
       <div className="relative mt-1 h-10">

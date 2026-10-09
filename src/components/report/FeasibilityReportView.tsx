@@ -62,7 +62,7 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   // Your estimate of the front house's after-repair value. Empty means break-even: what it costs plus the rehab.
   const [houseArvText, setHouseArvText] = useState("");
   const houseArvInput = Number(houseArvText.replace(/[^0-9.]/g, "")) || null;
-  // The cottage the estimate is for: the one drawn on the plan when there is one, else the largest the lot allows.
+  // The DADU the estimate is for: the one drawn on the plan when there is one, else the largest the lot allows.
   const estSf = drawnSf ?? s.max_buildable_sf?.value ?? null;
   const estCost = estSf ? constructionEstimate(estSf) : null;
   const asDrawn = drawnSf != null && s.max_buildable_sf != null && Math.round(drawnSf) !== Math.round(s.max_buildable_sf.value);
@@ -86,7 +86,7 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   const houseArv = houseArvInput ?? breakEven;
   const arv = e && houseArv != null ? { total: houseArv + e.saleValue, house: houseArv, own: houseArvInput != null } : null;
   const money = (n: number) => (n < 0 ? "−" : "") + usd(Math.abs(n));
-  // The strip: price when the home is for sale, then what the cottage costs and returns. Numbers lead, one line each.
+  // The strip: price when the home is for sale, then what the DADU costs and returns. Numbers lead, one line each.
   const tiles: { label: string; value: string; note?: string; tone?: "green" | "red"; extra?: React.ReactNode }[] = [];
   if (listing)
     tiles.push({
@@ -108,7 +108,7 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   if (e) {
     tiles.push({ label: "DADU resale value", value: usd(e.saleValue), note: `${usd(e.salePsf)} per sf · ${usd(e.allInCost)} all in` });
     if (arv && listing) {
-      // The whole deal: what it all sells for, less everything paid (the house, its rehab, the cottage and soft costs).
+      // The whole deal: what it all sells for, less everything paid (the house, its rehab, the DADU and soft costs).
       const cashIn = listing.price + e.rehabCost + e.buildCost + e.softCosts;
       const profit = arv.total - cashIn;
       const pct = Math.round((profit / cashIn) * 100);
@@ -140,7 +140,7 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
         </p>
       </div>
       <h2 id="rep-sum" className="mt-3 text-xl font-semibold leading-snug sm:text-2xl" style={{ color: "var(--ink)" }}>
-        {s.verdict === "Feasible" ? "This lot can take a backyard cottage." : s.verdict === "Conditional" ? "A backyard cottage could work here, with conditions." : "A backyard cottage will not work on this lot as it stands."}
+        {s.verdict === "Feasible" ? "This lot can take a DADU." : s.verdict === "Conditional" ? "A DADU could work here, with conditions." : "A DADU will not work on this lot as it stands."}
       </h2>
       <p className="mt-1 max-w-3xl text-base leading-relaxed" style={{ color: "var(--slate)" }}>{s.headline} {slim.neighborhood ? `${slim.neighborhood}. ` : ""}This is the site and code check.</p>
       </div>

@@ -30,7 +30,7 @@ development standards. Typical constraints include:
 
 ## Accessory dwelling units (ADU / DADU)
 
-An attached ADU (AADU) or detached ADU (DADU / backyard cottage) can add homes
+An attached ADU (AADU) or detached ADU (DADU) can add homes
 on a lot in addition to the primary structure. DADUs have their own height,
 size, and setback rules, and can often be combined with middle-housing unit
 counts.

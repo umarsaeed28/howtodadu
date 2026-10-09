@@ -45,7 +45,7 @@ async function main() {
     .from("gc_partners")
     .upsert(
       [
-        { email: BUILDER.email, company: "Northgate Cottage Co.", contact_name: BUILDER.name, phone: "206-555-0101", budget_tiers: ["250k_400k", "over_400k"], areas: ["north", "central"], size_tiers: ["medium", "large"] },
+        { email: BUILDER.email, company: "Northgate Builders", contact_name: BUILDER.name, phone: "206-555-0101", budget_tiers: ["250k_400k", "over_400k"], areas: ["north", "central"], size_tiers: ["medium", "large"] },
         { email: "bids@rainier-backyard.test", company: "Rainier Backyard Builders", contact_name: "Dana Ruiz", phone: "206-555-0102", budget_tiers: ["under_250k", "250k_400k"], areas: ["south", "central", "west"], size_tiers: ["small", "medium"] },
       ],
       { onConflict: "email" },
@@ -79,7 +79,7 @@ async function main() {
     if (error || !p) throw error ?? new Error("insert project");
     ids.push(p.id);
     const summary = {
-      pin: s.parcel_id, score: s.score, verdict: s.verdict, headline: `A ${s.maxDadu} sf backyard cottage fits with room to spare.`, maxDaduSf: s.maxDadu, buildableAreaSf: s.buildable, lotSqft: s.lotSqft, zoning: s.zoning,
+      pin: s.parcel_id, score: s.score, verdict: s.verdict, headline: `A ${s.maxDadu} sf DADU fits with room to spare.`, maxDaduSf: s.maxDadu, buildableAreaSf: s.buildable, lotSqft: s.lotSqft, zoning: s.zoning,
       coveragePct: 22, maxCoveragePct: 35, heightFt: 18, rearSetbackFt: 5, sideSetbackFt: 5, parking: "None required for a DADU in Seattle", costUsd: s.maxDadu * 350 + 50_000, rentMonthly: 2500, saleValueUsd: Math.round(s.maxDadu * (s.maxDadu >= 1000 ? 680 : 800 - ((s.maxDadu - 800) / 200) * 120)),
     };
     await db.from("feasibility_reports").insert({ project_id: p.id, score: s.score, verdict: s.verdict, max_dadu_sf: s.maxDadu, buildable_area_sf: s.buildable, summary, created_at: daysAgo(s.created - 1) });

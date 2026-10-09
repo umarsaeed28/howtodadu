@@ -80,7 +80,7 @@ export default function CalculatorClient() {
         <div>
           <h1 className="pa-display text-2xl sm:text-3xl" style={{ color: "var(--ink)" }}>Estimate your return</h1>
           <p className="mt-1 max-w-xl text-sm" style={{ color: "var(--slate)" }}>
-            A full proforma: the house, the cottage, financing, holding costs and the exit. Team rules start filled in; market numbers are yours.
+            A full proforma: the house, the DADU, financing, holding costs and the exit. Team rules start filled in; market numbers are yours.
             {address ? <> Estimating for <strong style={{ color: "var(--ink)" }}>{address}</strong>.</> : null}
           </p>
         </div>

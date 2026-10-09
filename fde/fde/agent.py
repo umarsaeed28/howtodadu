@@ -239,7 +239,7 @@ class FeasibilityAgent:
                 citations=[sample_cite],
             ),
             Allowance(
-                label="DADU / backyard cottage",
+                label="DADU",
                 detail="A detached ADU can usually be added alongside primary units, subject to size/height limits.",
                 confidence="medium",
                 citations=[sample_cite],
@@ -278,7 +278,7 @@ class FeasibilityAgent:
             BuildScenario(
                 name="House + DADU",
                 units=2,
-                summary="Keep/replace the primary house and add a detached backyard cottage.",
+                summary="Keep/replace the primary house and add a DADU.",
                 key_constraints=["DADU max size/height", "Rear-yard coverage"],
                 citations=[sample_cite],
             )

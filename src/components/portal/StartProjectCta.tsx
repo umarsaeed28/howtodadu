@@ -27,7 +27,7 @@ export default function StartProjectCta({ address, compact }: { address: string;
       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "rgba(255,255,255,.65)" }}>Pencil does the whole thing</p>
       <h3 id="start-h" className="pa-display mt-1 text-2xl">Start your DADU project</h3>
       <p className="mt-1 max-w-2xl text-sm" style={{ color: "rgba(255,255,255,.8)" }}>
-        From the lot to the keys: we pull the parcel, design and permit the cottage, match you with a builder, track the build, then help you sell it or rent it.
+        From the lot to the keys: we pull the parcel, design and permit the DADU, match you with a builder, track the build, then help you sell it or rent it.
       </p>
       {!compact && (
         <ol className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">

@@ -5,7 +5,7 @@ import PlansBrowser from "@/components/plans/PlansBrowser";
 
 export const metadata: Metadata = {
   title: "City-reviewed DADU plans — Pencil",
-  description: "Pre-approved backyard cottage designs by Seattle architecture firms, already reviewed by the city. See which ones fit your lot.",
+  description: "Pre-approved DADU designs by Seattle architecture firms, already reviewed by the city. See which ones fit your lot.",
 };
 
 export default function PlansPage() {

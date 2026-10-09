@@ -56,7 +56,7 @@ export function PermitStage({ b, viewer }: { b: ProjectBundle; viewer: Viewer })
   const canEdit = viewer.role !== "gc";
   if (!permit?.paid_at) {
     return (
-      <Card title="Architecture and permit package" hint="One fixed fee. Pencil designs the cottage, draws the permit set, submits it and manages the city's corrections.">
+      <Card title="Architecture and permit package" hint="One fixed fee. Pencil designs the DADU, draws the permit set, submits it and manages the city's corrections.">
         <p className="pa-display text-3xl tabular-nums" style={{ color: "var(--ink)" }}>{usd(PERMIT_PACKAGE.feeCents)}</p>
         <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>{PERMIT_PACKAGE.timeline}</p>
         <ul className="mt-3 flex flex-col gap-1.5 text-sm" style={{ color: "var(--ink)" }}>

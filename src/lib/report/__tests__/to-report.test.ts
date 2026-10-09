@@ -70,7 +70,7 @@ describe("toReport", () => {
     if (sf != null) expect(report.summary.construction_cost_usd?.value).toBe(Math.round(sf * COST_PER_SF));
   });
 
-  it("only scores the single cottage scenario", () => {
+  it("only scores the single DADU scenario", () => {
     const scored = report.scenarios.filter((s) => s.score != null).map((s) => s.id);
     expect(scored).toEqual(["single_dadu"]);
   });

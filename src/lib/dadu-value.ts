@@ -2,7 +2,7 @@ import { COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
 
 /**
  * What a finished DADU sells for and what it returns, from the team's market read (Oct 2026): about $800 per sf for an
- * 800 sf cottage and $680 per sf for a 1,000 sf one. Smaller units sell for more per foot, so the rate is a straight
+ * 800 sf DADU and $680 per sf for a 1,000 sf one. Smaller units sell for more per foot, so the rate is a straight
  * line through those two points, held flat outside 500 to 1,000 sf where there is no data. Costs are the $350 per sf
  * construction estimate plus $50,000 of soft costs (design, permits, fees, utilities). Resale value, not rent.
  */

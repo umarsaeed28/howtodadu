@@ -26,7 +26,7 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
         <Container>
           <div className="s-grid s-grid-2" style={{ gap: "clamp(2rem,5vw,4rem)", alignItems: "start" }}>
             <div>
-              <Heading level={1} style={{ fontSize: "clamp(2.4rem, 4.2vw, 3.5rem)", maxWidth: "16ch" }}>One team, from buying the lot to building the cottage.</Heading>
+              <Heading level={1} style={{ fontSize: "clamp(2.4rem, 4.2vw, 3.5rem)", maxWidth: "16ch" }}>One team, from buying the lot to building the DADU.</Heading>
               <Lede style={{ marginTop: 22, maxWidth: "34rem" }}>
                 Pencil runs your Seattle DADU end to end. We find and buy the lot, check what fits, design it, get it
                 permitted and build it, with one team and one project tracker the whole way. It starts with a free consult.

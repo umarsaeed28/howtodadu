@@ -6,7 +6,7 @@ import MapHome from "@/components/map/MapHome";
 export const metadata: Metadata = {
   title: "Search DADU lots in Seattle — Pencil",
   description:
-    "Every single-family lot in Seattle that can take a backyard cottage, scored and mapped. Pick a lot to open its feasibility report.",
+    "Every single-family lot in Seattle that can take a DADU, scored and mapped. Pick a lot to open its feasibility report.",
 };
 
 export default function SearchPage() {

@@ -30,7 +30,7 @@ export default function DaduSnapshot({ site, daduSqft, buildCost, layoutLabel }:
       {site.eligible && (
         <dl className="grid grid-cols-3 gap-2 text-center">
           {([
-            [daduSqft ? `${daduSqft.toLocaleString()} sf` : "n/a", "largest cottage"],
+            [daduSqft ? `${daduSqft.toLocaleString()} sf` : "n/a", "largest DADU"],
             [econ ? `${Math.round(econ.roi * 100)}% ROI` : buildCost ? usd(buildCost) : "n/a", econ ? `${usd(econ.profit)} profit` : "to build, about"],
             [layoutLabel ?? "n/a", "best layout"],
           ] as [string, string][]).map(([v, k]) => (

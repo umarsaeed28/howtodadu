@@ -25,7 +25,7 @@ function Acquire() {
 
 function Feasibility() {
   return (
-    <svg viewBox="0 0 120 84" role="img" aria-label="A scored site plan with the cottage drawn in">
+    <svg viewBox="0 0 120 84" role="img" aria-label="A scored site plan with the DADU drawn in">
       <rect x="30" y="8" width="50" height="68" fill="#fff" stroke={INK} strokeOpacity=".5" />
       <rect x="37" y="15" width="36" height="54" fill={GT} stroke={G} strokeWidth="1" strokeDasharray="2 2" />
       <rect x="40" y="46" width="30" height="20" fill="url(#jr-hatch)" stroke={INK} strokeOpacity=".5" />
@@ -62,7 +62,7 @@ function Permit() {
 
 function Build() {
   return (
-    <svg viewBox="0 0 120 84" role="img" aria-label="A cottage being framed">
+    <svg viewBox="0 0 120 84" role="img" aria-label="A DADU being framed">
       <path d="M20 76h80" stroke={INK} strokeOpacity=".4" />
       <path d="M32 76V42l28-22 28 22v34" fill="#fff" stroke={INK} strokeOpacity=".7" strokeWidth="1.5" strokeLinejoin="round" />
       <path d="M40 76V48M48 76V42M56 76V36M64 76V36M72 76V42M80 76V48M32 60h56" stroke={G} strokeWidth="1.5" />
@@ -75,7 +75,7 @@ function Build() {
 
 function Keys() {
   return (
-    <svg viewBox="0 0 120 84" role="img" aria-label="A finished cottage with keys and a rent sign">
+    <svg viewBox="0 0 120 84" role="img" aria-label="A finished DADU with keys and a rent sign">
       <path d="M14 76h92" stroke={INK} strokeOpacity=".4" />
       <path d="M30 76V44l24-18 24 18v32z" fill={GT} stroke={INK} strokeOpacity=".7" strokeWidth="1.5" strokeLinejoin="round" />
       <rect x="48" y="56" width="12" height="20" fill="#fff" stroke={INK} strokeOpacity=".6" />

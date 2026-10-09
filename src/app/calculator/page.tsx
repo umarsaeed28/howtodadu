@@ -5,7 +5,7 @@ import CalculatorClient from "@/components/calculator/CalculatorClient";
 export const metadata: Metadata = {
   title: "Estimate your return — Pencil",
   description:
-    "Enter your own numbers to see what a backyard cottage costs and whether it pays. Construction is estimated at $350 per square foot.",
+    "Enter your own numbers to see what a DADU costs and whether it pays. Construction is estimated at $350 per square foot.",
 };
 
 export default function CalculatorPage() {

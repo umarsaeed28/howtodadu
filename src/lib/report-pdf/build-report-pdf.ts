@@ -186,7 +186,7 @@ export async function buildReportPdf({ slim, report, plan, study }: ReportPdfInp
     for (const para of study.overview) text(para, { gap: 1.5 });
   }
 
-  heading("Master plan", "The lot as drawn in the report, with each cottage where it was placed when this PDF was made.");
+  heading("Master plan", "The lot as drawn in the report, with each DADU where it was placed when this PDF was made.");
   if (planImg) {
     image(planImg, 126);
     if (plan) {
@@ -244,7 +244,7 @@ export async function buildReportPdf({ slim, report, plan, study }: ReportPdfInp
 
   /* ---- section ---- */
   if (sectionImg) {
-    heading("Section through the lot", "Ground profile from the front lot line to the rear, through the cottage.");
+    heading("Section through the lot", "Ground profile from the front lot line to the rear, through the DADU.");
     image(sectionImg, 80);
   }
 

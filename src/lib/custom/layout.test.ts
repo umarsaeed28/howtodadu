@@ -29,10 +29,10 @@ describe("validateLayout", () => {
     expect(validateLayout(overlap, f).some((e) => e.includes("overlap"))).toBe(true);
   });
 
-  it("needs a stair on both floors of a two-story cottage", () => {
+  it("needs a stair on both floors of a two-story DADU", () => {
     const two = { ...f, stories: 2 as const };
     const noStair = ruleLayout(two).filter((b) => b.kind !== "stair");
-    expect(validateLayout(noStair, two)).toContain("A two-story cottage needs a stair on both floors.");
+    expect(validateLayout(noStair, two)).toContain("A two-story DADU needs a stair on both floors.");
   });
 
   it("needs an exterior bedroom and a shared wet wall", () => {
@@ -48,7 +48,7 @@ describe("validateLayout", () => {
     expect(errs.some((e) => e.startsWith("Keep the plumbing together"))).toBe(true);
   });
 
-  it("rejects a second floor on a one-story cottage and missing rooms", () => {
+  it("rejects a second floor on a one-story DADU and missing rooms", () => {
     const errs = validateLayout([{ kind: "living", floor: 2, x: 0, y: 0, w: 10, h: 10 }], f);
     expect(errs.some((e) => e.includes("one story"))).toBe(true);
     expect(errs).toContain("The layout needs a bedroom.");

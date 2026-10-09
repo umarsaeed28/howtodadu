@@ -17,7 +17,7 @@ export function TrackedLink<E extends FunnelEvent>({ href, event, props, classNa
 }
 
 const TERMS = {
-  DADU: "Detached Accessory Dwelling Unit: a backyard cottage.",
+  DADU: "Detached Accessory Dwelling Unit: a second, separate home on the same lot.",
   FAR: "Floor Area Ratio: how much building your lot allows.",
 } as const;
 

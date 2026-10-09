@@ -85,7 +85,7 @@ export function buildStudy(i: StudyInput): Study {
 
   const overview = [
     `This study evaluates keeping the existing single-family house at ${i.address} and building a new detached accessory dwelling unit (DADU) behind it.`,
-    `The lot is ${lot ? sf(lot) : "of unknown size"} and zoned ${zoneName(i.zoning)}${hood ? `, in ${hood}` : ""}. ${alley ? "A public alley runs along the rear lot line, which suits a DADU well for construction access, utilities and the cottage's own entry." : "There is no alley, so construction, utilities and the path to the cottage come from the street, past the house."}${grade ? ` The ground across the DADU site ${steep ? `slopes about ${Math.round(grade.slopePct)}%, so grading or retaining walls are likely` : `is fairly gentle (about ${Math.round(grade.riseFt)} ft of fall)`}.` : ""}`,
+    `The lot is ${lot ? sf(lot) : "of unknown size"} and zoned ${zoneName(i.zoning)}${hood ? `, in ${hood}` : ""}. ${alley ? "A public alley runs along the rear lot line, which suits a DADU well for construction access, utilities and the DADU's own entry." : "There is no alley, so construction, utilities and the path to the DADU come from the street, past the house."}${grade ? ` The ground across the DADU site ${steep ? `slopes about ${Math.round(grade.slopePct)}%, so grading or retaining walls are likely` : `is fairly gentle (about ${Math.round(grade.riseFt)} ft of fall)`}.` : ""}`,
     i.verdict === "Feasible"
       ? "On the city and county data, the site looks favorable for a DADU, with no major constraint found in this review."
       : i.verdict === "Conditional"
@@ -169,7 +169,7 @@ export function buildStudy(i: StudyInput): Study {
   ];
 
   const utilities = {
-    summary: `${alley ? "Check the alley" : "Check the street and side yard"} for utility poles and overhead lines near the DADU. They can push walls in, lower the roof, or move the cottage. Clearances depend on the line's voltage and must be confirmed with Seattle City Light during design.`,
+    summary: `${alley ? "Check the alley" : "Check the street and side yard"} for utility poles and overhead lines near the DADU. They can push walls in, lower the roof, or move the DADU. Clearances depend on the line's voltage and must be confirmed with Seattle City Light during design.`,
     clearances: ["Utility pole: about 5 ft clear", "Primary distribution line: about 14 ft clear", "Secondary service line: about 5 ft clear"],
   };
 

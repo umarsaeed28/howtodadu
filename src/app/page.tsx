@@ -22,7 +22,7 @@ export const metadata: Metadata = {
  * and alley access. The current rendering (front access) fills the slot until that image exists: replace
  * public/home/dadu-rendering.webp (same name) or HERO_IMAGE below, and update its alt text.
  */
-const HERO_IMAGE = { src: rendering, alt: "A Seattle craftsman house with a modern two-story DADU (backyard cottage) at the rear of the lot." };
+const HERO_IMAGE = { src: rendering, alt: "A Seattle craftsman house with a modern two-story DADU at the rear of the lot." };
 
 const PATHS = [
   { Icon: Handshake, title: "Not sure yet?", body: "Hand us the whole project. One team from acquisition to construction: the lot, the design, the permit, the build.", cta: "Book a free consult", href: "/contact", path: "consult" },

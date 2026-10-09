@@ -115,7 +115,7 @@ const extent = (x: Unit): Box => {
 /** A detached ADU keeps 5 ft from the house (team rule). An attached ADU joins the house, so it does not. */
 const HOUSE_SEPARATION_FT = 5;
 const UNIT_STYLE = {
-  dadu: { fill: "#E6C97E", name: "DADU", long: "Detached ADU (backyard cottage)" },
+  dadu: { fill: "#E6C97E", name: "DADU", long: "Detached ADU (DADU)" },
   aadu: { fill: "#A9CFC4", name: "AADU", long: "Attached ADU (addition)" },
 } as const;
 
@@ -192,7 +192,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
         const inside = (u: number, v: number, ww: number, dd: number) => !polyEnvelope || rect(u, v, ww, dd).every((q) => pointInPoly(q, envelope) || nearPoly(q, envelope, 0.6));
         const behind = houseMaxV ? houseMaxV + HOUSE_SEPARATION_FT : 0;
         // Pass 1: behind the house and clear of trees (the same open ground the score measures). Pass 2: anywhere.
-        // Widths shrink after depths, down to 15 ft, so a small spot still gets a cottage.
+        // Widths shrink after depths, down to 15 ft, so a small spot still gets a DADU.
         for (const avoidTrees of [true, false])
           for (let ww = w; ww >= Math.min(w, 15); ww -= 1) {
             const us: number[] = [];
@@ -411,7 +411,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     const u = useLeft ? left / 2 : houseMaxU + right / 2;
     const kind: AccessKind = width >= DRIVEWAY_FT ? "side" : width >= BLOCKED_BELOW_FT ? "tight" : "blocked";
     const label = kind === "side" ? `Driveway ${width.toFixed(1)}'` : kind === "tight" ? `${width.toFixed(1)}': confirm` : `No car access: ${width.toFixed(1)}'`;
-    // From the front lot line past the house to the cottage (or just past the house): the lane a car would use.
+    // From the front lot line past the house to the DADU (or just past the house): the lane a car would use.
     const vEnd = Math.min(ld - 2, Math.max(houseMaxV + 4, daduExt && daduExt.v > houseMaxV ? daduExt.v : 0));
     const laneW = Math.max(1, Math.min(drawn - 0.5, DRIVEWAY_FT));
     const lane = rect(u - laneW / 2, 0, laneW, vEnd);
