@@ -63,7 +63,7 @@ export default function CompanyPage() {
             Seattle now allows at least four homes on nearly every residential lot, and six near
             frequent transit. The opportunity is real, but figuring out which lots actually work takes
             zoning, design, and cost knowledge that most people do not have on hand. Pencil puts that
-            knowledge in everyone&apos;s reach, starting with a free check.
+            knowledge in everyone&apos;s reach, starting with the feasibility report.
           </Body>
           <div style={{ marginTop: 26 }}>
             <Button href="/contact">

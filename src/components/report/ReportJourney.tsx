@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, BadgeCheck, CircleAlert, Lock, Mail, UserRoundCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, Lock, Mail, UserRoundCheck } from "lucide-react";
 import type { ADUReport } from "@/lib/adu-analysis";
 import { computeFar, isNeighborhoodResidential, maxFarForZone } from "@/lib/feasibility/far";
 import { FRONT_SETBACK_FT, STREET_SIDE_SETBACK_FT } from "@/lib/site-envelope";
@@ -12,12 +12,13 @@ import { currentZone } from "@/lib/report/study";
 const sf = (n: number | null | undefined) => (n == null ? "n/a" : `${Math.round(n).toLocaleString()} sf`);
 
 /** The free teaser: eligibility, lot size and zone in the clear; everything else waits behind the paywall. */
-export function ReportTeaser({ eligible, lotSqft, zoning }: { eligible: boolean; lotSqft: number | null; zoning: string | null }) {
+/** Before payment: the public facts (lot size, zone) and locked rows. Nothing the report found is shown here. */
+export function ReportTeaser({ lotSqft, zoning }: { lotSqft: number | null; zoning: string | null }) {
   return (
     <section className="rt" aria-labelledby="rt-h">
-      <span className={`rt-icon${eligible ? "" : " rt-icon--warn"}`} aria-hidden>{eligible ? <BadgeCheck size={22} /> : <CircleAlert size={22} />}</span>
+      <span className="rt-icon" aria-hidden><Lock size={22} /></span>
       <div className="min-w-0">
-        <h2 id="rt-h" className="rt-h">{eligible ? "Good news. Your lot looks DADU-eligible." : "Your lot has some hurdles. Here's what we found."}</h2>
+        <h2 id="rt-h" className="rt-h">Your feasibility report is ready to unlock.</h2>
         <dl className="rt-facts">
           <div><dt>Lot size</dt><dd>{sf(lotSqft)}</dd></div>
           <div><dt>Zone</dt><dd>{currentZone(zoning) ?? "n/a"}</dd></div>

@@ -16,6 +16,7 @@ import { pushRecentAddress } from "@/lib/recent-addresses";
 import { useFavorites } from "@/hooks/useFavorites";
 import type { Verdict } from "@/lib/verdict";
 import { verdictFromScore } from "@/lib/feasibility-verdict";
+import { hasFeasibilityAccess } from "@/lib/report-access";
 import FeasAppBar from "./FeasAppBar";
 import FeasFilterBar from "./FeasFilterBar";
 import FeasCard from "./FeasCard";
@@ -296,15 +297,11 @@ export default function FeasibilityPencil() {
     return (
       <div className="flex min-h-[calc(100dvh_-_var(--nav-h))] flex-col items-center justify-center px-4 py-16">
         <div className="w-full max-w-2xl text-center">
-          <p className="pa-eyebrow" style={{ color: "var(--green)" }}>
-            Free feasibility check
-          </p>
-          <h1 className="pa-display mt-3 text-3xl md:text-4xl" style={{ color: "var(--ink)" }}>
+          <h1 className="pa-display text-3xl md:text-4xl" style={{ color: "var(--ink)" }}>
             Check a Seattle address.
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed" style={{ color: "var(--slate)" }}>
-            Enter an address to see what the property allows, the ways to build it, and an early read
-            on whether it pencils. No signup.
+            The feasibility report shows what the lot allows, where a DADU fits, and whether it pencils.
           </p>
 
           {errorBanner && (
@@ -502,6 +499,7 @@ export default function FeasibilityPencil() {
                       favorite={favoritesSet.has(slim.address.trim().toLowerCase())}
                       onToggleFavorite={() => toggleFavorite(slim.address)}
                       onOpen={() => setSelectedId(slim.id)}
+                      locked={!hasFeasibilityAccess(slim.pin, slim.address)}
                     />
                   ))}
                 </div>

@@ -252,6 +252,22 @@ function SectionTabs() {
   );
 }
 
+/** The shape of a report, with no numbers in it: what sits behind the paywall before payment. */
+function LockedPlaceholder() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="pa-skeleton h-16 w-40 rounded-xl" />
+        <div className="pa-skeleton h-8 w-28 rounded-lg" />
+        <div className="pa-skeleton h-6 w-72 rounded-lg" />
+      </div>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-5">{[0, 1, 2, 3, 4].map((k) => <div key={k} className="pa-skeleton h-20 rounded-xl" />)}</div>
+      <div className="pa-skeleton h-[420px] rounded-2xl" />
+      <div className="grid gap-6 lg:grid-cols-2"><div className="pa-skeleton h-56 rounded-2xl" /><div className="pa-skeleton h-56 rounded-2xl" /></div>
+    </div>
+  );
+}
+
 /**
  * The report below the hero, in the order of an architect's DADU feasibility study: the master plan
  * (drawn by the visitor), property information, jurisdiction, development standards, lot coverage and FAR, DADU
@@ -464,7 +480,7 @@ export default function FeasibilityReportView({
             <Heart size={15} aria-hidden fill={favorite ? "var(--flag)" : "none"} color={favorite ? "var(--flag)" : "var(--ink)"} />
             {favorite ? "Saved" : "Save"}
           </button>
-          {report && (
+          {report && unlocked && (
             <Link href={calculatorHref({ sf: drawnSf ?? report.summary.max_buildable_sf?.value, address: slim.address, price: detailRow?.result.listing?.price, houseSqft: detailRow?.result.listing?.livingSqft ?? detailRow?.result.feasibility?.totalBuildingSqft })} className="pa-btn pa-btn-primary pa-btn-sm no-underline">
               Estimate your return
             </Link>
@@ -478,16 +494,17 @@ export default function FeasibilityReportView({
         </div>
       )}
 
-      {accessChecked && !unlocked && detailRow && <ReportTeaser eligible={eligible} lotSqft={slim.lotSizeSqft} zoning={slim.zoning} />}
+      {accessChecked && !unlocked && detailRow && <ReportTeaser lotSqft={slim.lotSizeSqft} zoning={slim.zoning} />}
       {unlocked && purchase && <PurchaseBanner kind={purchase.kind} dueDate={purchase.dueDate} email={purchase.email} />}
 
       <div className="relative">
-      <div
-        inert={!unlocked}
-        aria-hidden={!unlocked || undefined}
-        className={unlocked ? (justUnlocked ? "report-reveal" : undefined) : "pointer-events-none max-h-[1500px] select-none overflow-hidden"}
-        style={unlocked ? undefined : { filter: "blur(9px)", WebkitMaskImage: "linear-gradient(to bottom, #000 55%, transparent)", maskImage: "linear-gradient(to bottom, #000 55%, transparent)" }}
-      >
+      {/* Locked: a placeholder stands in for the report. Nothing the report found reaches the page until it is paid for. */}
+      {!unlocked && accessChecked ? (
+        <div aria-hidden className="pointer-events-none max-h-[1100px] select-none overflow-hidden" style={{ filter: "blur(6px)", WebkitMaskImage: "linear-gradient(to bottom, #000 45%, transparent)", maskImage: "linear-gradient(to bottom, #000 45%, transparent)" }}>
+          <LockedPlaceholder />
+        </div>
+      ) : (
+      <div className={unlocked && justUnlocked ? "report-reveal" : undefined}>
       {loading && !report && (
         <div className="grid gap-6 lg:grid-cols-2" aria-busy="true" aria-label="Building the report">
           <div className="pa-raised h-72 pa-skeleton" />
@@ -508,6 +525,7 @@ export default function FeasibilityReportView({
         </Section>
       </div>
       </div>
+      )}
 
       {!unlocked && accessChecked && (
         <div className="absolute inset-0 flex items-start justify-center px-2 pt-8 sm:pt-14">

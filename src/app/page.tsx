@@ -40,8 +40,8 @@ const PERMIT = PRODUCTS.permit;
 
 const FAQ: FaqItem[] = [
   { q: "What does Pencil actually do?", a: "We run a DADU project from start to finish: find the lot, check what it can hold, design the DADU, get the permit and build it. Hire us for every stage, or only the ones you need." },
-  { q: "Do I need to own a lot already?", a: "No. Our search shows Seattle listings that can take a DADU, scored and priced out, and we can help you buy one. If you already own a lot, start with the free feasibility check." },
-  { q: "What does it cost?", a: `The first look is free. The full feasibility report is ${price(PRODUCTS.feasibility_instant.amountCents)}, or ${price(PRODUCTS.feasibility_reviewed.amountCents)} reviewed and validated by an architectural designer. A custom DADU plan is ${price(PRODUCTS.custom_plan.amountCents)} and the permit service is ${price(PRODUCTS.permit.amountCents)}. Build with Pencil at $${CONSTRUCTION_PER_SQFT} per sq ft and we handle the permitting, so you only pay for the architecture.` },
+  { q: "Do I need to own a lot already?", a: "No. Our search shows Seattle listings that can take a DADU, scored and priced out, and we can help you buy one. If you already own a lot, start with the feasibility report." },
+  { q: "What does it cost?", a: `The feasibility report is ${price(PRODUCTS.feasibility_instant.amountCents)}, or ${price(PRODUCTS.feasibility_reviewed.amountCents)} reviewed and validated by an architectural designer. A custom DADU plan is ${price(PRODUCTS.custom_plan.amountCents)} and the permit service is ${price(PRODUCTS.permit.amountCents)}. Build with Pencil at $${CONSTRUCTION_PER_SQFT} per sq ft and we handle the permitting, so you only pay for the architecture.` },
   { q: "How long does a project take?", a: "About 10 months from contract to final inspection: a month to buy and check the lot, a month of design, typically two months of city review, then six months of construction. SDCI sets its own review time, so we never promise an approval date." },
   { q: "Who designs and builds it?", a: "Our designers draw your plans, or you pick one of the city's pre-approved designs. For the build, we bring vetted builders, put their bids side by side and track the work to final inspection. Builders we refer may pay Pencil a referral fee; we tell you before you choose one." },
   { q: "Is the feasibility report a professional certification?", a: "No. It's a detailed report built on Seattle's zoning and code data. For expert eyes on your lot, have it reviewed and validated by an architectural designer." },
@@ -59,7 +59,7 @@ export default function Home() {
             <div style={{ marginTop: 26 }}>
               <AddressForm source="hero" label="Your Seattle address" />
             </div>
-            <p className="hm-trust"><Check size={15} aria-hidden /> Built on current Seattle code. No signup to start.</p>
+            <p className="hm-trust"><Check size={15} aria-hidden /> Built on current Seattle code.</p>
           </div>
           <figure className="hm-hero-art">
             <Image src={HERO_IMAGE.src} alt={HERO_IMAGE.alt} priority sizes="(min-width: 960px) 52vw, 100vw" placeholder="blur" />

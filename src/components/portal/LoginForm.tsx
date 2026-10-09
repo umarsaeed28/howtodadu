@@ -71,7 +71,7 @@ export default function LoginForm({ next, initialMode = "signin" }: { next: stri
 
       <h1 className="pa-display mt-5 text-2xl" style={{ color: "var(--ink)" }}>{mode === "signin" ? "Welcome back" : "Start your DADU project"}</h1>
       <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>
-        {mode === "signin" ? "Pick up where you left off." : "Free feasibility first. Permit and build when you are ready."}
+        {mode === "signin" ? "Pick up where you left off." : "Feasibility first. Permit and build when you are ready."}
       </p>
 
       <form onSubmit={submit} noValidate className="mt-5 flex flex-col gap-3.5">

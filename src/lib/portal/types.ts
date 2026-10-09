@@ -117,7 +117,7 @@ export function nextAction(b: Pick<ProjectBundle, "project" | "feasibility" | "p
     return { text: "Confirm the address and pull the parcel", who: "client" };
   }
   if (p.stage === "feasibility") {
-    if (!b.feasibility) return { text: "Run the free feasibility check", who: "client" };
+    if (!b.feasibility) return { text: "Run the feasibility check", who: "client" };
     return { text: "Start your permit package", who: "client" };
   }
   if (p.stage === "permit") {
