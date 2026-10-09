@@ -39,11 +39,12 @@ const PLAN = PRODUCTS.custom_plan;
 const PERMIT = PRODUCTS.permit;
 
 const FAQ: FaqItem[] = [
-  { q: "How big can a Seattle DADU be?", a: "Up to 1,000 square feet in most cases, with height limits tied to your lot size. Your feasibility report shows your exact numbers." },
-  { q: "Do I need off-street parking?", a: "No. Seattle doesn't require parking for a DADU." },
-  { q: "Pre-approved or custom: which is right for me?", a: "Pre-approved plans are faster and already city-reviewed. Custom plans fit unusual lots or specific layouts. Not sure? Start with feasibility; it will tell you." },
-  { q: "How long does permitting take?", a: "It depends on SDCI's queue and your plan type. Pre-approved plans typically move fastest. We track every step for you." },
-  { q: "Is the feasibility report a professional certification?", a: "No. It's a detailed data report based on Seattle's public zoning and code rules. Want expert eyes on it? Choose Architect-Reviewed." },
+  { q: "What does Pencil actually do?", a: "We run a DADU project from start to finish: find the lot, check what it can hold, design the DADU, get the permit and build it. Hire us for every stage, or only the ones you need." },
+  { q: "Do I need to own a lot already?", a: "No. Our search shows Seattle listings that can take a DADU, scored and priced out, and Umar, our licensed real estate broker, can help you buy one. If you already own a lot, start with the free feasibility check." },
+  { q: "What does it cost?", a: `The first look is free. The full feasibility report is ${price(PRODUCTS.feasibility_instant.amountCents)}, or ${price(PRODUCTS.feasibility_reviewed.amountCents)} reviewed and validated by an architectural designer. A custom DADU plan is ${price(PRODUCTS.custom_plan.amountCents)} and the permit service is ${price(PRODUCTS.permit.amountCents)}. Build with Pencil at $${CONSTRUCTION_PER_SQFT} per sq ft and we handle the permitting, so you only pay for the architecture.` },
+  { q: "How long does a project take?", a: "About 10 months from contract to final inspection: a month to buy and check the lot, a month of design, typically two months of city review, then six months of construction. SDCI sets its own review time, so we never promise an approval date." },
+  { q: "Who designs and builds it?", a: "Our licensed architects and designers draw your plans, or you pick one of the city's pre-approved designs. For the build, we bring vetted builders, put their bids side by side and track the work to final inspection. Builders we refer may pay Pencil a referral fee; we tell you before you choose one." },
+  { q: "Is the feasibility report a professional certification?", a: "No. It's a detailed report built on Seattle's zoning and code data. For expert eyes on your lot, have it reviewed and validated by an architectural designer." },
 ];
 
 export default function Home() {

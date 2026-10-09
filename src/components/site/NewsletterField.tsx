@@ -3,7 +3,8 @@
 import { useId, useState } from "react";
 import { Check, Loader2, ArrowRight } from "lucide-react";
 
-export default function NewsletterField() {
+/** Email sign-up for the newsletter. With `label`, the button shows that text instead of an arrow. */
+export default function NewsletterField({ label, placeholder = "you@firm.com" }: { label?: string; placeholder?: string } = {}) {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const id = useId();
@@ -43,19 +44,21 @@ export default function NewsletterField() {
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="you@firm.com"
+        placeholder={placeholder}
         className="s-field"
         style={{ minHeight: 44 }}
       />
       <button
         type="submit"
         className="s-btn s-btn--primary"
-        aria-label="Subscribe"
+        aria-label={label ? undefined : "Subscribe"}
         disabled={state === "loading"}
-        style={{ minHeight: 44, padding: "0 0.9rem" }}
+        style={{ minHeight: 44, padding: "0 0.9rem", whiteSpace: "nowrap" }}
       >
         {state === "loading" ? (
           <Loader2 size={16} className="animate-spin" aria-hidden />
+        ) : label ? (
+          label
         ) : (
           <ArrowRight size={16} aria-hidden />
         )}

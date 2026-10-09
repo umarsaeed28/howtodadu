@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import type { Opportunity } from "@/lib/invest/opportunity";
 import OpportunityTile from "@/components/invest/OpportunityTile";
 import { Container, Heading, Lede, Section } from "@/components/ui";
+import NewsletterField from "@/components/site/NewsletterField";
 
 /**
  * "Today's best backyard opportunities": the top three tiles from the Invest feed. Loaded in the browser so the home
@@ -43,6 +44,10 @@ export default function InvestTeaser() {
             <div className="iv-grid" aria-busy="true">{[0, 1, 2].map((k) => <div key={k} className="hm-invest-skel" />)}</div>
           )}
           <Link href="/search?top=1" className="pa-btn pa-btn-primary hm-invest-cta">See all opportunities <ArrowRight size={15} aria-hidden /></Link>
+          <div className="hm-invest-news">
+            <p className="hm-invest-news-t">Get the best new opportunities by email.</p>
+            <div className="hm-invest-news-f"><NewsletterField label="Join the newsletter" placeholder="you@email.com" /></div>
+          </div>
         </div>
       </Container>
     </Section>
