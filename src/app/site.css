@@ -1397,3 +1397,30 @@ body { background: #F6F7F6; }
 @media (min-width: 900px) { .site .so { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); } }
 @media (max-width: 639px) { .site .st tbody th { width: 38%; } .site .st-ref { display: none; } .site .st thead th:nth-child(3) { display: none; } }
 .site .sl-drawn { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--flag-tint); color: var(--flag-deep); font-weight: 600; font-size: 0.92rem; }
+
+/* Free consult form ------------------------------------------------------- */
+.site .cf { display: grid; gap: 18px; }
+.site .cf-row { display: grid; gap: 18px; }
+@media (min-width: 560px) { .site .cf-row { grid-template-columns: 1fr 1fr; } }
+.site .cf-opt { font-weight: 400; color: var(--slate); }
+.site .cf-set { margin: 0; padding: 0; border: 0; min-width: 0; }
+.site .cf-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.site .cf-chip { position: relative; cursor: pointer; }
+.site .cf-chip input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.site .cf-chip span {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--card, #fff); color: var(--ink); font-size: 0.92rem; font-weight: 500;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.site .cf-chip:hover span { border-color: var(--flag); }
+.site .cf-chip input:checked + span { background: var(--green-tint, #e7f3ec); border-color: var(--flag); color: var(--flag-deep, var(--flag)); font-weight: 600; }
+.site .cf-chip input:focus-visible + span { outline: 2px solid var(--flag-deep, var(--flag)); outline-offset: 2px; }
+.site .cf-text { min-height: 96px; padding-top: 12px; padding-bottom: 12px; line-height: 1.6; }
+.site .cf-err { color: var(--red); font-size: 0.9rem; margin: 0; }
+.site .cf-done { text-align: center; display: grid; justify-items: center; gap: 10px; }
+.site .cf-done-icon { display: inline-flex; height: 44px; width: 44px; align-items: center; justify-content: center; border-radius: 999px; background: var(--green-tint); color: var(--green); }
+.site .cf-done .s-body { margin: 0; font-size: 0.95rem; max-width: 40ch; }
+.site .cf-help { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 10px; max-width: 34rem; }
+.site .cf-help li { display: flex; gap: 10px; align-items: flex-start; color: var(--ink); line-height: 1.5; }
+.site .cf-help svg { color: var(--flag); flex-shrink: 0; margin-top: 2px; }
+.site .cf-alt { color: var(--flag-deep, var(--flag)); font-weight: 600; text-underline-offset: 3px; }

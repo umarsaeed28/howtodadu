@@ -14,7 +14,7 @@ const GROUPS = [
     title: "Company",
     links: [
       { href: "/company", label: "About Pencil" },
-      { href: "/contact", label: "Talk to us" },
+      { href: "/contact", label: "Free consult" },
     ],
   },
   {

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { ArrowRight, Check, Compass, LayoutTemplate, ShieldCheck, Timer, Users } from "lucide-react";
+import { ArrowRight, Check, Handshake, LayoutTemplate, ShieldCheck, Timer, Users } from "lucide-react";
 import { Section, Container, Heading, Lede } from "@/components/ui";
 import { AddressForm, Term, TrackedLink } from "@/components/home/HomeBits";
 import Faq, { type FaqItem } from "@/components/home/Faq";
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 const HERO_IMAGE = { src: rendering, alt: "A Seattle craftsman house with a modern two-story DADU (backyard cottage) at the rear of the lot." };
 
 const PATHS = [
-  { Icon: Compass, title: "Not sure yet?", body: "Find out if your lot qualifies, how big you can build, and where it fits. Answers in seconds.", cta: "Check feasibility", href: "/feasibility", path: "feasibility" },
+  { Icon: Handshake, title: "Not sure yet?", body: "Talk to us first, free. We help you find and buy a lot, design, permit, and build: one step or all of them.", cta: "Book a free consult", href: "/contact", path: "consult" },
   { Icon: LayoutTemplate, title: "Want a proven design?", body: "Choose from plans already reviewed by the City of Seattle. The fastest path from idea to permit.", cta: "Browse plans", href: "/plans", path: "plans" },
 ] as const;
 
