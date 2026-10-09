@@ -68,6 +68,18 @@ export default function PlanDetail({ variants }: { variants: PreApprovedPlan[] }
           </div>
         )}
         {planState && !planState.ok && fit?.fits && <p className="pd-note">Drag the design inside the green area to clear: {planState.reasons[0]}</p>}
+        {state.status === "ready" && fit?.fits !== false && (
+          <div className="pd-start">
+            <p className="pd-start-t">Ready to build {plan.name}? Start a project and we&apos;ll take it from here.</p>
+            <Link
+              href={`/start?${new URLSearchParams({ parcel: state.parcel.pin, address: state.parcel.address, design: plan.id }).toString()}`}
+              onClick={() => track("plan_project_started", { plan_id: plan.id })}
+              className="s-btn s-btn--primary"
+            >
+              Start a project with this design <ArrowRight size={15} aria-hidden />
+            </Link>
+          </div>
+        )}
       </section>
 
       <RequestPlan plan={plan} pin={state.status === "ready" ? state.parcel.pin : null} address={state.status === "ready" ? state.parcel.address : ""} />

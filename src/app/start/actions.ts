@@ -6,11 +6,13 @@ import { getFeasibilityForAddress } from "@/lib/server/feasibility-query";
 import { summarizeFeasibility } from "@/lib/portal/feasibility-summary";
 import { isSavedPlan, type DrawnSummary, type SavedPlan } from "@/lib/saved-plan";
 import { isPin } from "@/lib/parcel-context";
+import { PREAPPROVED_PLANS, type PreApprovedPlan } from "@/lib/preapproved-dadus";
 
 /**
  * Starts a portal project from the lot the visitor last checked. If they already have a project on that parcel,
  * opens it instead of making a second one. Otherwise creates it, saves the feasibility with the DADU the client drew
- * on the report (stage set to Feasibility), then opens the project.
+ * on the report (stage set to Feasibility), then opens the project. A pre-approved design chosen on its plan page
+ * (`design`) is saved as the project's approved design option, on a new or an existing project.
  */
 export async function startProjectFromLot(fd: FormData): Promise<{ error?: string }> {
   const v = await currentViewer();
@@ -18,16 +20,21 @@ export async function startProjectFromLot(fd: FormData): Promise<{ error?: strin
   const pin = String(fd.get("pin") ?? "");
   const address = String(fd.get("address") ?? "").trim().slice(0, 200);
   if (!address) return { error: "We lost the address. Start from a new address instead." };
+  const design = PREAPPROVED_PLANS.find((p) => p.id === String(fd.get("design") ?? "")) ?? null;
   const db = await userClient();
 
   if (isPin(pin)) {
     const { data: existing } = await db.from("projects").select("id").eq("owner_id", v.id).eq("parcel_id", pin).limit(1).maybeSingle();
-    if (existing) redirect(`/portal/projects/${existing.id}`);
+    if (existing) {
+      if (design) await choosePreapprovedDesign(db, existing.id, v.id, design);
+      redirect(`/portal/projects/${existing.id}`);
+    }
   }
 
   const { data, error } = await db.from("projects").insert({ owner_id: v.id, address, parcel_id: isPin(pin) ? pin : null, stage: "acquire" }).select("id").single();
   if (error || !data) return { error: error?.message ?? "Could not start the project." };
   await logActivity(db, data.id, v.id, "note", `Project started for ${address}`);
+  if (design) await choosePreapprovedDesign(db, data.id, v.id, design);
 
   // The drawing the client left on the report's master plan comes with the project.
   let drawn: { plan: SavedPlan; dadu: DrawnSummary | null } | null = null;
@@ -50,4 +57,15 @@ export async function startProjectFromLot(fd: FormData): Promise<{ error?: strin
     console.warn("[start] feasibility failed:", outcome.error);
   }
   redirect(`/portal/projects/${data.id}`);
+}
+
+/** Saves a pre-approved plan as the project's approved design option, once per project. */
+async function choosePreapprovedDesign(db: Awaited<ReturnType<typeof userClient>>, projectId: string, actorId: string, design: PreApprovedPlan) {
+  const title = `${design.name} by ${design.designer}`;
+  const { data: same } = await db.from("design_options").select("id").eq("project_id", projectId).eq("title", title).limit(1).maybeSingle();
+  if (same) return;
+  const description = `City pre-approved plan (${design.option}): ${design.sqft.toLocaleString("en-US")} sf, ${design.beds} bed, ${design.baths} bath, ${design.stories === 2 ? "2 stories" : "1 story"}, ${design.widthFt} x ${design.depthFt} ft. Plan license from the firm: $${design.licenseFee.toLocaleString("en-US")}.`;
+  const { error } = await db.from("design_options").insert({ project_id: projectId, title, description, status: "approved", decided_at: new Date().toISOString() });
+  if (error) return console.warn("[start] design option failed:", error.message);
+  await logActivity(db, projectId, actorId, "note", `Chose the pre-approved design ${title} (${design.option})`);
 }
