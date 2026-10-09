@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink, FileText } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import { Container, Section } from "@/components/ui";
 import { PREAPPROVED_PLANS } from "@/lib/preapproved-dadus";
 import { Footprint, familyName } from "@/components/home/PlanCards";
@@ -48,7 +48,6 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
               </ul>
               <p className="pd-links">
                 <a href={p.pdfUrl} target="_blank" rel="noopener noreferrer"><FileText size={15} aria-hidden /> City plan set (PDF)</a>
-                <a href={p.detailUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={15} aria-hidden /> On the city&apos;s gallery</a>
               </p>
             </div>
           </div>
