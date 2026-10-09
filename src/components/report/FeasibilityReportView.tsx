@@ -20,7 +20,7 @@ import { isProductKind, type ProductKind } from "@/lib/pricing";
 import { track } from "@/lib/analytics";
 import SiteIntel from "./SiteIntel";
 import { ConstraintsGrid, RisksList } from "./ReportSections";
-import { StudyAnalysis, StudyConclusion, StudyOverview, StudyTable, StudyUtilities } from "./StudySections";
+import { StudyAnalysis, StudyConclusion, StudyTable, StudyUtilities } from "./StudySections";
 import { buildStudy, type Study } from "@/lib/report/study";
 import { loadPlan, savePlan, type DrawnSummary, type SavedPlan } from "@/lib/saved-plan";
 import { COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
@@ -224,17 +224,13 @@ function SectionTabs() {
 }
 
 /**
- * The report below the hero, in the order of an architect's DADU feasibility study: overview, the master plan
+ * The report below the hero, in the order of an architect's DADU feasibility study: the master plan
  * (drawn by the visitor), property information, jurisdiction, development standards, lot coverage and FAR, DADU
  * rules, site conditions, overhead utilities, risks and the conclusion.
  */
-function ReportBody({ report, row, slim, study, snapshotRef, onDaduChange, onDaduState, initialPlan, onPlanChange }: { report: FeasibilityReport; row: FeasibilityTableRow; slim: DashboardPropertySlim; study: Study; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null>; onDaduChange: (sf: number | null) => void; onDaduState: (s: DaduState | null) => void; initialPlan: SavedPlan | null; onPlanChange: (p: SavedPlan) => void }) {
+function ReportBody({ report, row, study, snapshotRef, onDaduChange, onDaduState, initialPlan, onPlanChange }: { report: FeasibilityReport; row: FeasibilityTableRow; study: Study; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null>; onDaduChange: (sf: number | null) => void; onDaduState: (s: DaduState | null) => void; initialPlan: SavedPlan | null; onPlanChange: (p: SavedPlan) => void }) {
   return (
     <div className="flex flex-col gap-6">
-      <Section id="rep-study" title="Project overview">
-        <StudyOverview study={study} aerialUrl={row.result.lot?.aerialUrl ?? null} address={slim.streetLine || slim.address} />
-      </Section>
-
       {/* The master plan breaks out of the page column to (nearly) the full screen width, so there is room to work. */}
       <div id="rep-plan" className="mx-[calc((100%_-_min(100vw_-_2rem,1680px))/2)] w-[min(100vw_-_2rem,1680px)] max-w-none scroll-mt-[190px]">
         <MasterPlan
@@ -465,7 +461,7 @@ export default function FeasibilityReportView({
       {report && <Hero report={report} slim={slim} listing={detailRow?.result.listing ?? null} drawnSf={drawnSf} houseSqft={detailRow?.result.listing?.livingSqft ?? detailRow?.result.feasibility?.totalBuildingSqft ?? null} />}
       {report && detailRow && <div className="mb-6"><LimitsStrip adu={detailRow.report} zoning={slim.zoning} lotSqft={slim.lotSizeSqft} buildingSqft={detailRow.result.feasibility?.totalBuildingSqft ?? null} /></div>}
       {report && detailRow && <SectionTabs />}
-      {report && detailRow && study && <ReportBody report={report} row={detailRow} slim={slim} study={study} snapshotRef={snapshotRef} onDaduChange={setDrawnSf} onDaduState={onDaduState} initialPlan={initialPlan} onPlanChange={onPlanChange} />}
+      {report && detailRow && study && <ReportBody report={report} row={detailRow} study={study} snapshotRef={snapshotRef} onDaduChange={setDrawnSf} onDaduState={onDaduState} initialPlan={initialPlan} onPlanChange={onPlanChange} />}
 
       <div className="mt-6">
         <Section id="rep-all" title="All property data">

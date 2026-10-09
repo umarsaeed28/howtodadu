@@ -181,11 +181,6 @@ export async function buildReportPdf({ slim, report, plan, study }: ReportPdfInp
   rule();
 
   /* ---- master plan, as the user arranged it ---- */
-  if (study) {
-    heading("Project overview");
-    for (const para of study.overview) text(para, { gap: 1.5 });
-  }
-
   heading("Master plan", "The lot as drawn in the report, with each DADU where it was placed when this PDF was made.");
   if (planImg) {
     image(planImg, 126);

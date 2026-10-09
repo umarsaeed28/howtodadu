@@ -26,23 +26,6 @@ export function StudyTable({ rows, head, withRef = false }: { rows: StudyRow[]; 
   );
 }
 
-/** Project overview: the written summary beside the aerial photo of the lot. */
-export function StudyOverview({ study, aerialUrl, address }: { study: Study; aerialUrl: string | null; address: string }) {
-  return (
-    <div className="so">
-      <div className="so-text">
-        {study.overview.map((p) => <p key={p}>{p}</p>)}
-      </div>
-      {aerialUrl && (
-        <figure className="so-aerial">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={aerialUrl.replace("style=topo", "style=satellite")} alt={`Aerial photo of ${address} and its neighbors`} loading="lazy" />
-        </figure>
-      )}
-    </div>
-  );
-}
-
 export function StudyAnalysis({ block }: { block: { rows: StudyRow[]; summary: string } }) {
   return (
     <>

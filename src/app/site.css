@@ -1341,11 +1341,6 @@ body { background: #F6F7F6; }
 .site .st-list { margin: 10px 0 0; padding-left: 1.2rem; display: grid; gap: 6px; color: var(--ink); }
 .site .st-k { margin: 18px 0 0; font-weight: 700; color: var(--ink); }
 .site .st-conclusion { margin: 0; font-size: 1.02rem; line-height: 1.65; color: var(--ink); max-width: 72ch; }
-.site .so { display: grid; gap: 20px; align-items: start; }
-.site .so-text p { margin: 0 0 12px; line-height: 1.65; color: var(--ink); max-width: 68ch; }
-.site .so-aerial { margin: 0; border-radius: 14px; overflow: hidden; background: var(--bg-soft); }
-.site .so-aerial img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; }
-@media (min-width: 900px) { .site .so { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); } }
 @media (max-width: 639px) { .site .st tbody th { width: 38%; } .site .st-ref { display: none; } .site .st thead th:nth-child(3) { display: none; } }
 .site .sl-drawn { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--flag-tint); color: var(--flag-deep); font-weight: 600; font-size: 0.92rem; }
 
