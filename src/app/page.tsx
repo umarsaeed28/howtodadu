@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { ArrowRight, Check, ShieldCheck, Timer, Users } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { Section, Container, Heading, Lede } from "@/components/ui";
 import { AddressForm, Term, TrackedLink } from "@/components/home/HomeBits";
 import Faq, { type FaqItem } from "@/components/home/Faq";
@@ -37,12 +37,6 @@ const PRICE_HREF: Record<ProductKind, string> = {
 const REPORT_TIERS: ProductKind[] = ["feasibility_instant", "feasibility_reviewed"];
 const PLAN = PRODUCTS.custom_plan;
 const PERMIT = PRODUCTS.permit;
-
-const WHY = [
-  { Icon: ShieldCheck, title: "Code first.", body: "Every result is checked against current Seattle DADU rules before you see it." },
-  { Icon: Timer, title: "Answers in seconds.", body: "Feasibility in seconds, so you know what fits before you spend a dollar on design." },
-  { Icon: Users, title: "Humans in the loop.", body: "AI does the heavy lifting. Licensed architects and designers, real people, make the calls." },
-];
 
 const FAQ: FaqItem[] = [
   { q: "How big can a Seattle DADU be?", a: "Up to 1,000 square feet in most cases, with height limits tied to your lot size. Your feasibility report shows your exact numbers." },
@@ -89,21 +83,6 @@ export default function Home() {
 
       {/* Today's best opportunities, from the Invest feed */}
       <InvestTeaser />
-
-      {/* Why Pencil */}
-      <Section soft style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-why">
-        <Container>
-          <Heading level={2} id="hm-why" style={{ maxWidth: "20ch" }}>Built for Seattle. Built for speed.</Heading>
-          <ul className="hm-why">
-            {WHY.map(({ Icon, title, body }) => (
-              <li key={title}>
-                <Icon size={24} aria-hidden className="hm-why-icon" />
-                <p><strong>{title}</strong> {body}</p>
-              </li>
-            ))}
-          </ul>
-        </Container>
-      </Section>
 
       {/* FAQ */}
       <Section style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-faq">
