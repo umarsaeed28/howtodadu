@@ -715,31 +715,6 @@
 .site .lp-stats dt {
   margin: 0;
 }
-.site .lp-journey {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(0.75rem, 1.5vw, 1rem);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.site .lp-step {
-  position: relative;
-}
-.site .lp-step-n {
-  font-family: var(--font-display), system-ui, sans-serif;
-  font-weight: 800;
-  font-size: 0.85rem;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: var(--ink);
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-}
 .site .lp-mapcard {
   padding: clamp(14px, 2vw, 20px);
 }
@@ -806,11 +781,6 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
-@media (min-width: 1024px) {
-  .site .lp-journey {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
 .site .lp-hero-art {
   margin: 0;
   padding: clamp(10px, 1.4vw, 14px);
@@ -823,4 +793,129 @@
   width: 100%;
   height: auto;
   border-radius: 10px;
+}
+
+/* How it works: the journey rail ------------------------------------------- */
+.site .jr {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1.25rem 0;
+}
+.site .jr-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-areas: "node art" "node text";
+  column-gap: 14px;
+  row-gap: 10px;
+}
+.site .jr-art {
+  grid-area: art;
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow: var(--nm-out);
+  padding: 10px 14px;
+}
+.site .jr-art svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 150px;
+}
+.site .jr-node {
+  grid-area: node;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.site .jr-node::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: -1.25rem;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--flag);
+  opacity: 0.35;
+}
+.site .jr-step:last-child .jr-node::before {
+  display: none;
+}
+.site .jr-node span {
+  position: relative;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 0.95rem;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 0 0 4px var(--bg-soft);
+  font-variant-numeric: tabular-nums;
+}
+.site .jr-text {
+  grid-area: text;
+}
+.site .jr-text .s-h3 {
+  display: inline;
+  margin-right: 8px;
+}
+.site .jr-tag {
+  font-size: 0.78rem;
+  vertical-align: middle;
+}
+.site .jr-text .s-body {
+  margin-top: 6px;
+  font-size: 0.95rem;
+}
+@media (min-width: 900px) {
+  .site .jr {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0 1rem;
+  }
+  .site .jr-step {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "art" "node" "text";
+    row-gap: 14px;
+    text-align: center;
+  }
+  .site .jr-art {
+    padding: 14px 18px;
+  }
+  .site .jr-node {
+    align-items: center;
+    height: 42px;
+  }
+  .site .jr-node::before {
+    left: -0.5rem;
+    right: -0.5rem;
+    top: 50%;
+    bottom: auto;
+    width: auto;
+    height: 2px;
+    margin: -1px 0 0;
+  }
+  .site .jr-step:first-child .jr-node::before {
+    left: 50%;
+  }
+  .site .jr-step:last-child .jr-node::before {
+    display: block;
+    right: 50%;
+  }
+  .site .jr-text .s-h3 {
+    display: block;
+    margin-right: 0;
+  }
+  .site .jr-tag {
+    margin-top: 8px;
+  }
 }

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, ClipboardCheck, Hammer, KeyRound, LayoutDashboard, MapPin, Ruler, Search } from "lucide-react";
+import { ArrowRight, LayoutDashboard, Search } from "lucide-react";
 import { Section, Container, Heading, Lede, Body, Button, Card, Eyebrow } from "@/components/ui";
 import Image from "next/image";
 import HomeAddressBar from "@/components/site/HomeAddressBar";
+import Journey from "@/components/site/Journey";
 import rendering from "../../public/home/dadu-rendering.webp";
 
 export const metadata: Metadata = {
@@ -12,14 +13,6 @@ export const metadata: Metadata = {
     "Pencil takes a Seattle property from feasibility to a built backyard cottage: free site score and plan, a fixed-fee permit package, vetted builders, and help selling or renting it.",
 };
 
-/* The journey, as the portal runs it, plus the exit. */
-const JOURNEY = [
-  { Icon: MapPin, title: "Acquire", tag: "Your lot or ours", body: "Start with a property you own, or ask us to find a lot that takes a cottage." },
-  { Icon: Ruler, title: "Feasibility", tag: "Free", body: "Score, buildable area, the largest cottage, a site plan you can drag, and rough numbers." },
-  { Icon: ClipboardCheck, title: "Permit", tag: "$15,000 fixed", body: "Design options you approve, permit drawings, submittal, and the city's corrections handled." },
-  { Icon: Hammer, title: "Build", tag: "Vetted builders", body: "One to three bids side by side, then a tracker from contract to certificate of occupancy." },
-  { Icon: KeyRound, title: "Sell or rent", tag: "The payoff", body: "Priced and listed, or leased. The cottage earns from day one." },
-];
 
 const FINDINGS = [
   { title: "Where you can build", body: "Setbacks, height and lot coverage under current Seattle code, drawn as the buildable envelope." },
@@ -103,19 +96,9 @@ export default function Home() {
               Start your project <ArrowRight size={16} aria-hidden />
             </Button>
           </div>
-          <ol className="lp-journey" style={{ marginTop: 36 }}>
-            {JOURNEY.map(({ Icon, title, tag, body }, i) => (
-              <li key={title} className="s-card s-card--pad lp-step">
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                  <span className="lp-step-n" aria-hidden>{i + 1}</span>
-                  <span className="s-pill" style={{ fontSize: "0.78rem" }}>{tag}</span>
-                </div>
-                <Icon size={22} aria-hidden style={{ color: "var(--flag)", marginTop: 18 }} />
-                <h3 className="s-h3" style={{ marginTop: 10 }}>{title}</h3>
-                <Body style={{ marginTop: 6, fontSize: "0.95rem" }}>{body}</Body>
-              </li>
-            ))}
-          </ol>
+          <div style={{ marginTop: 40 }}>
+            <Journey />
+          </div>
         </Container>
       </Section>
 
