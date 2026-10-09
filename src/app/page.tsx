@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight, LayoutDashboard, Search } from "lucide-react";
 import { Section, Container, Heading, Lede, Body, Button, Card, Eyebrow } from "@/components/ui";
 import Image from "next/image";
-import HomeAddressBar from "@/components/site/HomeAddressBar";
+import HomeSearch from "@/components/search/HomeSearch";
 import Journey from "@/components/site/Journey";
 import rendering from "../../public/home/dadu-rendering.webp";
 
@@ -54,15 +54,9 @@ export default function Home() {
               <Lede style={{ marginTop: 22 }}>
                 Pencil reads the parcel, draws the cottage, permits it, builds it with vetted contractors, then helps you sell it or rent it. The first look is free.
               </Lede>
-              <div style={{ marginTop: 30 }}>
-                <HomeAddressBar />
+              <div style={{ marginTop: 28 }}>
+                <HomeSearch />
               </div>
-              <p className="s-body" style={{ marginTop: 14, fontSize: "0.95rem" }}>
-                Free, no sign-up for the first look.{" "}
-                <Link href="/search" className="s-btn s-btn--ghost" style={{ minHeight: 0, padding: 0, fontSize: "inherit" }}>
-                  Or browse every lot that can take one
-                </Link>
-              </p>
             </div>
             <figure className="lp-hero-art">
               <Image src={rendering} alt="A Seattle craftsman house with a new two-story backyard cottage behind it, drawn as an architect's rendering." priority sizes="(min-width: 900px) 50vw, 100vw" placeholder="blur" />
