@@ -57,9 +57,8 @@ export default function Home() {
       <section className="hm-hero" aria-labelledby="hm-h1">
         <div className="hm-hero-inner">
           <div className="hm-hero-copy">
-            <p className="hm-eyebrow">Seattle <Term word="DADU" /> feasibility, plans, and permits</p>
-            <Heading level={1} id="hm-h1">Start your DADU investment with confidence, and a friend by your side.</Heading>
-            <Lede style={{ marginTop: 18 }}>See exactly what you can build on your lot in 30 seconds. Then get permit-ready plans in under a week, and we&apos;ll see them through to your permit.</Lede>
+            <Heading level={1} id="hm-h1">Start your DADU with a friend by your side.</Heading>
+            <Lede style={{ marginTop: 18 }}>See what fits your lot in 30 seconds. We take it from plans to permit.</Lede>
             <div style={{ marginTop: 26 }}>
               <AddressForm source="hero" label="Your Seattle address" />
             </div>
