@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowDown, RotateCcw } from "lucide-react";
+import { ArrowDown, Plus, RotateCcw } from "lucide-react";
 import {
   DEFAULT_FORM,
   fromSearchParams,
@@ -17,7 +17,7 @@ import { usd, pct } from "@/lib/format";
 import Field from "./Field";
 import CostStack from "./CostStack";
 import Proforma from "./Proforma";
-import { REHAB_LABELS, REHAB_RATES, type RehabLevel } from "@/lib/dadu-value";
+import { REHAB_LABELS, REHAB_RATES, salePricePerSf, type RehabLevel } from "@/lib/dadu-value";
 import Heatmap, { TONE_TINT, TONE_VAR, toneOf } from "./Heatmap";
 import { RentCard } from "./ExitCompare";
 
@@ -45,6 +45,8 @@ export default function CalculatorClient() {
   const sp = useSearchParams();
   const address = sp.get("addr");
   const [form, setForm] = useState<CalcForm>(() => fromSearchParams(new URLSearchParams(sp.toString())));
+  // The AADU block is open when a link or the visitor put an area in it.
+  const [aaduOn, setAaduOn] = useState(() => !!form.aaduSf);
 
   // Mirror the inputs into the URL so a result can be shared.
   useEffect(() => {
@@ -108,7 +110,6 @@ export default function CalculatorClient() {
               </div>
               {parsed.rehab.cost > 0 && <p className="mt-1 text-xs tabular-nums" style={{ color: "var(--slate)" }}>{parsed.rehab.houseSqft.toLocaleString("en-US")} sf × {usd(parsed.rehab.rate)} = {usd(parsed.rehab.cost)}</p>}
             </div>
-            <Field label="House ARV" value={form.houseArv} onChange={set("houseArv")} prefix="$" placeholder={parsed.autoSaleParts && !parsed.autoSaleParts.houseIsOwn && parsed.autoSaleParts.house > 0 ? Math.round(parsed.autoSaleParts.house).toLocaleString("en-US") : undefined} hint="What the house is worth after the rehab. Blank means break-even: price plus rehab." error={err("houseArv")} />
           </Group>
 
           <Group title="The DADU" note="The report fills in the area from the lot's design. $50,000 soft costs is the team's rule; change it if you know better.">
@@ -134,8 +135,24 @@ export default function CalculatorClient() {
             <Field label="Utilities and upkeep" value={form.utilitiesMonthly} onChange={set("utilitiesMonthly")} prefix="$" suffix="a month" error={err("utilitiesMonthly")} />
           </Group>
 
-          <Group title="The exit" note="The sale price starts at the house ARV (or break-even) plus what the DADU sells for. Type your own to override.">
-            <Field label="Sale price (ARV)" value={form.salePrice} onChange={set("salePrice")} prefix="$" placeholder={parsed.autoSalePrice ? Math.round(parsed.autoSalePrice).toLocaleString("en-US") : undefined} hint={parsed.autoSaleParts && !form.salePrice ? `House ${usd(parsed.autoSaleParts.house)} + DADU ${usd(parsed.autoSaleParts.dadu)}` : undefined} error={err("salePrice")} />
+          <Group title="The exit" note="One value for each building. The house starts at break-even (price plus rehab); the units start at Pencil's resale estimate. Once the MLS feed is connected, comps will suggest these. Your number wins.">
+            <Field label="House ARV" value={form.houseArv} onChange={set("houseArv")} prefix="$" placeholder={parsed.exit && !parsed.exit.houseIsOwn && parsed.exit.house ? Math.round(parsed.exit.house).toLocaleString("en-US") : undefined} hint="What the house is worth after the rehab. Blank means break-even." error={err("houseArv")} />
+            <Field label="DADU resale value" value={form.daduArv} onChange={set("daduArv")} prefix="$" placeholder={parsed.exit && !parsed.exit.daduIsOwn ? Math.round(parsed.exit.dadu).toLocaleString("en-US") : undefined} hint={parsed.exit && !parsed.exit.daduIsOwn ? `Pencil estimate, ${usd(salePricePerSf(parsed.sf))} per sf` : undefined} error={err("daduArv")} />
+            {aaduOn ? (
+              <>
+                <Field label="AADU area" name="aaduSf" value={form.aaduSf} onChange={set("aaduSf")} suffix="sf" hint="An attached ADU in the house, built at the same cost per sf as the DADU" error={err("aaduSf")} />
+                <Field label="AADU resale value" value={form.aaduArv} onChange={set("aaduArv")} prefix="$" placeholder={parsed.exit?.aadu != null && !parsed.exit.aaduIsOwn ? Math.round(parsed.exit.aadu).toLocaleString("en-US") : undefined} hint={parsed.aadu && parsed.exit && !parsed.exit.aaduIsOwn ? `Pencil estimate, ${usd(salePricePerSf(parsed.aadu.sf))} per sf` : undefined} error={err("aaduArv")} />
+                <button type="button" className="pa-btn pa-btn-sm sm:col-span-2 justify-self-start" onClick={() => { setAaduOn(false); setForm((f) => ({ ...f, aaduSf: "", aaduArv: "" })); }}>Remove the AADU</button>
+              </>
+            ) : (
+              <button type="button" className="pa-btn pa-btn-sm sm:col-span-2 justify-self-start" onClick={() => { setAaduOn(true); setTimeout(() => document.querySelector<HTMLInputElement>('input[name="aaduSf"]')?.focus(), 0); }}><Plus size={14} aria-hidden /> Add an AADU</button>
+            )}
+            {parsed.exit && (
+              <p className="text-sm tabular-nums sm:col-span-2" style={{ color: "var(--ink)" }}>
+                Sale price <strong>{usd(parsed.exit.total)}</strong>
+                <span className="ml-2 text-xs" style={{ color: "var(--slate)" }}>{[parsed.exit.house != null && `house ${usd(parsed.exit.house)}`, `DADU ${usd(parsed.exit.dadu)}`, parsed.exit.aadu != null && `AADU ${usd(parsed.exit.aadu)}`].filter(Boolean).join(" + ")}</span>
+              </p>
+            )}
             <div>
               <p className="mb-1 text-xs font-semibold" style={{ color: "var(--ink)" }}>Selling costs</p>
               <label className="flex items-center gap-2 text-sm" style={{ color: "var(--ink)", minHeight: 44 }}>
@@ -249,7 +266,7 @@ export default function CalculatorClient() {
               )}
 
               {parsed.sale && (
-                <Proforma inputs={parsed.sale.inputs} result={parsed.sale.result} rehabCost={parsed.rehab.cost} soft={{ flat: parseFloat(form.softFlat.replace(/[$,\s]/g, "")) || 0, permits: parseFloat(form.permits.replace(/[$,\s]/g, "")) || 0, pct: parseFloat(form.softPct) || 0 }} sellingPct={parsed.sellingPct} />
+                <Proforma inputs={parsed.sale.inputs} result={parsed.sale.result} rehabCost={parsed.rehab.cost} soft={{ flat: parseFloat(form.softFlat.replace(/[$,\s]/g, "")) || 0, permits: parseFloat(form.permits.replace(/[$,\s]/g, "")) || 0, pct: parseFloat(form.softPct) || 0 }} sellingPct={parsed.sellingPct} exit={parsed.exit} daduSf={parsed.sf} aadu={parsed.aadu} />
               )}
               {parsed.rent && <RentCard r={parsed.rent.result} />}
 

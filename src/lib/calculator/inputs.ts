@@ -5,7 +5,9 @@
  * Rules that keep it honest:
  * - Defaults are the team's own rules only: $350/sf build, $50,000 soft costs, 6% selling costs, a 4 + 8 + 2 month
  *   timeline and a 10% construction rate. Market numbers (price, rents, caps) stay blank until entered.
- * - The sale price defaults to the house at break-even (price plus rehab, or your ARV) plus the DADU's resale value.
+ * - The sale price is the sum of its parts: the house (your ARV, else break-even: price plus rehab), the DADU's resale
+ *   value and, if one is added, an AADU's. Each part can be typed over; the DADU and AADU values start from Pencil's
+ *   resale curve (dadu-value.ts) until MLS comps supply them.
  * - Without a sale price or a rent, only cost results are produced.
  */
 import { COST_PER_SF } from "@/lib/config/costs";
@@ -26,6 +28,11 @@ export interface CalcForm {
   rehabPerSf: string;
   /** Your after-repair value for the house. Blank means break-even: price plus rehab. */
   houseArv: string;
+  /** What the DADU sells for. Blank means Pencil's resale curve. */
+  daduArv: string;
+  /** An attached ADU in the house, same cost and resale math as the DADU. Blank area means none. */
+  aaduSf: string;
+  aaduArv: string;
   sf: string;
   costPerSf: string;
   siteWork: string;
@@ -47,7 +54,6 @@ export interface CalcForm {
   taxMonthly: string;
   insuranceMonthly: string;
   utilitiesMonthly: string;
-  salePrice: string;
   /** "1" when selling costs are the standard 6%; otherwise sellingPct applies. */
   sellSix: string;
   sellingPct: string;
@@ -66,6 +72,9 @@ export const FORM_KEYS = {
   rehabLevel: "rehab",
   rehabPerSf: "rpsf",
   houseArv: "harv",
+  daduArv: "darv",
+  aaduSf: "asf",
+  aaduArv: "aarv",
   sf: "sf",
   costPerSf: "cost",
   siteWork: "site",
@@ -84,7 +93,6 @@ export const FORM_KEYS = {
   taxMonthly: "tax",
   insuranceMonthly: "ins",
   utilitiesMonthly: "util",
-  salePrice: "sale",
   sellSix: "six",
   sellingPct: "sell",
   rent: "rent",
@@ -103,6 +111,9 @@ export const DEFAULT_FORM: CalcForm = {
   rehabLevel: "none",
   rehabPerSf: "",
   houseArv: "",
+  daduArv: "",
+  aaduSf: "",
+  aaduArv: "",
   sf: "",
   costPerSf: String(COST_PER_SF),
   siteWork: "",
@@ -121,7 +132,6 @@ export const DEFAULT_FORM: CalcForm = {
   taxMonthly: "",
   insuranceMonthly: "",
   utilitiesMonthly: "",
-  salePrice: "",
   sellSix: "1",
   sellingPct: "",
   rent: "",
@@ -148,6 +158,9 @@ const SPECS: Record<NumericKey, Spec> = {
   houseSqft: { min: 0, max: 50_000, label: "House area" },
   rehabPerSf: { min: 0, max: 2000, label: "Rehab cost per sf" },
   houseArv: { min: 0, max: 100_000_000, label: "House ARV" },
+  daduArv: { min: 0, max: 100_000_000, label: "DADU resale value" },
+  aaduSf: { min: 0, max: 5000, label: "AADU area" },
+  aaduArv: { min: 0, max: 100_000_000, label: "AADU resale value" },
   sf: { min: 1, max: 5000, label: "DADU area" },
   costPerSf: { min: 1, max: 5000, label: "Build cost per sf" },
   siteWork: { min: 0, max: 5_000_000, label: "Site work" },
@@ -166,7 +179,6 @@ const SPECS: Record<NumericKey, Spec> = {
   taxMonthly: { min: 0, max: 100_000, label: "Property tax" },
   insuranceMonthly: { min: 0, max: 100_000, label: "Insurance" },
   utilitiesMonthly: { min: 0, max: 100_000, label: "Utilities and upkeep" },
-  salePrice: { min: 0, max: 100_000_000, label: "Sale price" },
   sellingPct: { min: 0, max: 100, label: "Selling costs" },
   rent: { min: 0, max: 1_000_000, label: "Monthly rent" },
   capPct: { min: 0.1, max: 100, label: "Cap rate" },
@@ -192,14 +204,17 @@ export interface ParsedCalc {
   ready: boolean;
   sf: number;
   costPerSf: number;
-  /** sf × cost per sf, whole dollars. */
+  /** DADU (and AADU) area × cost per sf, whole dollars. */
   construction: number;
+  /** The attached ADU, when one is added: its area and its build cost at the same rate as the DADU. */
+  aadu: { sf: number; construction: number } | null;
   /** Rehab of the existing house: rate per sf and the total, from the level or the custom rate. */
   rehab: { rate: number; cost: number; houseSqft: number };
-  /** The sale price the proforma uses when none is typed: house ARV (or break-even) plus the DADU's resale value. */
-  autoSalePrice: number | null;
-  /** The parts of that: the house side and the DADU side. */
-  autoSaleParts: { house: number; dadu: number; houseIsOwn: boolean } | null;
+  /**
+   * The exit, part by part. Each `*IsOwn` says the visitor typed it; otherwise the house is at break-even (null when
+   * there is no price) and the units follow Pencil's resale curve. `total` is the sale price the proforma uses.
+   */
+  exit: { house: number | null; houseIsOwn: boolean; dadu: number; daduIsOwn: boolean; aadu: number | null; aaduIsOwn: boolean; total: number } | null;
   /** Selling costs in effect, percent. */
   sellingPct: number;
   hasPrice: boolean;
@@ -241,13 +256,12 @@ export function parseForm(form: CalcForm): ParsedCalc {
   const sf = v("sf");
   const costPerSf = v("costPerSf");
   const price = v("price");
-  const sale = v("salePrice");
   const rent = v("rent");
   const cap = v("capPct");
 
   // Validate every field so all errors show at once.
   for (const k of Object.keys(SPECS) as NumericKey[]) {
-    if (!["sf", "costPerSf", "price", "salePrice", "rent", "capPct"].includes(k)) v(k);
+    if (!["sf", "costPerSf", "price", "rent", "capPct"].includes(k)) v(k);
   }
 
   // The existing house: rehab cost from the level (or a custom rate) times its area.
@@ -256,12 +270,26 @@ export function parseForm(form: CalcForm): ParsedCalc {
   const rehab = { rate: rehabRate, cost: Math.round(houseSqft * rehabRate), houseSqft };
   // Selling costs: the standard 6%, or whatever was typed.
   const sellingPct = form.sellSix === "1" ? 6 : v("sellingPct") ?? 0;
-  // Sale price when none is typed: the house at your ARV (or break-even) plus what the DADU sells for.
+  // The exit, part by part: the house at your ARV (else break-even), the DADU and any AADU at your value (else
+  // Pencil's resale curve). The sale price is their sum.
   const ownArv = v("houseArv");
+  const ownDaduArv = v("daduArv");
+  const aaduSf = v("aaduSf");
+  const ownAaduArv = v("aaduArv");
   const dadu = sf ? daduEconomics(sf, costPerSf ?? undefined) : null;
-  const houseSide = ownArv != null && ownArv > 0 ? ownArv : price != null && price > 0 ? price + rehab.cost : null;
-  const autoSaleParts = dadu && houseSide != null ? { house: houseSide, dadu: dadu.saleValue, houseIsOwn: ownArv != null && ownArv > 0 } : dadu && price == null ? { house: 0, dadu: dadu.saleValue, houseIsOwn: false } : null;
-  const autoSalePrice = autoSaleParts ? autoSaleParts.house + autoSaleParts.dadu : null;
+  const aaduEcon = aaduSf && aaduSf > 0 ? daduEconomics(aaduSf, costPerSf ?? undefined) : null;
+  const aadu = aaduEcon ? { sf: aaduEcon.sf, construction: aaduEcon.buildCost } : null;
+  const houseIsOwn = ownArv != null && ownArv > 0;
+  const houseSide = houseIsOwn ? ownArv! : price != null && price > 0 ? price + rehab.cost : null;
+  const daduIsOwn = ownDaduArv != null && ownDaduArv > 0;
+  const aaduIsOwn = ownAaduArv != null && ownAaduArv > 0;
+  const exit = dadu
+    ? (() => {
+        const d = daduIsOwn ? ownDaduArv! : dadu.saleValue;
+        const a = aadu ? (aaduIsOwn ? ownAaduArv! : aaduEcon!.saleValue) : null;
+        return { house: houseSide, houseIsOwn, dadu: d, daduIsOwn, aadu: a, aaduIsOwn, total: (houseSide ?? 0) + d + (a ?? 0) };
+      })()
+    : null;
 
   const ready = sf !== null && costPerSf !== null && errors.length === 0;
   const empty: ParsedCalc = {
@@ -270,9 +298,9 @@ export function parseForm(form: CalcForm): ParsedCalc {
     sf: sf ?? 0,
     costPerSf: costPerSf ?? 0,
     construction: 0,
+    aadu,
     rehab,
-    autoSalePrice,
-    autoSaleParts,
+    exit,
     sellingPct,
     hasPrice: false,
     hasSale: false,
@@ -293,7 +321,7 @@ export function parseForm(form: CalcForm): ParsedCalc {
   const base = (strategy: DealInputs["exit"]["strategy"]): DealInputs => ({
     acquisition: { purchasePrice: price ?? 0, closingCostsPct: o("closingPct"), demoSitePrep: o("siteWork") },
     hard: {
-      buildableSqft: sf,
+      buildableSqft: sf + (aadu?.sf ?? 0),
       costPerSqft: costPerSf,
       rehabSqft: houseSqft,
       rehabCostPerSqft: rehabRate,
@@ -326,8 +354,8 @@ export function parseForm(form: CalcForm): ParsedCalc {
   const costOnlyInputs = base("sell_finished");
   const costOnly = computeFeasibility(costOnlyInputs);
 
-  // The sale case: the typed price, else the auto price (house ARV or break-even plus the DADU's resale value).
-  const salePrice = sale !== null && sale > 0 ? sale : autoSalePrice;
+  // The sale case: the house, the DADU and any AADU, each at its own value.
+  const salePrice = exit?.total ?? null;
   let saleOut: ParsedCalc["sale"] = null;
   if (salePrice != null && salePrice > 0) {
     const inputs = base("sell_finished");
@@ -354,16 +382,16 @@ export function parseForm(form: CalcForm): ParsedCalc {
     rentOut = { inputs, result: computeFeasibility(inputs) };
   }
 
-  const construction = Math.round(sf * costPerSf);
+  const construction = Math.round(sf * costPerSf) + (aadu?.construction ?? 0);
   return {
     errors,
     ready: errors.length === 0,
     sf,
     costPerSf,
     construction,
+    aadu,
     rehab,
-    autoSalePrice,
-    autoSaleParts,
+    exit,
     sellingPct,
     hasPrice: price !== null && price > 0,
     hasSale: saleOut !== null,

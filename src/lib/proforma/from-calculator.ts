@@ -3,7 +3,7 @@
  * ProformaInputs, so every number the visitor typed carries over. Blank calculator fields keep the proforma's
  * defaults. The reverse mapping serves the proforma's "Back to the calculator" link.
  */
-import { DEFAULT_FORM, parseNumber, type CalcForm } from "@/lib/calculator/inputs";
+import { DEFAULT_FORM, parseForm, parseNumber, type CalcForm } from "@/lib/calculator/inputs";
 import { REHAB_RATES } from "@/lib/dadu-value";
 import { defaultInputs, type ProformaInputs } from "./schema";
 import { dollars, roundCents } from "./money";
@@ -18,7 +18,9 @@ export function fromCalculator(form: CalcForm, address = ""): ProformaInputs {
   i.meta.address = address;
   const price = num(form.price);
   const rent = num(form.rent);
-  i.meta.strategy = rent != null && rent > 0 && !(num(form.salePrice) ?? 0) ? "rent_hold" : "sell";
+  const parsed = parseForm(form);
+  const typedExit = !!(num(form.houseArv) || num(form.daduArv) || num(form.aaduArv));
+  i.meta.strategy = rent != null && rent > 0 && !typedExit ? "rent_hold" : "sell";
   if (price != null && price > 0) {
     i.acquisition.ownership = "buy";
     i.acquisition.purchasePrice = dollars(price);
@@ -28,7 +30,8 @@ export function fromCalculator(form: CalcForm, address = ""): ProformaInputs {
   }
   i.acquisition.closingPct = num(form.closingPct) ?? 0;
   const sf = num(form.sf);
-  if (sf != null && sf > 0) i.budget.sqft = sf;
+  const aaduSf = num(form.aaduSf) ?? 0;
+  if (sf != null && sf > 0) i.budget.sqft = sf + aaduSf;
   const cost = num(form.costPerSf);
   if (cost != null && cost > 0) i.budget.hardPerSf = dollars(cost);
   i.budget.siteWork = dollars(num(form.siteWork) ?? 0);
@@ -65,8 +68,8 @@ export function fromCalculator(form: CalcForm, address = ""): ProformaInputs {
   if (rent != null && rent > 0) i.operations.units = [{ label: "DADU", rent: dollars(rent), otherIncome: 0 }];
   i.growthExit.exitCapPct = num(form.capPct) ?? 0;
   i.growthExit.sellingPct = form.sellSix === "1" ? 6 : num(form.sellingPct) ?? 0;
-  const sale = num(form.salePrice);
-  if (sale != null && sale > 0) i.growthExit.sale = { scope: "whole", unitPrice: 0, wholePrice: dollars(sale), houseValue: 0 };
+  // The whole property sells: the house plus the DADU (and any AADU), each at its calculator value.
+  if (parsed.exit && parsed.exit.total > 0) i.growthExit.sale = { scope: "whole", unitPrice: 0, wholePrice: dollars(parsed.exit.total), houseValue: 0 };
   return i;
 }
 
@@ -98,6 +101,6 @@ export function toCalculator(i: ProformaInputs): CalcForm {
   f.permYears = String(i.financing.perm.amortYears);
   f.minDscr = String(i.financing.perm.minDscr);
   if (i.growthExit.sellingPct === 6) f.sellSix = "1"; else { f.sellSix = "0"; f.sellingPct = String(i.growthExit.sellingPct); }
-  if (i.meta.strategy === "sell") f.salePrice = d(i.growthExit.sale.scope === "whole" ? i.growthExit.sale.wholePrice : i.growthExit.sale.unitPrice);
+  if (i.meta.strategy === "sell" && i.growthExit.sale.scope === "unit") f.daduArv = d(i.growthExit.sale.unitPrice);
   return f;
 }

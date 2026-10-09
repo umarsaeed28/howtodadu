@@ -146,11 +146,12 @@ describe("calculator carry-over", () => {
     expect(back.ltcPct).toBe("65");
     expect(back.taxMonthly).toBe("750");
   });
-  it("a sale price makes it a sale of the whole property; no price means an owned house", () => {
-    const i = fromCalculator({ ...DEFAULT_FORM, sf: "800", salePrice: "1,400,000", houseArv: "900000" });
+  it("typed exit values make it a sale of the whole property, house plus units; no price means an owned house", () => {
+    const i = fromCalculator({ ...DEFAULT_FORM, sf: "800", houseArv: "900000", daduArv: "500,000", aaduSf: "400", aaduArv: "300000" });
     expect(i.meta.strategy).toBe("sell");
     expect(i.acquisition.ownership).toBe("owned");
     expect(i.acquisition.currentValue).toBe(900_000_00);
-    expect(i.growthExit.sale).toMatchObject({ scope: "whole", wholePrice: 1_400_000_00 });
+    expect(i.budget.sqft).toBe(1200);
+    expect(i.growthExit.sale).toMatchObject({ scope: "whole", wholePrice: 1_700_000_00 });
   });
 });
