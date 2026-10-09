@@ -10,6 +10,8 @@ import ProfileMenu from "./ProfileMenu";
 const NAV = [
   { href: "/feasibility", label: "Check my lot" },
   { href: "/search", label: "Search" },
+  // Points at the free calculator until /proforma ships (docs/PROFORMA_PLAN.md, phase 3).
+  { href: "/calculator", label: "Proforma" },
   { href: "/company", label: "About us" },
 ];
 
