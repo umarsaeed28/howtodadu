@@ -18,7 +18,8 @@ export type FunnelEvent =
   | { name: "footprint_drawn"; props: { preset: string; fits: boolean } }
   | { name: "draft_generated"; props: { source: "ai" | "rules" } }
   | { name: "custom_checkout"; props: { booked: boolean } }
-  | { name: "permit_checkout"; props: Record<string, never> };
+  | { name: "permit_checkout"; props: Record<string, never> }
+  | { name: "start_project_click"; props: { source: "report" } };
 
 type W = Window & {
   dataLayer?: unknown[];

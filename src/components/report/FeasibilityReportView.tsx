@@ -434,7 +434,7 @@ export default function FeasibilityReportView({
         </div>
       )}
       </div>
-      {report && <ReportNextSteps pin={pin} />}
+      {report && <ReportNextSteps pin={pin} address={slim.address} />}
     </div>
   );
 }

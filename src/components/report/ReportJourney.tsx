@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { ArrowRight, BadgeCheck, CircleAlert, LayoutTemplate, Lock, Mail, PencilRuler, UserRoundCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, CircleAlert, Lock, Mail, UserRoundCheck } from "lucide-react";
 import type { ADUReport } from "@/lib/adu-analysis";
 import { computeFar, maxFarForZone } from "@/lib/feasibility/far";
-import { withParcel } from "@/lib/parcel-context";
-import { Term } from "@/components/home/HomeBits";
+import { Term, TrackedLink } from "@/components/home/HomeBits";
 import { longDate } from "@/lib/pricing";
 
 const sf = (n: number | null | undefined) => (n == null ? "n/a" : `${Math.round(n).toLocaleString()} sf`);
@@ -88,14 +86,20 @@ export function PurchaseBanner({ kind, dueDate, email }: { kind: string; dueDate
   );
 }
 
-/** The report footer: pick how to build it, with the parcel carried along, and the disclaimer. */
-export function ReportNextSteps({ pin }: { pin: string | null }) {
+/**
+ * The report footer: one next step. "Start my project" goes to sign-up (straight on when already signed in), then
+ * asks whether this lot is the project to start, carrying the parcel and address over. Plus the disclaimer.
+ */
+export function ReportNextSteps({ pin, address }: { pin: string | null; address: string }) {
+  const start = `/start?${new URLSearchParams({ ...(pin ? { parcel: pin } : {}), address }).toString()}`;
   return (
     <section className="rn" aria-labelledby="rn-h">
-      <h2 id="rn-h" className="rn-h">You know what fits. Now pick how to build it.</h2>
+      <h2 id="rn-h" className="rn-h">You know what fits. Now let&apos;s build it.</h2>
+      <p className="rn-sub">Start a project and we carry this report over: plans, permit and builder, all in one place.</p>
       <div className="rn-ctas">
-        <Link href={withParcel("/plans", pin)} className="s-btn s-btn--primary s-btn--lg"><LayoutTemplate size={17} aria-hidden /> See plans that fit my lot <ArrowRight size={16} aria-hidden /></Link>
-        <Link href={withParcel("/custom", pin)} className="s-btn s-btn--outline s-btn--lg"><PencilRuler size={17} aria-hidden /> Draw my own DADU</Link>
+        <TrackedLink href={`/login?mode=signup&next=${encodeURIComponent(start)}`} event="start_project_click" props={{ source: "report" }} className="s-btn s-btn--primary s-btn--lg">
+          Start my project <ArrowRight size={16} aria-hidden />
+        </TrackedLink>
       </div>
       <p className="rn-disclaimer">This report is based on Seattle&apos;s public zoning and code rules. It is not a stamped professional certification.</p>
     </section>

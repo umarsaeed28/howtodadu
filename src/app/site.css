@@ -1406,3 +1406,12 @@ body { background: #F6F7F6; }
 .site .ck-card { position: relative; }
 .site .ck-card .ck-input { padding-right: 96px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 .site .ck-brand { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); margin-top: 3px; padding: 2px 8px; border-radius: 6px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); font-size: 0.75rem; font-weight: 700; color: var(--ink); }
+.site .rn-sub { margin: 8px 0 0; color: var(--slate); max-width: 60ch; }
+/* Start from the last feasibility */
+.site .sl { padding: clamp(20px, 3vw, 28px); border-radius: 18px; background: var(--surface); box-shadow: var(--nm-out); }
+.site .sl-k { margin: 0; font-size: 0.85rem; font-weight: 600; color: var(--slate); }
+.site .sl-addr { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; font-size: 1.5rem; letter-spacing: -0.02em; color: var(--ink); }
+.site .sl-addr svg { color: var(--flag); flex: none; }
+.site .sl-pin { margin: 2px 0 0 28px; font-size: 0.82rem; color: var(--slate); font-variant-numeric: tabular-nums; }
+.site .sl-q { margin: 22px 0 0; font-size: 1.05rem; font-weight: 700; color: var(--ink); }
+.site .sl-ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
