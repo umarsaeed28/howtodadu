@@ -6,6 +6,7 @@ import { AddressForm, Term, TrackedLink } from "@/components/home/HomeBits";
 import Faq, { type FaqItem } from "@/components/home/Faq";
 import Journey from "@/components/site/Journey";
 import InvestTeaser from "@/components/home/InvestTeaser";
+import CaseStudyFeature from "@/components/home/CaseStudyFeature";
 import rendering from "../../public/home/dadu-rendering.webp";
 import { CONSTRUCTION_PER_SQFT, PRODUCTS, price, type ProductKind } from "@/lib/pricing";
 
@@ -85,6 +86,47 @@ export default function Home() {
         </Container>
       </section>
 
+      {/* Case study: proof, with real numbers */}
+      <CaseStudyFeature />
+
+      {/* Today's best opportunities, from the Invest feed */}
+      <InvestTeaser />
+
+      {/* Why Pencil */}
+      <Section soft style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-why">
+        <Container>
+          <Heading level={2} id="hm-why" style={{ maxWidth: "20ch" }}>Built for Seattle. Built for speed.</Heading>
+          <ul className="hm-why">
+            {WHY.map(({ Icon, title, body }) => (
+              <li key={title}>
+                <Icon size={24} aria-hidden className="hm-why-icon" />
+                <p><strong>{title}</strong> {body}</p>
+              </li>
+            ))}
+          </ul>
+        </Container>
+      </Section>
+
+      {/* FAQ */}
+      <Section style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-faq">
+        <Container style={{ maxWidth: 820 }}>
+          <Heading level={2} id="hm-faq">Questions, answered</Heading>
+          <div style={{ marginTop: 24 }}>
+            <Faq items={FAQ} />
+          </div>
+        </Container>
+      </Section>
+
+      {/* Footer CTA */}
+      <section className="hm-final" aria-labelledby="hm-final-h">
+        <Container style={{ maxWidth: 860 }}>
+          <Heading level={2} id="hm-final-h" style={{ maxWidth: "22ch" }}>Thirty seconds could change what your property is worth.</Heading>
+          <div style={{ marginTop: 24 }}>
+            <AddressForm source="footer_cta" label="Your Seattle address" size="xl" />
+          </div>
+        </Container>
+      </section>
+
       {/* Pricing */}
       <Section style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-pricing">
         <Container>
@@ -141,44 +183,6 @@ export default function Home() {
           </div>
         </Container>
       </Section>
-
-      {/* Today's best opportunities, from the Invest feed */}
-      <InvestTeaser />
-
-      {/* Why Pencil */}
-      <Section soft style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-why">
-        <Container>
-          <Heading level={2} id="hm-why" style={{ maxWidth: "20ch" }}>Built for Seattle. Built for speed.</Heading>
-          <ul className="hm-why">
-            {WHY.map(({ Icon, title, body }) => (
-              <li key={title}>
-                <Icon size={24} aria-hidden className="hm-why-icon" />
-                <p><strong>{title}</strong> {body}</p>
-              </li>
-            ))}
-          </ul>
-        </Container>
-      </Section>
-
-      {/* FAQ */}
-      <Section style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-faq">
-        <Container style={{ maxWidth: 820 }}>
-          <Heading level={2} id="hm-faq">Questions, answered</Heading>
-          <div style={{ marginTop: 24 }}>
-            <Faq items={FAQ} />
-          </div>
-        </Container>
-      </Section>
-
-      {/* Footer CTA */}
-      <section className="hm-final" aria-labelledby="hm-final-h">
-        <Container style={{ maxWidth: 860 }}>
-          <Heading level={2} id="hm-final-h" style={{ maxWidth: "22ch" }}>Thirty seconds could change what your property is worth.</Heading>
-          <div style={{ marginTop: 24 }}>
-            <AddressForm source="footer_cta" label="Your Seattle address" size="xl" />
-          </div>
-        </Container>
-      </section>
     </main>
   );
 }
