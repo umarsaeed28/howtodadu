@@ -1,269 +1,180 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, Check, ShieldCheck } from "lucide-react";
-import { Section, Container, Heading, Lede, Button } from "@/components/ui";
-import HomeSearch from "@/components/search/HomeSearch";
-import Journey from "@/components/site/Journey";
-import Plat from "@/components/site/Plat";
+import { ArrowRight, Check, Compass, LayoutTemplate, PencilRuler, ShieldCheck, Timer, Users } from "lucide-react";
+import { Section, Container, Heading, Lede } from "@/components/ui";
+import { AddressForm, Term, TrackedLink } from "@/components/home/HomeBits";
+import Faq, { type FaqItem } from "@/components/home/Faq";
+import Journey, { ART, type JourneyStep } from "@/components/site/Journey";
 import rendering from "../../public/home/dadu-rendering.webp";
-import { COST_PER_SF } from "@/lib/config/costs";
-import { SOFT_COSTS, salePricePerSf } from "@/lib/dadu-value";
-import { PERMIT_PACKAGE } from "@/lib/portal/types";
-import { BUILD_TYPES } from "@/lib/feasibility/defaults";
+import { PRODUCTS, PRODUCT_ORDER, price, type ProductKind } from "@/lib/pricing";
 
 export const metadata: Metadata = {
-  title: "Pencil — Seattle backyard cottages, from the lot to the keys",
+  title: "Pencil — Seattle DADU feasibility, plans, and permits",
   description:
-    "Pencil takes a Seattle backyard cottage (DADU) from a free feasibility check to permits, a vetted builder, and renting or selling it. Every Seattle lot is already scored.",
+    "See exactly what you can build on your Seattle lot in 30 seconds. Then get real plans, drawn by real architects, in under a week. Pre-approved plans, custom designs and permit service.",
 };
 
 /*
- * The home page, built on PET: Persuasion (one clear action, the free first look, a priced path),
- * Emotion (the finished cottage, what it does for a family), Trust (proof only Pencil has, costs in
- * the open, named data sources, who we are). Every figure here comes from the app's own config or data.
+ * Copy is the product brief's, verbatim. Design follows Pencil's brand (pencil-design) with impeccable and
+ * ui-ux-pro-max rules: one primary action per section, the popular tier highlighted, real prices, no stat strips.
+ *
+ * PLACEHOLDER: the hero image slot asks for an isometric Seattle craftsman with a modern 2-story DADU at the rear
+ * and alley access. The current rendering (front access) fills the slot until that image exists: replace
+ * public/home/dadu-rendering.webp (same name) or HERO_IMAGE below, and update its alt text.
  */
+const HERO_IMAGE = { src: rendering, alt: "A Seattle craftsman house with a modern two-story DADU (backyard cottage) at the rear of the lot." };
 
-const usd = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
-const LOTS_READ = "58,087";
-const RENT = BUILD_TYPES.sfr_dadu.rentPerUnitMonthly;
-const RESALE_800 = 800 * salePricePerSf(800);
+const PATHS = [
+  { Icon: Compass, title: "Not sure yet?", body: "Find out if your lot qualifies, how big you can build, and where it fits. Answers in seconds.", cta: "Check feasibility", href: "/feasibility", path: "feasibility" },
+  { Icon: LayoutTemplate, title: "Want a proven design?", body: "Choose from plans already reviewed by the City of Seattle. The fastest path from idea to permit.", cta: "Browse plans", href: "/plans", path: "plans" },
+  { Icon: PencilRuler, title: "Have a layout in mind?", body: "Sketch your footprint right on your lot. We check it against code live, then our architects make it real.", cta: "Draw my DADU", href: "/custom", path: "custom" },
+] as const;
 
-const OUTCOMES = [
-  { title: "Rent it", figure: `about ${usd(RENT)} a month`, body: "A typical Seattle backyard cottage rents for this, from the month it gets its certificate of occupancy." },
-  { title: "Keep family close", figure: "their own front door", body: "A parent, a grown kid or a caregiver a few steps away, with a kitchen, a bath and a door of their own." },
-  { title: "Sell it", figure: `about ${usd(RESALE_800)}`, body: "What an 800 sf cottage resells for in our planning model. Seattle lets you sell it separately with a unit lot subdivision." },
+const STEPS: JourneyStep[] = [
+  { Art: ART.Feasibility, title: "Check your lot", body: "Enter your address. See your buildable envelope, height limit, and setbacks instantly." },
+  { Art: ART.Paths, title: "Pick your path", body: "A city-reviewed plan, or a custom design shaped to your lot." },
+  { Art: ART.Plans, title: "Get your plans", body: "AI drafts the layout. Licensed architects refine every line." },
+  { Art: ART.Permit, title: "Get permitted", body: "We submit to SDCI and handle the corrections, so you don't have to." },
 ];
 
-const SOURCES = [
-  ["Parcels and zoning", "City of Seattle"],
-  ["Building footprints", "Seattle 2023 outlines"],
-  ["Every tree over the lot", "2021 LiDAR tree canopy"],
-  ["Slope of the ground", "USGS 1 m lidar elevation"],
-  ["Critical areas", "Seattle ECA maps"],
-  ["What you may build", "Seattle Municipal Code 23.44.041"],
-] as const;
+const PRICE_HREF: Record<ProductKind, string> = {
+  feasibility_instant: "/feasibility",
+  feasibility_reviewed: "/feasibility?tier=reviewed",
+  custom_plan: "/custom",
+  permit: "/permit",
+};
 
-const COSTS = [
-  ["Feasibility check", "Free", "Score, site plan, cost and rent estimate. No sign-up."],
-  ["Permit package", `${usd(PERMIT_PACKAGE.feeCents / 100)} fixed`, "Design options, permit drawings, submittal and every round of city corrections."],
-  ["Construction", `${usd(COST_PER_SF)} per sf`, "The rate we plan with. Your builder's bid replaces it."],
-  ["Soft costs", usd(SOFT_COSTS), "Utilities, fees, survey and the rest we budget on top of the build."],
-] as const;
+const WHY = [
+  { Icon: ShieldCheck, title: "Code first.", body: "Every result is checked against current Seattle DADU rules before you see it." },
+  { Icon: Timer, title: "Days, not months.", body: "Feasibility in seconds, plans in under a week. Traditional design takes weeks just to start." },
+  { Icon: Users, title: "Humans in the loop.", body: "AI does the heavy lifting. Licensed architects make the calls." },
+];
 
-const TEAM = [
-  ["Architecture", "We design the cottages, so a feasibility answer is something we could actually draw and permit."],
-  ["Development", "We underwrite and build projects ourselves, so the numbers come from real jobs, not brochures."],
-  ["Software", "We put that know-how into Pencil, so you get the same read on your lot in a minute."],
-] as const;
+const FAQ: FaqItem[] = [
+  { q: "How big can a Seattle DADU be?", a: "Up to 1,000 square feet in most cases, with height limits tied to your lot size. Your feasibility report shows your exact numbers." },
+  { q: "Do I need off-street parking?", a: "No. Seattle doesn't require parking for a DADU." },
+  { q: "Pre-approved or custom: which is right for me?", a: "Pre-approved plans are faster and already city-reviewed. Custom plans fit unusual lots or specific layouts. Not sure? Start with feasibility; it will tell you." },
+  { q: "How long does permitting take?", a: "It depends on SDCI's queue and your plan type. Pre-approved plans typically move fastest. We track every step for you." },
+  { q: "Is the feasibility report a professional certification?", a: "No. It's a detailed data report based on Seattle's public zoning and code rules. Want expert eyes on it? Choose Architect-Reviewed." },
+];
 
 export default function Home() {
   return (
     <main>
-      {/* Hero: the finished cottage (emotion) beside one clear action (persuasion). */}
-      <section className="hp-hero" aria-labelledby="hp-h1">
-        <div className="hp-hero-inner">
-          <div className="hp-hero-copy">
-            <Heading level={1} id="hp-h1">Your backyard can pay for itself.</Heading>
-            <Lede style={{ marginTop: 20 }}>
-              Pencil takes a Seattle backyard cottage from the first look to the keys. We check the lot, design and permit the cottage, bring you a vetted builder, and help you rent it or sell it.
-            </Lede>
-            <div style={{ marginTop: 28 }}>
-              <HomeSearch />
+      {/* Hero: one action (the address), two quiet alternatives. */}
+      <section className="hm-hero" aria-labelledby="hm-h1">
+        <div className="hm-hero-inner">
+          <div className="hm-hero-copy">
+            <p className="hm-eyebrow">Seattle <Term word="DADU" /> feasibility, plans, and permits</p>
+            <Heading level={1} id="hm-h1">Your backyard is worth more than you think.</Heading>
+            <Lede style={{ marginTop: 18 }}>See exactly what you can build on your lot in 30 seconds. Then get real plans, drawn by real architects, in under a week.</Lede>
+            <div style={{ marginTop: 26 }}>
+              <AddressForm source="hero" label="Your Seattle address" />
             </div>
-            <ul className="hp-assure" aria-label="What to expect">
-              <li><Check size={15} aria-hidden /> Free first look</li>
-              <li><Check size={15} aria-hidden /> No sign-up</li>
-              <li><Check size={15} aria-hidden /> City and county records</li>
-            </ul>
+            <p className="hm-trust"><Check size={15} aria-hidden /> Built on current Seattle code. No signup to start.</p>
+            <p className="hm-alt">
+              <TrackedLink href="/plans" event="hero_cta_click" props={{ cta: "browse_plans" }} className="hm-link">Browse pre-approved plans</TrackedLink>
+              <span aria-hidden className="hm-sep">|</span>
+              <TrackedLink href="/custom" event="hero_cta_click" props={{ cta: "draw_my_dadu" }} className="hm-link">Draw my own DADU</TrackedLink>
+            </p>
           </div>
-          <figure className="hp-hero-art">
-            <Image src={rendering} alt="A Seattle craftsman house with a new two-story backyard cottage behind it, drawn as an architect's rendering." priority sizes="(min-width: 960px) 52vw, 100vw" placeholder="blur" />
+          <figure className="hm-hero-art">
+            <Image src={HERO_IMAGE.src} alt={HERO_IMAGE.alt} priority sizes="(min-width: 960px) 52vw, 100vw" placeholder="blur" />
           </figure>
         </div>
       </section>
 
-      {/* Proof only Pencil can show (trust + persuasion): the whole city is already scored. */}
-      <Section style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }}>
+      {/* Path selector */}
+      <Section style={{ paddingBlock: "clamp(1rem, 3vw, 2rem) clamp(3rem, 6vw, 5rem)" }}>
         <Container>
-          <div className="hp-proof">
-            <div>
-              <Heading level={2} style={{ maxWidth: "18ch" }}>We have already read your lot.</Heading>
-              <Lede style={{ marginTop: 18 }}>
-                All {LOTS_READ} single-family lots in Seattle: the lot lines, the zoning, the house on it, every tree, the slope. Each one is scored for a backyard cottage, so you can see the good ones before anyone else does.
-              </Lede>
-              <div style={{ marginTop: 26, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                <Button href="/search" size="lg">See the map <ArrowRight size={16} aria-hidden /></Button>
-              </div>
-            </div>
-            <Link href="/search" className="hp-grid-card" aria-label="Open the map of scored Seattle lots">
-              <span className="hp-grid" aria-hidden>
-                {Array.from({ length: 60 }, (_, i) => {
-                  const g = (i * 37 + (i >> 2) * 11) % 13;
-                  return <span key={i} data-g={g < 2 ? 3 : g < 6 ? 2 : g < 9 ? 1 : 0} />;
-                })}
-              </span>
-              <span className="hp-grid-legend">
-                <span><i data-g="3" /> Top pick</span>
-                <span><i data-g="2" /> Good</span>
-                <span><i data-g="1" /> Fair</span>
-                <span><i data-g="0" /> No room</span>
-              </span>
-            </Link>
-          </div>
-        </Container>
-      </Section>
-
-      {/* Emotion: what a cottage does for a household, with the planning figures. */}
-      <Section soft style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }}>
-        <Container>
-          <Heading level={2} style={{ maxWidth: "20ch" }}>What a backyard cottage does for you.</Heading>
-          <ul className="hp-outcomes">
-            {OUTCOMES.map((o) => (
-              <li key={o.title}>
-                <h3 className="s-h3">{o.title}</h3>
-                <p className="hp-figure">{o.figure}</p>
-                <p className="s-body">{o.body}</p>
+          <h2 className="sr-only">Pick where to start</h2>
+          <ul className="hm-paths">
+            {PATHS.map(({ Icon, title, body, cta, href, path }) => (
+              <li key={title}>
+                <TrackedLink href={href} event="hero_cta_click" props={{ cta: "path_card", path }} className="hm-path">
+                  <Icon size={22} aria-hidden className="hm-path-icon" />
+                  <span className="hm-path-title">{title}</span>
+                  <span className="hm-path-body">{body}</span>
+                  <span className="hm-path-cta">{cta} <ArrowRight size={15} aria-hidden /></span>
+                </TrackedLink>
               </li>
             ))}
           </ul>
-          <p className="hp-note">Planning figures from Pencil&apos;s cost and resale model. Your feasibility report shows the numbers for your lot.</p>
         </Container>
       </Section>
 
-      {/* Persuasion: the whole path, priced, on one rail. The page's one saturated field. */}
-      <section className="hp-journey" aria-labelledby="hp-journey-h">
+      {/* How it works */}
+      <section className="hm-band" aria-labelledby="hm-how">
         <Container>
-          <div className="hp-journey-head">
-            <Heading level={2} id="hp-journey-h" style={{ maxWidth: "16ch" }}>One team, from lot to keys.</Heading>
-            <Button href="/login?mode=signup&next=%2Fportal%2Fnew" size="lg">Start your project <ArrowRight size={16} aria-hidden /></Button>
-          </div>
+          <Heading level={2} id="hm-how" style={{ maxWidth: "20ch" }}>From &ldquo;what if&rdquo; to permit in four steps</Heading>
           <div style={{ marginTop: 40 }}>
-            <Journey tone="dark" />
+            <Journey tone="dark" steps={STEPS} label="From what if to permit in four steps" />
           </div>
         </Container>
       </section>
 
-      {/* Persuasion by reciprocity: what the free report shows, before anyone asks for anything. */}
-      <Section style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }}>
+      {/* Pricing */}
+      <Section style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-pricing">
         <Container>
-          <div className="hero-grid" style={{ alignItems: "center" }}>
-            <div>
-              <Heading level={2} style={{ maxWidth: "15ch" }}>See it drawn before you spend a dollar.</Heading>
-              <ul className="hp-checks">
-                <li><strong>Where you can build.</strong> Setbacks, height and lot coverage under current Seattle code, drawn as the buildable area.</li>
-                <li><strong>What fits.</strong> The largest cottage the lot can carry, which you can drag around the plan.</li>
-                <li><strong>What gets in the way.</strong> Trees, slope, critical areas and the path in from the street.</li>
-                <li><strong>What it costs and earns.</strong> A build estimate, rent and resale, with every assumption shown.</li>
-              </ul>
-              <div style={{ marginTop: 26 }}>
-                <Button href="/feasibility" size="lg">Check an address <ArrowRight size={16} aria-hidden /></Button>
-              </div>
-            </div>
-            <div>
-              <Plat />
-            </div>
+          <Heading level={2} id="hm-pricing" style={{ maxWidth: "22ch" }}>Clear prices. No surprise invoices.</Heading>
+          <Lede style={{ marginTop: 14 }}>Most architects charge $100 to $250 an hour just to tell you what&apos;s possible. We start at $200, flat.</Lede>
+          <ul className="hm-prices">
+            {PRODUCT_ORDER.map((k) => {
+              const p = PRODUCTS[k];
+              return (
+                <li key={k} className="hm-price" data-popular={p.popular || undefined}>
+                  {p.popular && <span className="hm-badge">Most popular</span>}
+                  <h3 className="hm-price-name">{p.name}</h3>
+                  <p className="hm-price-amount">{price(p.amountCents)}</p>
+                  <p className="hm-price-when">{p.turnaround}</p>
+                  <p className="hm-price-body">
+                    {k === "feasibility_instant" ? (<>Your lot&apos;s full DADU picture: <Term word="FAR" />, setbacks, height, lot coverage, and a site plan showing exactly where it fits.</>) : p.body}
+                  </p>
+                  <TrackedLink href={PRICE_HREF[k]} event="pricing_card_click" props={{ tier: k }} className={`s-btn ${p.popular ? "s-btn--primary" : "s-btn--outline"} hm-price-cta`}>
+                    {p.cta}
+                  </TrackedLink>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="hm-note">Pre-approved partner plans are priced by each design firm.</p>
+        </Container>
+      </Section>
+
+      {/* Why Pencil */}
+      <Section soft style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-why">
+        <Container>
+          <Heading level={2} id="hm-why" style={{ maxWidth: "20ch" }}>Built for Seattle. Built for speed.</Heading>
+          <ul className="hm-why">
+            {WHY.map(({ Icon, title, body }) => (
+              <li key={title}>
+                <Icon size={24} aria-hidden className="hm-why-icon" />
+                <p><strong>{title}</strong> {body}</p>
+              </li>
+            ))}
+          </ul>
+        </Container>
+      </Section>
+
+      {/* FAQ */}
+      <Section style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }} aria-labelledby="hm-faq">
+        <Container style={{ maxWidth: 820 }}>
+          <Heading level={2} id="hm-faq">Questions, answered</Heading>
+          <div style={{ marginTop: 24 }}>
+            <Faq items={FAQ} />
           </div>
         </Container>
       </Section>
 
-      {/* Trust: the costs and the sources, in the open. */}
-      <Section soft style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }}>
-        <Container>
-          <Heading level={2} style={{ maxWidth: "20ch" }}>Our numbers, in the open.</Heading>
-          <div className="hp-trust">
-            <div>
-              <h3 className="s-h3">What it costs</h3>
-              <dl className="hp-costs">
-                {COSTS.map(([k, v, note]) => (
-                  <div key={k}>
-                    <dt>{k}</dt>
-                    <dd className="hp-cost">{v}</dd>
-                    <dd className="hp-cost-note">{note}</dd>
-                  </div>
-                ))}
-              </dl>
-              <p className="hp-disclosure">
-                <ShieldCheck size={16} aria-hidden /> Builders we introduce you to may pay Pencil a referral fee. It never changes your price, and you can pick any builder you like.
-              </p>
-            </div>
-            <div>
-              <h3 className="s-h3">Where the data comes from</h3>
-              <ul className="hp-sources">
-                {SOURCES.map(([what, src]) => (
-                  <li key={what}><span>{what}</span><span>{src}</span></li>
-                ))}
-              </ul>
-            </div>
+      {/* Footer CTA */}
+      <section className="hm-final" aria-labelledby="hm-final-h">
+        <Container style={{ maxWidth: 860 }}>
+          <Heading level={2} id="hm-final-h" style={{ maxWidth: "22ch" }}>Thirty seconds could change what your property is worth.</Heading>
+          <div style={{ marginTop: 24 }}>
+            <AddressForm source="footer_cta" label="Your Seattle address" size="xl" />
           </div>
         </Container>
-      </Section>
-
-      {/* Trust: who we are. */}
-      <Section id="about" style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }}>
-        <Container>
-          <div className="hp-about">
-            <div>
-              <Heading level={2} style={{ maxWidth: "16ch" }}>Architects, developers and engineers, in one shop.</Heading>
-              <Lede style={{ marginTop: 18 }}>
-                Seattle rewrote its rules for backyard cottages, and the know-how did not keep up. We built Pencil so an owner gets the answer a seasoned developer would, then the team to carry it out.
-              </Lede>
-              <Link href="/company" className="s-btn s-btn--ghost" style={{ marginTop: 18, paddingInline: 0 }}>More about Pencil <ArrowRight size={16} aria-hidden /></Link>
-            </div>
-            <dl className="hp-team">
-              {TEAM.map(([k, v]) => (
-                <div key={k}>
-                  <dt className="s-h3">{k}</dt>
-                  <dd className="s-body">{v}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </Container>
-      </Section>
-
-      {/* Persuasion: the portal makes a long project feel handled. */}
-      <Section soft style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }}>
-        <Container>
-          <div className="hero-grid" style={{ alignItems: "center" }}>
-            <div className="hp-portal" aria-hidden>
-              <div className="hp-portal-card">
-                <p className="hp-portal-title">4521 Fremont Ave N <span>Sample</span></p>
-                <div className="hp-portal-bar">{[0, 1, 2, 3].map((i) => <span key={i} data-on={i <= 2} />)}</div>
-                <p className="hp-portal-stage">Stage 3 of 4 · Architecture and permit</p>
-                <p className="hp-portal-next"><b>Your move</b> Approve a design option</p>
-                <p className="hp-portal-latest">Latest: two design options are ready for you</p>
-              </div>
-            </div>
-            <div>
-              <Heading level={2} style={{ maxWidth: "15ch" }}>Your project, in one place.</Heading>
-              <Lede style={{ marginTop: 18 }}>
-                Every project shows where it stands and the one thing that needs you next. Approve designs, compare builder bids side by side, and follow the build. We email you at every step.
-              </Lede>
-              <div style={{ marginTop: 26, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                <Button href="/login?mode=signup" size="lg">Create an account</Button>
-                <Button href="/login" variant="outline" size="lg">Sign in</Button>
-              </div>
-            </div>
-          </div>
-        </Container>
-      </Section>
-
-      {/* Final action. */}
-      <Section className="s-section--flag" style={{ paddingBlock: "clamp(3.5rem, 7vw, 6rem)" }}>
-        <Container>
-          <div className="hero-grid" style={{ alignItems: "end" }}>
-            <div>
-              <Heading level={2} style={{ maxWidth: "16ch" }}>Find out what your lot can hold.</Heading>
-              <Lede style={{ marginTop: 16 }}>It takes a minute and costs nothing. Keep going only if it pencils.</Lede>
-            </div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <Button href="/feasibility" size="lg">Check an address</Button>
-              <Button href="/contact" variant="outline" size="lg">Talk to us</Button>
-            </div>
-          </div>
-        </Container>
-      </Section>
+      </section>
     </main>
   );
 }

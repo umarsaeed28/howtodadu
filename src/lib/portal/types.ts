@@ -1,3 +1,5 @@
+import { PRODUCTS } from "@/lib/pricing";
+
 /**
  * The portal's shared vocabulary: stages, statuses, their labels and order, and the pure rules that
  * follow from them (next action, referral fee owed, which builders fit a lead). No database here, so
@@ -51,11 +53,11 @@ export const SIZE_TIERS = ["small", "medium", "large"] as const;
 export type SizeTier = (typeof SIZE_TIERS)[number];
 export const SIZE_LABELS: Record<SizeTier, string> = { small: "Small (under 600 sf)", medium: "Medium (600 to 900 sf)", large: "Large (over 900 sf)" };
 
-/** The fixed-fee permit package. Change the price here and the stage, the checkout and the metrics follow. */
+/** The permit service, from the one price list. Design comes from a custom plan or a pre-approved plan. */
 export const PERMIT_PACKAGE = {
-  feeCents: 1_500_000,
-  timeline: "10 to 14 weeks to submittal, then the city's review",
-  includes: ["Two design options to choose from", "Permit drawings (architectural and structural)", "SDCI submittal and fees handling", "Corrections managed until approval"],
+  feeCents: PRODUCTS.permit.amountCents,
+  timeline: "From SDCI submission to issued permit. The city sets its own review times.",
+  includes: ["Permit set prepared from your plans", "SDCI submission and fees handling", "Every round of city corrections", "Status updates at each step"],
 };
 
 export const FILE_KINDS = { drawing: "Drawing", city_letter: "City letter", other: "Other" } as const;

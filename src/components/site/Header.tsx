@@ -8,8 +8,11 @@ import { useSavedListings } from "@/hooks/useSavedListings";
 import ProfileMenu from "./ProfileMenu";
 
 const NAV = [
+  { href: "/feasibility", label: "Check my lot" },
+  { href: "/plans", label: "Plans" },
+  { href: "/custom", label: "Custom" },
+  { href: "/permit", label: "Permits" },
   { href: "/search", label: "Search" },
-  { href: "/feasibility", label: "Feasibility" },
   { href: "/company", label: "About us" },
 ];
 

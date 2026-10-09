@@ -92,7 +92,38 @@ function Keys() {
   );
 }
 
-const STEPS = [
+function Paths() {
+  return (
+    <svg viewBox="0 0 120 84" role="img" aria-label="Two paths: a city-reviewed plan or a custom footprint">
+      <rect x="10" y="12" width="44" height="60" rx="3" fill="#fff" stroke={INK} strokeOpacity=".5" />
+      <rect x="18" y="22" width="28" height="22" fill={GT} stroke={G} strokeWidth="1.2" />
+      <path d="M18 52h28M18 58h20" stroke={INK} strokeOpacity=".25" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="46" cy="16" r="7" fill={G} />
+      <path d="M43 16l2 2 4-4" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="66" y="12" width="44" height="60" rx="3" fill="#fff" stroke={INK} strokeOpacity=".5" />
+      <path d="M74 28h22v26H74z" fill="none" stroke={G} strokeWidth="1.4" strokeDasharray="3 2" />
+      <path d="M96 54l8-8 4 4-8 8h-4z" fill={AMBER} stroke={INK} strokeOpacity=".5" />
+    </svg>
+  );
+}
+
+function Plans() {
+  return (
+    <svg viewBox="0 0 120 84" role="img" aria-label="A floor plan being drafted and refined">
+      <rect x="18" y="8" width="70" height="68" rx="2" fill="#fff" stroke={INK} strokeOpacity=".5" />
+      <path d="M28 18h50v48H28z" fill="none" stroke={INK} strokeWidth="2" strokeOpacity=".75" />
+      <path d="M28 40h22M50 18v22M60 40h18M60 40v26" stroke={INK} strokeWidth="1.4" strokeOpacity=".6" />
+      <rect x="31" y="21" width="16" height="16" fill={GT} />
+      <rect x="63" y="43" width="12" height="20" fill={GT} />
+      <path d="M52 52h6M52 56h6M52 60h6" stroke={G} strokeWidth="1.4" />
+      <path d="M92 60l14-30 4 2-14 30-5 2z" fill={AMBER} stroke={INK} strokeOpacity=".5" />
+    </svg>
+  );
+}
+
+export type JourneyStep = { Art: () => React.ReactElement; title: string; tag?: string; body: string };
+
+const STEPS: JourneyStep[] = [
   { Art: Acquire, title: "Acquire", tag: "Your lot or ours", body: "Start with a property you own, or we find a lot that takes a cottage." },
   { Art: Feasibility, title: "Feasibility", tag: "Free", body: "Score, buildable area, site plan and the numbers, in a minute." },
   { Art: Permit, title: "Permit", tag: "$15,000 fixed", body: "Design options, permit drawings, submittal and corrections." },
@@ -100,10 +131,12 @@ const STEPS = [
   { Art: Keys, title: "Sell or rent", tag: "The payoff", body: "Priced and listed, or leased. Earning from day one." },
 ];
 
-export default function Journey({ tone = "light" }: { tone?: "light" | "dark" }) {
+export const ART = { Acquire, Feasibility, Paths, Plans, Permit, Build, Keys };
+
+export default function Journey({ tone = "light", steps = STEPS, label = "How it works, in five steps" }: { tone?: "light" | "dark"; steps?: JourneyStep[]; label?: string }) {
   return (
-    <ol className={`jr${tone === "dark" ? " jr--dark" : ""}`} aria-label="How it works, in five steps">
-      {STEPS.map(({ Art, title, tag, body }, i) => (
+    <ol className={`jr${tone === "dark" ? " jr--dark" : ""}`} data-n={steps.length} aria-label={label}>
+      {steps.map(({ Art, title, tag, body }, i) => (
         <li key={title} className="jr-step">
           <div className="jr-art">
             <Art />
@@ -116,7 +149,7 @@ export default function Journey({ tone = "light" }: { tone?: "light" | "dark" })
               <span className="sr-only">Step {i + 1}: </span>
               {title}
             </h3>
-            <span className="s-pill jr-tag">{tag}</span>
+            {tag && <span className="s-pill jr-tag">{tag}</span>}
             <p className="s-body">{body}</p>
           </div>
         </li>
