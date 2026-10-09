@@ -4,7 +4,7 @@ import { ArrowRight, Check, ShieldCheck, Timer, Users } from "lucide-react";
 import { Section, Container, Heading, Lede } from "@/components/ui";
 import { AddressForm, Term, TrackedLink } from "@/components/home/HomeBits";
 import Faq, { type FaqItem } from "@/components/home/Faq";
-import Journey from "@/components/site/Journey";
+import ProjectTimeline from "@/components/home/ProjectTimeline";
 import InvestTeaser from "@/components/home/InvestTeaser";
 import CaseStudyFeature from "@/components/home/CaseStudyFeature";
 import rendering from "../../public/home/dadu-rendering.webp";
@@ -77,11 +77,9 @@ export default function Home() {
         <Container>
           <div className="hm-how-head">
             <Heading level={2} id="hm-how" className="hm-how-h">From buying the lot to the final inspection</Heading>
-            <p className="hm-how-lede">One team runs every stage of your DADU. Hire us for all five, or only the ones you need.</p>
+            <p className="hm-how-lede">About a year, start to finish. One team runs every stage of your DADU; hire us for all of it, or only the parts you need.</p>
           </div>
-          <div style={{ marginTop: 40 }}>
-            <Journey tone="dark" label="Five stages, from buying the lot to the final inspection" />
-          </div>
+          <ProjectTimeline />
           <p className="cf-band-note">Builders we refer may pay Pencil a referral fee. We tell you before you choose one.</p>
         </Container>
       </section>
