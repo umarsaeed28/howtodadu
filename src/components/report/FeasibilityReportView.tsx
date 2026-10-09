@@ -62,6 +62,10 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   // Your estimate of the front house's after-repair value. Empty means break-even: what it costs plus the rehab.
   const [houseArvText, setHouseArvText] = useState("");
   const houseArvInput = Number(houseArvText.replace(/[^0-9.]/g, "")) || null;
+  // What the house costs to buy: the list price when it is for sale, or the user's own figure (an off-market deal, or
+  // an offer below list). With it, the strip shows the whole deal's profit, not only the DADU's.
+  const [purchaseText, setPurchaseText] = useState("");
+  const purchaseInput = Number(purchaseText.replace(/[^0-9.]/g, "")) || null;
   // The DADU the estimate is for: the one drawn on the plan when there is one, else the largest the lot allows.
   const estSf = drawnSf ?? s.max_buildable_sf?.value ?? null;
   const estCost = estSf ? constructionEstimate(estSf) : null;
@@ -78,10 +82,11 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   const roiPct = e ? Math.round(e.roi * 100) : null;
   // Total ARV: the house at break-even (what it cost plus any rehab) or the user's own figure, plus the DADU's resale
   // value. Shown as its own block beside the headline; the deal profit and ROI tiles use it too.
-  // The house's basis: its list price when for sale, else the county's assessed value (land + building), so every lot
-  // gets a Total ARV, not only listed ones. Break-even is that basis plus any rehab.
+  // The house's basis: the purchase price (yours, else the list price), else the county's assessed value (land +
+  // building), so every lot gets a Total ARV, not only listed ones. Break-even is that basis plus any rehab.
   const assessed = slim.assessedValueNum != null && slim.assessedValueNum > 0 ? slim.assessedValueNum : null;
-  const basis = listing ? { value: listing.price, kind: "list" as const } : assessed != null ? { value: assessed, kind: "assessed" as const } : null;
+  const purchase = purchaseInput ?? listing?.price ?? null;
+  const basis = purchase != null ? { value: purchase, kind: "purchase" as const } : assessed != null ? { value: assessed, kind: "assessed" as const } : null;
   const breakEven = basis && e ? basis.value + e.rehabCost : null;
   const houseArv = houseArvInput ?? breakEven;
   const arv = e && houseArv != null ? { total: houseArv + e.saleValue, house: houseArv, own: houseArvInput != null } : null;
@@ -100,6 +105,8 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
         </span>
       ),
     });
+  if (purchaseInput != null)
+    tiles.push({ label: "Purchase price", value: usd(purchaseInput), note: listing ? `Your figure · listed at ${usd(listing.price)}` : "Your figure" });
   tiles.push({
     label: "Build estimate",
     value: estCost ? usd(estCost) : "None",
@@ -107,9 +114,9 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   });
   if (e) {
     tiles.push({ label: "DADU resale value", value: usd(e.saleValue), note: `${usd(e.salePsf)} per sf · ${usd(e.allInCost)} all in` });
-    if (arv && listing) {
+    if (arv && purchase != null) {
       // The whole deal: what it all sells for, less everything paid (the house, its rehab, the DADU and soft costs).
-      const cashIn = listing.price + e.rehabCost + e.buildCost + e.softCosts;
+      const cashIn = purchase + e.rehabCost + e.buildCost + e.softCosts;
       const profit = arv.total - cashIn;
       const pct = Math.round((profit / cashIn) * 100);
       tiles.push({ label: "Deal profit", value: money(profit), note: `${usd(arv.total)} ARV − ${usd(cashIn)} in (house${e.rehabCost > 0 ? ", rehab" : ""}, build, soft costs)`, tone: profit >= 0 ? "green" : "red" });
@@ -158,6 +165,27 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
 
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
         <RehabPicker value={rehab} onChange={setRehab} houseSqft={houseSqft} />
+        {e && (
+          <label className="flex items-center gap-2 text-xs font-semibold" style={{ color: "var(--ink)" }}>
+            Purchase price
+            <span className="pa-inset flex items-center gap-1 px-2.5" style={{ minHeight: 32 }}>
+              <span style={{ color: "var(--slate)" }}>$</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={purchaseText}
+                onChange={(ev) => setPurchaseText(ev.target.value)}
+                placeholder={listing ? Math.round(listing.price).toLocaleString("en-US") : "Enter to see deal profit"}
+                className="w-36 bg-transparent text-sm font-semibold tabular-nums outline-none"
+                style={{ color: "var(--ink)", boxShadow: "none" }}
+                aria-label={listing ? "Purchase price, dollars. Leave empty to use the list price." : "Purchase price of the house, dollars. Enter it to see the whole deal's profit."}
+              />
+            </span>
+            {purchaseInput != null && (
+              <button type="button" className="text-xs font-semibold" style={{ color: "var(--green)" }} onClick={() => setPurchaseText("")}>Reset</button>
+            )}
+          </label>
+        )}
         {basis && (
           <label className="flex items-center gap-2 text-xs font-semibold" style={{ color: "var(--ink)" }}>
             Front house ARV
