@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { ArrowRight, Check, Handshake, LayoutTemplate, ShieldCheck, Timer, Users } from "lucide-react";
+import { Check, ShieldCheck, Timer, Users } from "lucide-react";
 import { Section, Container, Heading, Lede } from "@/components/ui";
 import { AddressForm, Term, TrackedLink } from "@/components/home/HomeBits";
 import Faq, { type FaqItem } from "@/components/home/Faq";
-import Journey, { ART, type JourneyStep } from "@/components/site/Journey";
+import Journey from "@/components/site/Journey";
 import rendering from "../../public/home/dadu-rendering.webp";
 import { PRODUCTS, PRODUCT_ORDER, price, type ProductKind } from "@/lib/pricing";
 
@@ -23,18 +23,6 @@ export const metadata: Metadata = {
  * public/home/dadu-rendering.webp (same name) or HERO_IMAGE below, and update its alt text.
  */
 const HERO_IMAGE = { src: rendering, alt: "A Seattle craftsman house with a modern two-story DADU at the rear of the lot." };
-
-const PATHS = [
-  { Icon: Handshake, title: "Not sure yet?", body: "Hand us the whole project. One team from acquisition to construction: the lot, the design, the permit, the build.", cta: "Book a free consult", href: "/contact", path: "consult" },
-  { Icon: LayoutTemplate, title: "Want a proven design?", body: "Choose from plans already reviewed by the City of Seattle. The fastest path from idea to permit.", cta: "Browse plans", href: "/plans", path: "plans" },
-] as const;
-
-const STEPS: JourneyStep[] = [
-  { Art: ART.Feasibility, title: "Check your lot", body: "Enter your address. See your buildable envelope, height limit, and setbacks instantly." },
-  { Art: ART.Paths, title: "Pick your path", body: "A city-reviewed plan, or a custom design shaped to your lot." },
-  { Art: ART.Plans, title: "Get your plans", body: "AI drafts the layout. Licensed architects refine every line." },
-  { Art: ART.Permit, title: "Get permitted", body: "We submit to SDCI and handle the corrections, so you don't have to." },
-];
 
 const PRICE_HREF: Record<ProductKind, string> = {
   feasibility_instant: "/feasibility",
@@ -78,32 +66,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Path selector */}
-      <Section style={{ paddingBlock: "clamp(1rem, 3vw, 2rem) clamp(3rem, 6vw, 5rem)" }}>
-        <Container>
-          <h2 className="sr-only">Pick where to start</h2>
-          <ul className="hm-paths">
-            {PATHS.map(({ Icon, title, body, cta, href, path }) => (
-              <li key={title}>
-                <TrackedLink href={href} event="hero_cta_click" props={{ cta: "path_card", path }} className="hm-path">
-                  <Icon size={22} aria-hidden className="hm-path-icon" />
-                  <span className="hm-path-title">{title}</span>
-                  <span className="hm-path-body">{body}</span>
-                  <span className="hm-path-cta">{cta} <ArrowRight size={15} aria-hidden /></span>
-                </TrackedLink>
-              </li>
-            ))}
-          </ul>
-        </Container>
-      </Section>
-
       {/* How it works */}
       <section className="hm-band" aria-labelledby="hm-how">
         <Container>
-          <Heading level={2} id="hm-how" style={{ maxWidth: "20ch" }}>From &ldquo;what if&rdquo; to permit in four steps</Heading>
+          <Heading level={2} id="hm-how" style={{ maxWidth: "22ch" }}>From the lot to construction in five stages</Heading>
           <div style={{ marginTop: 40 }}>
-            <Journey tone="dark" steps={STEPS} label="From what if to permit in four steps" />
+            <Journey tone="dark" label="From the lot to construction in five stages" />
           </div>
+          <p className="cf-band-note">Builders we refer may pay Pencil a referral fee. We tell you before you choose one.</p>
         </Container>
       </section>
 

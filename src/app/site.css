@@ -993,28 +993,6 @@ body { background: #F6F7F6; }
 }
 .site .term-tip[data-open="true"] { display: block; animation: site-sheet-in 0.15s ease; }
 
-/* Path selector */
-.site .hm-paths { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
-.site .hm-path {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  height: 100%;
-  padding: 20px;
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: var(--nm-out);
-  color: var(--ink);
-  text-decoration: none;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
-}
-.site .hm-path:hover { transform: translateY(-2px); box-shadow: 0 1px 2px rgba(17,22,20,.06), 0 18px 40px -22px rgba(17,22,20,.35); }
-.site .hm-path:focus-visible { outline: 2px solid var(--flag); outline-offset: 3px; }
-.site .hm-path-icon { color: var(--flag); }
-.site .hm-path-title { font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em; margin-top: 6px; }
-.site .hm-path-body { color: var(--slate); font-size: 0.98rem; line-height: 1.55; flex: 1; }
-.site .hm-path-cta { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-weight: 700; color: var(--flag-deep); }
-
 /* How it works band */
 .site .hm-band { background: var(--flag-deep); color: #fff; padding-block: clamp(3.5rem, 7vw, 6rem); }
 .site .hm-band .s-display { color: #fff; }
@@ -1067,7 +1045,6 @@ body { background: #F6F7F6; }
 
 @media (min-width: 640px) {
   .site .fa-row { flex-direction: row; }
-  .site .hm-paths { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .site .hm-prices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 960px) {
@@ -1079,7 +1056,6 @@ body { background: #F6F7F6; }
 }
 @media (prefers-reduced-motion: reduce) {
   .site .hm-hero-art { animation: none; }
-  .site .hm-path { transition: none; }
 }
 
 /* Checkout card (all products) -------------------------------------------- */
