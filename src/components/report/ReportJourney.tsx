@@ -83,7 +83,7 @@ export function PurchaseBanner({ kind, dueDate, email }: { kind: string; dueDate
         <p className="pb-news"><Mail size={14} aria-hidden /> You&apos;re on the weekly newsletter.</p>
       ) : (
         <button type="button" className="s-btn s-btn--outline pb-btn" onClick={subscribe} disabled={news === "busy"}>
-          <Mail size={15} aria-hidden /> Weekly best Seattle DADU lots
+          <Mail size={15} aria-hidden /> Subscribe to the weekly newsletter
         </button>
       ))}
     </section>
