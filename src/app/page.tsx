@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { ArrowRight, Check, Compass, LayoutTemplate, PencilRuler, ShieldCheck, Timer, Users } from "lucide-react";
+import { ArrowRight, Check, Compass, LayoutTemplate, ShieldCheck, Timer, Users } from "lucide-react";
 import { Section, Container, Heading, Lede } from "@/components/ui";
 import { AddressForm, Term, TrackedLink } from "@/components/home/HomeBits";
 import Faq, { type FaqItem } from "@/components/home/Faq";
@@ -27,7 +27,6 @@ const HERO_IMAGE = { src: rendering, alt: "A Seattle craftsman house with a mode
 const PATHS = [
   { Icon: Compass, title: "Not sure yet?", body: "Find out if your lot qualifies, how big you can build, and where it fits. Answers in seconds.", cta: "Check feasibility", href: "/feasibility", path: "feasibility" },
   { Icon: LayoutTemplate, title: "Want a proven design?", body: "Choose from plans already reviewed by the City of Seattle. The fastest path from idea to permit.", cta: "Browse plans", href: "/plans", path: "plans" },
-  { Icon: PencilRuler, title: "Have a layout in mind?", body: "Sketch your footprint right on your lot. We check it against code live, then our architects make it real.", cta: "Draw my DADU", href: "/custom", path: "custom" },
 ] as const;
 
 const STEPS: JourneyStep[] = [
@@ -40,7 +39,7 @@ const STEPS: JourneyStep[] = [
 const PRICE_HREF: Record<ProductKind, string> = {
   feasibility_instant: "/feasibility",
   feasibility_reviewed: "/feasibility?tier=reviewed",
-  custom_plan: "/custom",
+  custom_plan: "/feasibility",
   permit: "/permit",
 };
 

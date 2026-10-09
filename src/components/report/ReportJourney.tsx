@@ -6,6 +6,7 @@ import type { ADUReport } from "@/lib/adu-analysis";
 import { computeFar, maxFarForZone } from "@/lib/feasibility/far";
 import { Term, TrackedLink } from "@/components/home/HomeBits";
 import { longDate } from "@/lib/pricing";
+import { currentZone } from "@/lib/report/study";
 
 const sf = (n: number | null | undefined) => (n == null ? "n/a" : `${Math.round(n).toLocaleString()} sf`);
 
@@ -18,7 +19,7 @@ export function ReportTeaser({ eligible, lotSqft, zoning }: { eligible: boolean;
         <h2 id="rt-h" className="rt-h">{eligible ? "Good news. Your lot looks DADU-eligible." : "Your lot has some hurdles. Here's what we found."}</h2>
         <dl className="rt-facts">
           <div><dt>Lot size</dt><dd>{sf(lotSqft)}</dd></div>
-          <div><dt>Zone</dt><dd>{zoning ?? "n/a"}</dd></div>
+          <div><dt>Zone</dt><dd>{currentZone(zoning) ?? "n/a"}</dd></div>
           {(["FAR", "Setbacks", "Height limit", "Buildable envelope"] as const).map((k) => (
             <div key={k} className="rt-locked">
               <dt>{k === "FAR" ? <Term word="FAR" /> : k}</dt>
@@ -33,7 +34,7 @@ export function ReportTeaser({ eligible, lotSqft, zoning }: { eligible: boolean;
 
 /** The zoning limits that sit behind the paywall: FAR, setbacks, height and lot coverage. */
 export function LimitsStrip({ adu, zoning, lotSqft, buildingSqft }: { adu: ADUReport | null; zoning: string | null; lotSqft: number | null; buildingSqft: number | null }) {
-  const maxFar = maxFarForZone(zoning);
+  const maxFar = maxFarForZone(currentZone(zoning));
   const far = computeFar(buildingSqft, lotSqft);
   const fp = adu?.daduFootprint;
   const items: [React.ReactNode, string, string][] = [

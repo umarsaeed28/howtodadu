@@ -20,11 +20,11 @@ export default function FeasAppBar({
       style={{ top: "var(--nav-h)", background: "var(--card)", borderColor: "var(--hairline)" }}
     >
       <div className="mx-auto flex max-w-[1500px] items-center gap-3 px-4 py-3 md:px-6">
-        <p className="pa-eyebrow shrink-0" style={{ color: "var(--slate)" }}>
+        <p className="pa-eyebrow hidden shrink-0 sm:block" style={{ color: "var(--slate)" }}>
           Check a property
         </p>
         <form
-          className="flex w-full items-center gap-2 md:mx-2 md:max-w-2xl md:flex-1"
+          className="flex w-full min-w-0 items-center gap-2 md:mx-2 md:max-w-2xl md:flex-1"
           onSubmit={(e) => {
             e.preventDefault();
             onSubmit(value);

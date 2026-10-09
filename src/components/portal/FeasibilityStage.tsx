@@ -88,7 +88,7 @@ export default function FeasibilityStage({ projectId, address, summary, canStart
 
       <section className="pa-raised overflow-hidden" aria-label="Site plan">
         {data && derived ? (
-          <MasterPlan lot={data.lot} sitePlan={data.sitePlan} feasibility={data.feasibility} report={derived.adu} pin={data.parcel?.pin ?? null} terrain={data.terrain ?? null} snapshotRef={snapshotRef} />
+          <MasterPlan lot={data.lot} sitePlan={data.sitePlan} feasibility={data.feasibility} report={derived.adu} pin={data.parcel?.pin ?? null} terrain={data.terrain ?? null} snapshotRef={snapshotRef} initialPlan={summary.drawn?.plan ?? null} />
         ) : (
           <div className="flex h-72 items-center justify-center text-sm" style={{ color: "var(--slate)" }}>
             {planError ?? (<span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin" aria-hidden /> Drawing the site plan…</span>)}

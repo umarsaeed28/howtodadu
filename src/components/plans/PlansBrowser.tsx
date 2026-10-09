@@ -52,8 +52,8 @@ export default function PlansBrowser() {
       {state.status === "ready" && !state.frame && <p className="plf-count">We could not read this lot&apos;s shape, so fit is not shown. Each plan page still lets you request it.</p>}
       {shown.length === 0 ? (
         <div className="plf-empty">
-          <p>None of these designs fits this lot as drawn. A custom plan can be shaped to it.</p>
-          <a className="s-btn s-btn--primary" href={parcel ? `/custom?parcel=${parcel}` : "/custom"}>Draw my own DADU</a>
+          <p>None of these designs fits this lot as drawn. Draw your own DADU on the plan in your feasibility report, and our architects can make it a custom plan.</p>
+          <a className="s-btn s-btn--primary" href={parcel ? `/feasibility?parcel=${parcel}` : "/feasibility"}>Open my feasibility report</a>
         </div>
       ) : (
         <>

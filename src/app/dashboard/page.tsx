@@ -78,7 +78,6 @@ export default async function Dashboard() {
               <p className="db-links">
                 <Link href={p.pin ? `/feasibility?parcel=${p.pin}` : "/feasibility"}>Report</Link>
                 <Link href={p.pin ? `/plans?parcel=${p.pin}` : "/plans"}>Plans</Link>
-                <Link href={p.pin ? `/custom?parcel=${p.pin}` : "/custom"}>Custom</Link>
                 {p.projectId && <Link href={`/portal/projects/${p.projectId}`}>Project</Link>}
               </p>
             </li>

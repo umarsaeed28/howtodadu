@@ -12,6 +12,7 @@ import { MIN_FOOTPRINT_SQFT, treeSize } from "@/lib/tree-analysis";
 import LotSection from "./LotSection";
 import { PlanPicker, PlacedPlanCard, type PlanFit } from "./PlanPicker";
 import { PREAPPROVED_PLANS, type PreApprovedPlan } from "@/lib/preapproved-dadus";
+import type { SavedPlan } from "@/lib/saved-plan";
 
 
 const MIN_ACCESS_FT = 12; // construction heuristic, mirrors config.min_access_width_ft
@@ -83,12 +84,13 @@ type PlanProps = {
   onDaduChange?: (livingSf: number | null) => void;
   /** Place this pre-approved design on load (the plans journey's "See it on my lot"). */
   initialPlanId?: string | null;
-  /** "custom" is the draw-your-own journey: custom footprints only, so the pre-approved picker and the attached ADU are hidden. */
-  mode?: "report" | "plans" | "custom";
-  /** Size the DADU from outside (presets and typed sizes). A new `key` applies it, keeping the cottage's centre. */
-  footprint?: { w: number; d: number; key: number } | null;
+  mode?: "report" | "plans";
   /** The DADU as it stands after every change: size, living area, stories and what passes or fails. */
   onDaduState?: (s: DaduState | null) => void;
+  /** A drawing saved earlier for this lot (positions, sizes, stories): the sheet opens with it instead of the engine's suggestion. */
+  initialPlan?: SavedPlan | null;
+  /** Every change to the drawing, in a form that can be saved and given back as `initialPlan`. */
+  onPlanChange?: (plan: SavedPlan) => void;
 };
 
 export type DaduState = { w: number; d: number; footprint: number; living: number; stories: 1 | 2; ok: boolean; reasons: string[]; checks: { ok: boolean; text: string }[] };
@@ -128,7 +130,7 @@ export default function MasterPlan(props: PlanProps) {
   return <PlanSheet key={props.pin ?? "lot"} {...props} lot={props.lot} />;
 }
 
-function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotRef, onDaduChange, initialPlanId, mode = "report", footprint, onDaduState }: PlanProps & { lot: LotGeometry }) {
+function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotRef, onDaduChange, initialPlanId, onDaduState, initialPlan, onPlanChange }: PlanProps & { lot: LotGeometry }) {
   /* ---- the site frame (projection, street side, lot lines, setbacks, envelope): src/lib/site-envelope.ts ---- */
   const frame = computeSiteFrame({ lot, sitePlan, feasibility, report });
   const { theta, proj, ring, unproj, lotPts, x0, x1, y0, y1, cx, cy, streets, swap, lw, ld, L, toLocal, rect, fp, onAlley, side, rear, lotRing, lotEdges, sideL, sideR, rearSb, frontSb, polyEnvelope, envelope, maxLiving, coverageLeft, canTwoStory } = frame;
@@ -206,8 +208,21 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
         return { kind: "dadu", u: cl.u - MIN_SIDE_FT / 2, v: cl.v - MIN_SIDE_FT / 2, w: MIN_SIDE_FT, d: MIN_SIDE_FT };
       })()
     : null);
-  const [units, setUnits] = useState<Unit[]>(initialDadu ? [initialDadu] : []);
-  const [stories, setStories] = useState<1 | 2>(canTwoStory ? 2 : 1);
+  // A saved drawing wins over the engine's suggestion; a pre-approved design comes back by its id.
+  const [units, setUnits] = useState<Unit[]>(() =>
+    initialPlan?.units.length
+      ? initialPlan.units.map((x) => {
+          const plan = x.planId ? PREAPPROVED_PLANS.find((p) => p.id === x.planId) : undefined;
+          return { kind: x.kind, u: x.u, v: x.v, w: x.w, d: x.d, ...(plan ? { plan, angle: x.angle ?? 0 } : {}) };
+        })
+      : initialDadu ? [initialDadu] : []
+  );
+  const [stories, setStories] = useState<1 | 2>(initialPlan?.stories ?? (canTwoStory ? 2 : 1));
+  const planKey = JSON.stringify([stories, units.map((x) => [x.kind, x.u, x.v, x.w, x.d, x.angle ?? 0, x.plan?.id ?? ""])]);
+  useEffect(() => {
+    onPlanChange?.({ stories, units: units.map((x) => ({ kind: x.kind, u: x.u, v: x.v, w: x.w, d: x.d, ...(x.angle ? { angle: x.angle } : {}), ...(x.plan ? { planId: x.plan.id } : {}) })) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the key captures every change to the drawing
+  }, [planKey, onPlanChange]);
   const [active, setActive] = useState<number | null>(null);
   const [dragging, setDragging] = useState<Grab | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -377,20 +392,6 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     if (p) placePlan(p);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per sheet
   }, [initialPlanId]);
-  // A size from outside (preset or typed): keep the cottage's centre, then clamp it to the lot.
-  useEffect(() => {
-    if (!footprint) return;
-    setUnits((us) => {
-      const i = us.findIndex((x) => x.kind === "dadu");
-      const old = i >= 0 ? us[i] : initialDadu;
-      if (!old) return us;
-      const cu = old.u + old.w / 2, cv = old.v + old.d / 2;
-      const next = clampBox({ kind: "dadu", u: cu - footprint.w / 2, v: cv - footprint.d / 2, w: footprint.w, d: footprint.d });
-      return i >= 0 ? us.map((x, k) => (k === i ? next : x)) : [next, ...us];
-    });
-    setActive(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- applied when the caller sends a new key
-  }, [footprint?.key]);
 
   /* ---- vehicle access: alley, corner, or the roomier side yard (same rule as the score) ---- */
   type AccessKind = "alley" | "corner" | "side" | "tight" | "blocked";
@@ -1048,9 +1049,9 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
               {overAduCap && <li>A lot can have 2 ADUs. This one already has {existingAdus}, so you can add {Math.max(0, 2 - existingAdus)} more.</li>}
             </ul>
           )}
-          {mode !== "custom" && <PlanPicker plans={PREAPPROVED_PLANS} fit={planFit} activeId={planUnit?.plan?.id ?? null} onPick={placePlan} />}
+          <PlanPicker plans={PREAPPROVED_PLANS} fit={planFit} activeId={planUnit?.plan?.id ?? null} onPick={placePlan} />
           <div className="flex flex-wrap gap-2">
-            {mode !== "custom" && !units.some((x) => x.kind === "aadu") && (
+            {!units.some((x) => x.kind === "aadu") && (
               <button type="button" className="pa-btn pa-btn-sm" onClick={addAadu}><Plus size={14} aria-hidden /> Add an attached ADU</button>
             )}
             <Link href={calculatorHref({ sf: totalLiving })} className="pa-btn pa-btn-sm no-underline"><Calculator size={14} aria-hidden /> Estimate return at {totalLiving.toLocaleString("en-US")} sf</Link>

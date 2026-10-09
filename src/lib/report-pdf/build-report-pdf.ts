@@ -1,16 +1,9 @@
 import type { DashboardPropertySlim } from "@/lib/dashboard-normalize";
 import type { FeasibilityReport } from "../../../packages/schema/src";
+import type { Study, StudyRow } from "@/lib/report/study";
 import type { PlanSnapshot } from "@/components/report/MasterPlan";
 import { COST_LABEL, COST_PER_SF } from "@/lib/config/costs";
 import { svgToPng, type Raster } from "./rasterize-svg";
-
-const SCENARIO_NAMES: Record<string, string> = {
-  single_dadu: "One backyard cottage",
-  two_dadus: "Two backyard cottages",
-  aadu_plus_dadu: "Attached unit plus cottage",
-  nr_middle_housing: "Middle housing (4 to 6 homes)",
-  unit_lot_subdivision: "Unit lot subdivision",
-};
 
 const INK: RGB = [23, 36, 29];
 const SLATE: RGB = [88, 104, 96];
@@ -38,9 +31,11 @@ export interface ReportPdfInput {
   slim: Pick<DashboardPropertySlim, "address" | "streetLine" | "neighborhood" | "zoning">;
   report: FeasibilityReport;
   plan: PlanSnapshot | null;
+  /** The feasibility study sections (overview, property, zoning, standards, coverage, FAR, DADU rules, utilities, conclusion). */
+  study?: Study | null;
 }
 
-export async function buildReportPdf({ slim, report, plan }: ReportPdfInput) {
+export async function buildReportPdf({ slim, report, plan, study }: ReportPdfInput) {
   const { jsPDF } = await import("jspdf");
   // Rasterize before touching the PDF so a failure here leaves nothing half-built.
   const planImg: Raster | null = plan?.plan ? await svgToPng(plan.plan, 2600) : null;
@@ -106,6 +101,31 @@ export async function buildReportPdf({ slim, report, plan }: ReportPdfInput) {
     }
     y += 0.8;
   };
+  /** A study table: item in bold on the left, the description wrapped beside it, and the code basis on the right. */
+  const table = (rows: StudyRow[], withRef = false) => {
+    const c1 = 46, c3 = withRef ? 44 : 0, c2 = CW - c1 - c3 - 4;
+    for (const r of rows) {
+      font(9);
+      const a = pdf.splitTextToSize(clean(r.item), c1 - 2) as string[];
+      const b = pdf.splitTextToSize(clean(r.value), c2 - 2) as string[];
+      const c = withRef && r.ref ? (pdf.splitTextToSize(clean(r.ref), c3 - 2) as string[]) : [];
+      const h = Math.max(a.length, b.length, c.length) * (lineH(9) + 0.8) + 3;
+      room(h);
+      pdf.setDrawColor(HAIR[0], HAIR[1], HAIR[2]);
+      pdf.setLineWidth(0.2);
+      pdf.line(M, y, PW - M, y);
+      font(9, true);
+      color(INK);
+      a.forEach((ln, k) => pdf.text(ln, M, y + 1.5 + lineH(9) + k * (lineH(9) + 0.8)));
+      font(9);
+      b.forEach((ln, k) => pdf.text(ln, M + c1 + 2, y + 1.5 + lineH(9) + k * (lineH(9) + 0.8)));
+      color(SLATE);
+      c.forEach((ln, k) => pdf.text(ln, M + c1 + c2 + 4, y + 1.5 + lineH(9) + k * (lineH(9) + 0.8)));
+      y += h;
+    }
+    pdf.line(M, y, PW - M, y);
+    y += 3;
+  };
   const image = (img: Raster, maxH: number) => {
     const w = CW;
     const h = Math.min(maxH, (img.height / img.width) * w);
@@ -161,6 +181,11 @@ export async function buildReportPdf({ slim, report, plan }: ReportPdfInput) {
   rule();
 
   /* ---- master plan, as the user arranged it ---- */
+  if (study) {
+    heading("Project overview");
+    for (const para of study.overview) text(para, { gap: 1.5 });
+  }
+
   heading("Master plan", "The lot as drawn in the report, with each cottage where it was placed when this PDF was made.");
   if (planImg) {
     image(planImg, 126);
@@ -223,27 +248,52 @@ export async function buildReportPdf({ slim, report, plan }: ReportPdfInput) {
     image(sectionImg, 80);
   }
 
-  /* ---- facts, scenarios, constraints, risks ---- */
-  heading("Property facts");
-  for (const f of report.property_facts) {
-    const v = f.unit === "%" ? `${Math.round(f.value)}%` : f.unit === "sf" ? sf(f.value) : `${Math.round(f.value)} ${f.unit}`;
-    bullet(`${f.label}: ${v}${f.provenance?.source_layer ? ` (${f.provenance.source_layer})` : ""}`);
+  /* ---- the study: property, zoning, standards, coverage, FAR, DADU rules, utilities ---- */
+  if (study) {
+    heading("Property information");
+    table(study.property);
+    heading("Jurisdiction and zoning", "Governed by the Seattle Municipal Code and reviewed by SDCI.");
+    table(study.jurisdiction);
+    heading("Development standards");
+    table(study.standards, true);
+    if (study.coverage) {
+      heading("Lot coverage analysis");
+      table(study.coverage.rows);
+      text(study.coverage.summary, { gap: 1.5 });
+    }
+    if (study.far) {
+      heading("FAR analysis");
+      table(study.far.rows);
+      text(study.far.summary, { gap: 1.5 });
+    }
+    heading("DADU regulations");
+    table(study.dadu, true);
+    heading("Site constraints");
+    for (const c of report.site_constraints) bullet(`${c.label} ${c.detail}`);
+    heading("Overhead utilities");
+    text(study.utilities.summary, { gap: 1 });
+    for (const c of study.utilities.clearances) bullet(c);
+    text("Typical Seattle City Light clearances. Overhead lines are not in public data, so check the site.", { size: 8.5, c: SLATE, gap: 1 });
+  } else {
+    heading("Property facts");
+    for (const f of report.property_facts) {
+      const v = f.unit === "%" ? `${Math.round(f.value)}%` : f.unit === "sf" ? sf(f.value) : `${Math.round(f.value)} ${f.unit}`;
+      bullet(`${f.label}: ${v}${f.provenance?.source_layer ? ` (${f.provenance.source_layer})` : ""}`);
+    }
+    heading("Site constraints");
+    for (const c of report.site_constraints) bullet(`${c.label} ${c.detail}`);
   }
-
-  heading("Scenarios", "Only the single cottage has a score today. The others show what is allowed, not a verdict.");
-  for (const sc of report.scenarios) {
-    const bits = [sc.verdict, sc.units != null ? `${sc.units} ${sc.units === 1 ? "home" : "homes"}` : null, sc.max_buildable_sf ? sf(sc.max_buildable_sf.value) : null, sc.construction_cost_usd ? `${usd(sc.construction_cost_usd.value)} construction only` : null].filter(Boolean);
-    room(16);
-    text(SCENARIO_NAMES[sc.id] ?? sc.id, { bold: true, gap: 0 });
-    text(`${bits.join("  |  ")}${bits.length ? ". " : ""}${sc.note}`, { size: 9, c: SLATE, gap: 1.5 });
-  }
-
-  heading("Site constraints");
-  for (const c of report.site_constraints) bullet(`${c.label} ${c.detail}`);
 
   heading("Ranked risks", "Hard prohibitions come first.");
   if (!report.risks.length) text("No risks flagged.", { c: SLATE });
   report.risks.forEach((r, i) => bullet(`${r.title}${r.hard_prohibition ? "  [Blocks the project]" : ""}${r.citations.length === 0 ? "  (unverified)" : ""}`, r.hard_prohibition ? RED : INK, `${i + 1}.`));
+
+  if (study) {
+    heading("Conclusion");
+    text(study.conclusion, { gap: 1.5 });
+    text("Recommended next steps", { bold: true, gap: 0.5 });
+    for (const d of study.dueDiligence) bullet(d);
+  }
 
   heading("Code citations", "Current Seattle code wins over ADUniverse. Citations stay unverified until checked against the code text.");
   for (const c of report.citations) bullet(`${c.section}: ${c.status === "verified" ? `verified ${c.effective_from ?? ""}` : "unverified"}`);

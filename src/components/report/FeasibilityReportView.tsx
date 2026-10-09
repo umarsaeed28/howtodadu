@@ -3,7 +3,7 @@
 import { REHAB_LABELS, daduEconomics, type RehabLevel } from "@/lib/dadu-value";
 import RehabPicker from "@/components/listing/RehabPicker";
 import type { ReportListing } from "@/lib/feasibility";
-import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { ArrowLeft, Download, Heart, Loader2, ExternalLink } from "lucide-react";
 import type { DashboardPropertySlim } from "@/lib/dashboard-normalize";
 import type { FeasibilityTableRow } from "@/lib/feasibility-table-model";
@@ -11,15 +11,18 @@ import type { FeasibilityReport } from "../../../packages/schema/src";
 import { toReport } from "@/lib/report/to-report";
 import { zillowUrl } from "@/lib/feasibility-verdict";
 import FeasPropertyDetails from "@/components/feasibility-pencil/FeasPropertyDetails";
-import MasterPlan, { type PlanSnapshot } from "./MasterPlan";
+import MasterPlan, { type DaduState, type PlanSnapshot } from "./MasterPlan";
 import ReportPaywall from "./ReportPaywall";
 import { LimitsStrip, PurchaseBanner, ReportNextSteps, ReportTeaser } from "./ReportJourney";
 import { hasFeasibilityAccess } from "@/lib/report-access";
-import { saveParcel } from "@/lib/parcel-context";
+import { prettyAddress, saveParcel } from "@/lib/parcel-context";
 import { isProductKind, type ProductKind } from "@/lib/pricing";
 import { track } from "@/lib/analytics";
 import SiteIntel from "./SiteIntel";
-import { ConstraintsGrid, FactsStrip, RisksList, ScenariosGrid, VerifyStrip } from "./ReportSections";
+import { ConstraintsGrid, RisksList } from "./ReportSections";
+import { StudyAnalysis, StudyConclusion, StudyOverview, StudyTable, StudyUtilities } from "./StudySections";
+import { buildStudy, type Study } from "@/lib/report/study";
+import { loadPlan, savePlan, type DrawnSummary, type SavedPlan } from "@/lib/saved-plan";
 import { COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
 import { calculatorHref } from "@/lib/calculator/inputs";
 import Link from "next/link";
@@ -194,11 +197,14 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
 const SECTION_TABS = [
   ["rep-overview", "Overview"],
   ["rep-plan", "Master plan"],
-  ["rep-facts", "Facts"],
-  ["rep-intel", "Site intelligence"],
-  ["rep-scen", "Scenarios"],
+  ["rep-property", "Property"],
+  ["rep-zoning", "Zoning"],
+  ["rep-standards", "Standards"],
+  ["rep-coverage", "Coverage and FAR"],
+  ["rep-dadu", "DADU rules"],
+  ["rep-intel", "Site conditions"],
   ["rep-risks", "Risks"],
-  ["rep-cite", "Before you buy"],
+  ["rep-conclusion", "Conclusion"],
   ["rep-all", "All data"],
 ] as const;
 
@@ -217,9 +223,18 @@ function SectionTabs() {
   );
 }
 
-function ReportBody({ report, row, snapshotRef, onDaduChange }: { report: FeasibilityReport; row: FeasibilityTableRow; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null>; onDaduChange: (sf: number | null) => void }) {
+/**
+ * The report below the hero, in the order of an architect's DADU feasibility study: overview, the master plan
+ * (drawn by the visitor), property information, jurisdiction, development standards, lot coverage and FAR, DADU
+ * rules, site conditions, overhead utilities, risks and the conclusion.
+ */
+function ReportBody({ report, row, slim, study, snapshotRef, onDaduChange, onDaduState, initialPlan, onPlanChange }: { report: FeasibilityReport; row: FeasibilityTableRow; slim: DashboardPropertySlim; study: Study; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null>; onDaduChange: (sf: number | null) => void; onDaduState: (s: DaduState | null) => void; initialPlan: SavedPlan | null; onPlanChange: (p: SavedPlan) => void }) {
   return (
     <div className="flex flex-col gap-6">
+      <Section id="rep-study" title="Project overview">
+        <StudyOverview study={study} aerialUrl={row.result.lot?.aerialUrl ?? null} address={slim.streetLine || slim.address} />
+      </Section>
+
       {/* The master plan breaks out of the page column to (nearly) the full screen width, so there is room to work. */}
       <div id="rep-plan" className="mx-[calc((100%_-_min(100vw_-_2rem,1680px))/2)] w-[min(100vw_-_2rem,1680px)] max-w-none scroll-mt-[190px]">
         <MasterPlan
@@ -231,32 +246,59 @@ function ReportBody({ report, row, snapshotRef, onDaduChange }: { report: Feasib
           terrain={row.result.terrain ?? null}
           snapshotRef={snapshotRef}
           onDaduChange={onDaduChange}
+          onDaduState={onDaduState}
+          initialPlan={initialPlan}
+          onPlanChange={onPlanChange}
         />
       </div>
 
       <div className="flex flex-col gap-6">
-        <Section id="rep-facts" title="Property facts">
-          <FactsStrip report={report} />
+        <Section id="rep-property" title="Property information">
+          <StudyTable rows={study.property} head={["Item", "Description"]} />
         </Section>
 
-        <Section id="rep-intel" title="Site intelligence" hint="What the city and county data say about this lot, with the source under each card.">
+        <Section id="rep-zoning" title="Jurisdiction and zoning" hint="Governed by the Seattle Municipal Code and reviewed by SDCI.">
+          <StudyTable rows={study.jurisdiction} head={["Item", "Description"]} />
+        </Section>
+
+        <Section id="rep-standards" title="Development standards" hint="The rules this report applies to the lot.">
+          <StudyTable rows={study.standards} head={["Item", "Requirement", "Basis"]} withRef />
+        </Section>
+
+        <div id="rep-coverage" className="grid scroll-mt-[190px] gap-6 lg:grid-cols-2">
+          {study.coverage && (
+            <Section id="rep-coverage-lot" title="Lot coverage analysis">
+              <StudyAnalysis block={study.coverage} />
+            </Section>
+          )}
+          {study.far && (
+            <Section id="rep-far" title="FAR analysis">
+              <StudyAnalysis block={study.far} />
+            </Section>
+          )}
+        </div>
+
+        <Section id="rep-dadu" title="DADU regulations">
+          <StudyTable rows={study.dadu} head={["Item", "Requirement", "Basis"]} withRef />
+        </Section>
+
+        <Section id="rep-intel" title="Site conditions" hint="What the city and county data say about this lot, with the source under each card.">
           <SiteIntel row={row} />
+          <div className="mt-6">
+            <ConstraintsGrid row={row} />
+          </div>
         </Section>
 
-        <Section id="rep-scen" title="Scenarios" hint="Only the single cottage has a score today. The others show what the lot allows.">
-          <ScenariosGrid report={report} />
-        </Section>
-
-        <Section id="rep-constraints" title="Site checks">
-          <ConstraintsGrid row={row} />
+        <Section id="rep-utilities" title="Overhead utilities">
+          <StudyUtilities study={study} />
         </Section>
 
         <Section id="rep-risks" title="Ranked risks" hint="Hard prohibitions come first.">
           <RisksList report={report} />
         </Section>
 
-        <Section id="rep-cite" title="Before you buy">
-          <VerifyStrip report={report} />
+        <Section id="rep-conclusion" title="Conclusion">
+          <StudyConclusion study={study} />
         </Section>
       </div>
     </div>
@@ -313,6 +355,17 @@ export default function FeasibilityReportView({
   }, [accessChecked, paid, detailRow, eligible]);
   // The DADU as drawn on the plan: the build estimate and return follow it (the largest allowed size until it is drawn).
   const [drawnSf, setDrawnSf] = useState<number | null>(null);
+  // The drawing itself, saved per parcel in this browser: it reopens with the lot, goes into the PDF and the study,
+  // and is what Start my project carries into the project.
+  const [drawn, setDrawn] = useState<DrawnSummary | null>(null);
+  const [initialPlan] = useState<SavedPlan | null>(() => (typeof window === "undefined" ? null : loadPlan(slim.pin)?.plan ?? null));
+  const drawnRef = useRef<DrawnSummary | null>(null);
+  const onDaduState = useCallback((st: DaduState | null) => {
+    const d = st ? { living: st.living, footprint: st.footprint, w: st.w, d: st.d, stories: st.stories } : null;
+    drawnRef.current = d;
+    setDrawn(d);
+  }, []);
+  const onPlanChange = useCallback((plan: SavedPlan) => savePlan(slim.pin, plan, drawnRef.current), [slim.pin]);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   async function downloadPdf() {
@@ -323,7 +376,7 @@ export default function FeasibilityReportView({
       // Read the plan at click time so the PDF shows the units exactly where the user dragged them.
       const plan = snapshotRef.current?.() ?? null;
       const { buildReportPdf, reportPdfName } = await import("@/lib/report-pdf/build-report-pdf");
-      const pdf = await buildReportPdf({ slim, report, plan });
+      const pdf = await buildReportPdf({ slim, report, plan, study });
       pdf.save(reportPdfName(slim.streetLine || slim.address));
     } catch (e) {
       setPdfError(e instanceof Error ? e.message : "Could not make the PDF.");
@@ -331,6 +384,7 @@ export default function FeasibilityReportView({
       setPdfBusy(false);
     }
   }
+
 
   const { report, adapterError } = useMemo(() => {
     if (!detailRow) return { report: null, adapterError: null };
@@ -340,6 +394,13 @@ export default function FeasibilityReportView({
       return { report: null, adapterError: e instanceof Error ? e.message : "Could not build the report." };
     }
   }, [detailRow]);
+
+  const study = useMemo<Study | null>(() => {
+    if (!detailRow || !report) return null;
+    const p = detailRow.result.parcel;
+    const verdict = report.summary.verdict;
+    return buildStudy({ address: `${prettyAddress(slim.streetLine || slim.address)}, Seattle, WA${p?.zip ? ` ${p.zip}` : ""}`, pin: p?.pin ?? null, zoning: p?.zoning ?? slim.zoning, neighborhood: slim.neighborhood, urbanVillage: p?.urbanVillage ?? null, lotSqft: p?.lotSqft ?? slim.lotSizeSqft, yearBuilt: p?.yearBuilt ?? null, feasibility: detailRow.result.feasibility, adu: detailRow.report, verdict, drawn });
+  }, [detailRow, report, slim, drawn]);
 
   return (
     <div className="mx-auto w-full max-w-[1280px]">
@@ -404,7 +465,7 @@ export default function FeasibilityReportView({
       {report && <Hero report={report} slim={slim} listing={detailRow?.result.listing ?? null} drawnSf={drawnSf} houseSqft={detailRow?.result.listing?.livingSqft ?? detailRow?.result.feasibility?.totalBuildingSqft ?? null} />}
       {report && detailRow && <div className="mb-6"><LimitsStrip adu={detailRow.report} zoning={slim.zoning} lotSqft={slim.lotSizeSqft} buildingSqft={detailRow.result.feasibility?.totalBuildingSqft ?? null} /></div>}
       {report && detailRow && <SectionTabs />}
-      {report && detailRow && <ReportBody report={report} row={detailRow} snapshotRef={snapshotRef} onDaduChange={setDrawnSf} />}
+      {report && detailRow && study && <ReportBody report={report} row={detailRow} slim={slim} study={study} snapshotRef={snapshotRef} onDaduChange={setDrawnSf} onDaduState={onDaduState} initialPlan={initialPlan} onPlanChange={onPlanChange} />}
 
       <div className="mt-6">
         <Section id="rep-all" title="All property data">

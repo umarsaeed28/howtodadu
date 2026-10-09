@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
       { source: "/app/:path*", destination: "/", permanent: true },
       { source: "/product", destination: "/", permanent: true },
       { source: "/about", destination: "/", permanent: true },
+      // Drawing your own DADU now happens on the feasibility report's master plan.
+      { source: "/custom", destination: "/feasibility", permanent: true },
     ];
   },
 };

@@ -5,6 +5,7 @@ import { toReport } from "@/lib/report/to-report";
 import { daduEconomics } from "@/lib/dadu-value";
 import { BUILD_TYPES } from "@/lib/feasibility/defaults";
 import type { FeasibilityReport } from "../../../packages/schema/src";
+import type { DrawnSummary, SavedPlan } from "@/lib/saved-plan";
 
 /** The numbers the portal keeps from a feasibility run: enough for the card, the stage and the metrics. */
 export type FeasibilitySummary = {
@@ -26,6 +27,8 @@ export type FeasibilitySummary = {
   costUsd: number | null;
   rentMonthly: number | null;
   saleValueUsd: number | null;
+  /** The DADU the client drew on the report's master plan, when they started the project from it. */
+  drawn?: { plan: SavedPlan; dadu: DrawnSummary | null } | null;
 };
 
 /** Runs the engine's pure steps on a result: the ADU report, the table row and the shared report shape. */
