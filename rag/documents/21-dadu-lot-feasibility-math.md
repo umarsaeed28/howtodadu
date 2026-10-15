@@ -40,8 +40,7 @@ DADU's gross floor area (SMC 23.42.022). Any garage area beyond 250 sq ft counts
 - A three-bedroom DADU (1,200 sq ft cap) with a 250 sq ft attached garage can be a 1,450 sq ft building.
 The exemption applies to the ADU size cap only. The garage is still a building on the ground, so its full footprint
 counts toward lot coverage. Whether it also counts toward the lot's FAR is not settled in Pencil's sources; count it
-until confirmed. Pencil's rules engine does not yet model the garage exemption: its DADU size excludes garages
-entirely, so a garage must be added by hand when checking coverage.
+until confirmed.
 
 ## Lot coverage limit
 How much of the lot can buildings cover in an NR zone? 50 percent of the lot area (SMC 23.44.080.A, as amended

@@ -100,6 +100,56 @@ describe("lotFeasibility", () => {
   });
 });
 
+describe("lotFeasibility with an attached garage", () => {
+  const garageOption = (input: Parameters<typeof lotFeasibility>[0]) => option(lotFeasibility(input), "DADU with attached garage");
+
+  it("offers the garage option only when a garage is given, and changes nothing else", () => {
+    expect(lotFeasibility({ ...specCase, garageSqft: 0 })).toEqual(lotFeasibility(specCase));
+    const out = lotFeasibility({ ...specCase, garageSqft: 250 });
+    expect(out.playbook_options.map((o) => o.configuration_name).at(-1)).toBe("DADU with attached garage");
+    expect(out.playbook_options.slice(0, -1)).toEqual(lotFeasibility(specCase).playbook_options);
+    expect(schema.safeParse(out).success).toBe(true);
+  });
+
+  it("a 250 sq ft garage is exempt: 1,000 sq ft of living space still meets the two-bedroom cap", () => {
+    const o = garageOption({ ...specCase, garageSqft: 250 });
+    expect(o.feasible).toBe(true);
+    expect(o.design_bottleneck_notes).toMatch(/^Unit size cap binds: 1,000 sq ft per unit, with 250 sq ft of the 250 sq ft garage exempt/);
+    expect(o.design_bottleneck_notes).toContain("Up to 1,000 sq ft of living space plus the 250 sq ft garage, a 1,250 sq ft building.");
+  });
+
+  it("garage area over 250 sq ft counts: a 400 sq ft garage limits living space to 850", () => {
+    const o = garageOption({ ...specCase, garageSqft: 400 });
+    expect(o.design_bottleneck_notes).toContain("150 sq ft counted");
+    expect(o.design_bottleneck_notes).toContain("Up to 850 sq ft of living space plus the 400 sq ft garage, a 1,250 sq ft building.");
+  });
+
+  it("three bedrooms with a 250 sq ft garage allow a 1,450 sq ft building", () => {
+    const o = garageOption({ ...specCase, bedrooms: 3, garageSqft: 250 });
+    expect(o.design_bottleneck_notes).toContain("Up to 1,200 sq ft of living space plus the 250 sq ft garage, a 1,450 sq ft building.");
+  });
+
+  it("the garage's whole footprint counts toward lot coverage", () => {
+    // 600 sq ft of coverage left over two stories is 1,200 sq ft of building; the garage takes 250 of it.
+    const o = garageOption({ ...specCase, existingFootprintSqft: 1400, garageSqft: 250 });
+    expect(o.design_bottleneck_notes).toMatch(/^Lot coverage binds: 600 sq ft of footprint left/);
+    expect(o.design_bottleneck_notes).toContain("Up to 950 sq ft of living space plus the 250 sq ft garage, a 1,200 sq ft building.");
+    expect(o.design_bottleneck_notes).toContain("full 250 sq ft footprint counts toward lot coverage");
+    expect(o.max_footprint_per_structure).toBe(600);
+
+    const tooBig = garageOption({ ...specCase, existingFootprintSqft: 1400, garageSqft: 700 });
+    expect(tooBig.feasible).toBe(false);
+    expect(tooBig.design_bottleneck_notes).toContain("The 700 sq ft garage does not fit in the 600 sq ft of footprint left.");
+  });
+
+  it("the garage counts toward FAR", () => {
+    // House + DADU: FAR 1.0 gives 4,000 sq ft, 600 left; the 250 sq ft garage leaves 350 of living space.
+    const o = garageOption({ ...specCase, existingChargeableSqft: 3400, garageSqft: 250 });
+    expect(o.design_bottleneck_notes).toMatch(/^Floor area \(FAR\) binds: 600 sq ft/);
+    expect(o.design_bottleneck_notes).toContain("Up to 350 sq ft of living space");
+  });
+});
+
 describe("lotFeasibilityInputFrom", () => {
   const result = (lotSqft: number | null, feasibility: Partial<NonNullable<FeasibilityResult["feasibility"]>> | null) =>
     ({ parcel: lotSqft == null ? null : { lotSqft }, feasibility }) as unknown as FeasibilityResult;
@@ -114,6 +164,7 @@ describe("lotFeasibilityInputFrom", () => {
     const built = lotFeasibilityInputFrom(result(4000, { totalBuildingSqft: null, lotCoveragePercent: 17.5 }), { existingChargeableSqft: 1400, units: 3 })!;
     expect(built.existingChargeableSource).toBe("override");
     expect(built.input).toMatchObject({ existingFootprintSqft: 700, existingChargeableSqft: 1400, units: 3 });
+    expect(lotFeasibilityInputFrom(result(4000, {}), { garageSqft: 300 })!.input.garageSqft).toBe(300);
   });
 
   it("needs a lot size", () => {

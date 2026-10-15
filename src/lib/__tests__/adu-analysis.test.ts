@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { generateADUReport } from "../adu-analysis";
+import {
+  computeDADUFootprint,
+  generateADUReport,
+  maxAduBuildingSqft,
+  maxAduLivingSqft,
+  meetsAduSizeCap,
+} from "../adu-analysis";
 import type { ParcelData, FeasibilityData } from "../feasibility";
 
 function makeParcel(overrides: Partial<ParcelData> = {}): ParcelData {
@@ -785,5 +791,57 @@ describe("Room for a DADU", () => {
   it("adds no room check when the spot was not measured", () => {
     const report = generateADUReport(makeParcel(), makeFactors());
     expect(report.checks.find((c) => c.label === "Room for a DADU")).toBeUndefined();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   ATTACHED GARAGE (SMC 23.42.022 exemption)
+   ═══════════════════════════════════════════════════════════ */
+
+describe("Attached garage", () => {
+  it("1,000 sq ft of living space and a 250 sq ft garage meet the two-bedroom cap", () => {
+    expect(meetsAduSizeCap(1000, 250, 1000)).toBe(true);
+    expect(meetsAduSizeCap(1000, 251, 1000)).toBe(false);
+    expect(maxAduBuildingSqft(1000, 250)).toBe(1250);
+  });
+
+  it("a 400 sq ft garage limits living space to 850", () => {
+    expect(maxAduLivingSqft(1000, 400)).toBe(850);
+    expect(meetsAduSizeCap(850, 400, 1000)).toBe(true);
+    expect(meetsAduSizeCap(851, 400, 1000)).toBe(false);
+  });
+
+  it("three bedrooms with a 250 sq ft garage allow a 1,450 sq ft building", () => {
+    expect(maxAduBuildingSqft(1200, 250)).toBe(1450);
+    expect(maxAduLivingSqft(1200, 250)).toBe(1200);
+  });
+
+  it("no garage leaves the cap alone", () => {
+    expect(maxAduLivingSqft(1000)).toBe(1000);
+    expect(maxAduBuildingSqft(1000)).toBe(1000);
+  });
+
+  it("the report's DADU takes the garage on top of 1,000 sq ft of living space", () => {
+    const parcel = makeParcel({ lotSqft: 5400, zoning: "NR3" });
+    const factors = makeFactors({ lotCoveragePercent: 0.1 });
+    expect(generateADUReport(parcel, factors).daduFootprint!.garageNote).toBeNull();
+
+    const fp = generateADUReport(parcel, factors, { garageSqft: 250 }).daduFootprint!;
+    expect(fp).toMatchObject({ maxAllowedSqft: 1000, buildableSqft: 1250, livingSqft: 1000, stories: 2, footprintSqft: 625 });
+    expect(fp.garageNote).toContain("250 sq ft of it is exempt");
+
+    const big = generateADUReport(parcel, factors, { garageSqft: 400 }).daduFootprint!;
+    expect(big).toMatchObject({ buildableSqft: 1250, livingSqft: 850 });
+    expect(big.garageNote).toContain("150 sq ft counts");
+  });
+
+  it("the garage's footprint counts toward lot coverage", () => {
+    // One story (no height limits given) with 600 sq ft of coverage left: the garage takes 250 of it.
+    expect(computeDADUFootprint(5400, 600, 50, null)).toMatchObject({ footprintSqft: 600, livingSqft: 600 });
+    expect(computeDADUFootprint(5400, 600, 50, null, null, 250)).toMatchObject({ footprintSqft: 600, buildableSqft: 600, livingSqft: 350 });
+    expect(computeDADUFootprint(5400, 600, 50, null, null, 700)).toBeNull();
+    // Two stories: the garage is on the ground floor, so the footprint is never smaller than it.
+    expect(computeDADUFootprint(5400, 2000, 50, { base: 32, pitched: 5 }, null, 800)).toMatchObject({ footprintSqft: 800, livingSqft: 450 });
+    expect(computeDADUFootprint(5400, 2000, 50, { base: 32, pitched: 5 }, 700, 800)).toBeNull();
   });
 });

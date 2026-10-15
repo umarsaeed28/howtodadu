@@ -1,4 +1,12 @@
-import { DADU_MAX_GROSS_SQFT, DADU_MAX_GROSS_SQFT_3BR, NR_HEIGHT, maxLotCoverageSqft } from "@/lib/adu-analysis";
+import {
+  ADU_GARAGE_EXEMPT_SQFT,
+  DADU_MAX_GROSS_SQFT,
+  DADU_MAX_GROSS_SQFT_3BR,
+  NR_HEIGHT,
+  aduCountedGarageSqft,
+  maxAduLivingSqft,
+  maxLotCoverageSqft,
+} from "@/lib/adu-analysis";
 import type { FeasibilityResult } from "@/lib/feasibility";
 import { nrFar, nrMaxFloorArea } from "@/lib/feasibility/far";
 import { MIN_FOOTPRINT_SQFT } from "@/lib/tree-analysis";
@@ -32,6 +40,11 @@ export interface LotFeasibilityInput {
   /** Largest open spot for a DADU the building outlines leave (tree-analysis.ts). Null when not measured. */
   roomSqft?: number | null;
   hasAlley?: boolean;
+  /**
+   * A garage planned in the DADU, attached to it (sq ft). Adds the "DADU with attached garage" option: up to 250 sq ft
+   * of it is exempt from the size cap (SMC 23.42.022), but all of it counts toward lot coverage and FAR.
+   */
+  garageSqft?: number;
 }
 
 export interface PlaybookOption {
@@ -71,6 +84,8 @@ interface Configuration {
   stories: number;
   /** The AADU is made from the house's existing floor area: no new coverage or floor area. */
   aadu?: boolean;
+  /** The DADU has the input's attached garage on its ground floor. */
+  garage?: boolean;
 }
 
 const CONFIGURATIONS: Configuration[] = [
@@ -80,6 +95,9 @@ const CONFIGURATIONS: Configuration[] = [
   { name: "Two separate DADUs", newAdus: 2, structures: 2, dadusPerStructure: 1, stories: NR_MAX_STORIES },
   { name: "AADU + DADU", newAdus: 2, structures: 1, dadusPerStructure: 1, stories: NR_MAX_STORIES, aadu: true },
 ];
+
+/** Offered only when the input has a garage: living space over a garage on the ground floor. */
+const GARAGE_CONFIGURATION: Configuration = { name: "DADU with attached garage", newAdus: 1, structures: 1, dadusPerStructure: 1, stories: 2, garage: true };
 
 /** Dwelling units for the headline FAR: the override, or the house plus the most ADUs the lot may have. */
 export const headlineUnits = (input: LotFeasibilityInput) => input.units ?? 1 + Math.max(input.existingAdus, MAX_ADUS_PER_LOT);
@@ -91,6 +109,8 @@ export function lotFeasibility(input: LotFeasibilityInput): SeattleLotFeasibilit
   const existingAdus = Math.max(0, input.existingAdus);
   const cap = (input.bedrooms ?? 2) >= 3 ? DADU_MAX_GROSS_SQFT_3BR : DADU_MAX_GROSS_SQFT;
   const room = input.roomSqft ?? null;
+  const garageSqft = Math.max(0, input.garageSqft ?? 0);
+  const configurations = garageSqft > 0 ? [...CONFIGURATIONS, GARAGE_CONFIGURATION] : CONFIGURATIONS;
 
   const maxCoverage = maxLotCoverageSqft(lot);
   const coverageLeft = Math.max(0, maxCoverage - input.existingFootprintSqft);
@@ -100,7 +120,7 @@ export function lotFeasibility(input: LotFeasibilityInput): SeattleLotFeasibilit
   const maxFloor = nrMaxFloorArea(lot, units);
   const aduCount = Math.max(0, MAX_ADUS_PER_LOT - existingAdus);
 
-  const playbook_options = CONFIGURATIONS.map((c): PlaybookOption => {
+  const playbook_options = configurations.map((c): PlaybookOption => {
     const base = { configuration_name: c.name, max_stories_allowed: c.stories };
     if (c.newAdus > aduCount) {
       return {
@@ -113,9 +133,15 @@ export function lotFeasibility(input: LotFeasibilityInput): SeattleLotFeasibilit
     const unitsHere = 1 + existingAdus + c.newAdus;
     const farLeft = floorAreaLeft(unitsHere);
     const s = c.structures;
-    // Each limit on the floor area of one detached structure; the smallest binds.
+    // The garage is in the building's floor area and footprint; only the size cap leaves out its first 250 sq ft.
+    const garage = c.garage ? garageSqft : 0;
+    const exempt = Math.min(garage, ADU_GARAGE_EXEMPT_SQFT);
+    const capNote = garage > 0
+      ? `${sf(cap)} per unit, with ${sf(exempt)} of the ${sf(garage)} garage exempt${aduCountedGarageSqft(garage) > 0 ? ` and ${sf(aduCountedGarageSqft(garage))} counted` : ""} (SMC 23.42.022), so up to ${sf(maxAduLivingSqft(cap, garage))} of living space`
+      : `${c.dadusPerStructure > 1 ? `${c.dadusPerStructure} x ` : ""}${sf(cap)} per unit (SMC 23.42.022.G)`;
+    // Each limit on the floor area of one detached structure, garage included; the smallest binds.
     const limits: { label: string; sqft: number; note: string }[] = [
-      { label: "Unit size cap", sqft: c.dadusPerStructure * cap, note: `${c.dadusPerStructure > 1 ? `${c.dadusPerStructure} x ` : ""}${sf(cap)} per unit (SMC 23.42.022.G)` },
+      { label: "Unit size cap", sqft: c.dadusPerStructure * maxAduLivingSqft(cap, garage) + garage, note: capNote },
       { label: "Floor area (FAR)", sqft: farLeft / s, note: `${sf(farLeft)} of chargeable floor area left at FAR ${nrFar(lot, unitsHere).toFixed(1)} with ${unitsHere} units${s > 1 ? `, shared by ${s} buildings` : ""} (SMC 23.44.050)` },
       { label: "Lot coverage", sqft: (c.stories * coverageLeft) / s, note: `${sf(coverageLeft)} of footprint left under 50% coverage${s > 1 ? `, shared by ${s} buildings` : ""}, over ${c.stories} ${c.stories === 1 ? "story" : "stories"} (SMC 23.44.080)` },
     ];
@@ -126,17 +152,23 @@ export function lotFeasibility(input: LotFeasibilityInput): SeattleLotFeasibilit
     const floorPerStructure = binding.sqft;
     const footprintLimit = Math.min(coverageLeft, room ?? Infinity) / s;
     const footprint = Math.floor(Math.min(footprintLimit, floorPerStructure));
-    const floorPerUnit = floorPerStructure / c.dadusPerStructure;
-    const feasible = footprintLimit >= MIN_FOOTPRINT_SQFT && floorPerUnit >= MIN_FOOTPRINT_SQFT;
+    const floorPerUnit = Math.max(0, floorPerStructure - garage) / c.dadusPerStructure;
+    const garageFits = footprintLimit >= garage;
+    const feasible = footprintLimit >= MIN_FOOTPRINT_SQFT && floorPerUnit >= MIN_FOOTPRINT_SQFT && garageFits;
 
     const notes = [
       `${binding.label} binds: ${binding.note}.`,
       feasible
-        ? `Up to ${sf(floorPerUnit)} per DADU${s > 1 ? ` in each of ${s} buildings` : ""}.`
+        ? garage > 0
+          ? `Up to ${sf(floorPerUnit)} of living space plus the ${sf(garage)} garage, a ${sf(floorPerStructure)} building.`
+          : `Up to ${sf(floorPerUnit)} per DADU${s > 1 ? ` in each of ${s} buildings` : ""}.`
         : footprintLimit < MIN_FOOTPRINT_SQFT
           ? `Under the ${sf(MIN_FOOTPRINT_SQFT)} (15 x 20 ft) smallest DADU footprint per building.`
-          : `Under ${sf(MIN_FOOTPRINT_SQFT)} of floor area per DADU.`,
+          : !garageFits
+            ? `The ${sf(garage)} garage does not fit in the ${sf(footprintLimit)} of footprint left.`
+            : `Under ${sf(MIN_FOOTPRINT_SQFT)} of floor area per DADU.`,
     ];
+    if (garage > 0) notes.push(`The garage's full ${sf(garage)} footprint counts toward lot coverage (SMC 23.44.080) and is counted toward FAR.`);
     if (c.aadu) notes.push("Assumes the AADU is made from the house's existing floor area; an addition would use coverage and floor area too.");
     if (s > 1) notes.push("Buildings must stand 5 ft apart (SMC 23.44.100); the split of the open spot is not checked.");
     if (input.hasAlley) notes.push("An alley abuts the lot: the DADU's rear setback is 0 ft (SMC 23.44.090).");
@@ -174,6 +206,8 @@ export interface LotFeasibilityOverrides {
   bedrooms?: number;
   /** Existing above-grade floor area, when known: city records only carry the footprint. */
   existingChargeableSqft?: number;
+  /** A garage planned in the DADU, attached to it. */
+  garageSqft?: number;
 }
 
 /** Where the existing chargeable floor area came from: city records only give the footprint, a lower bound. */
@@ -205,6 +239,7 @@ export function lotFeasibilityInputFrom(
       bedrooms: overrides.bedrooms,
       roomSqft: f?.treeStats?.siteSqft ?? null,
       hasAlley: f?.hasAlley ?? false,
+      garageSqft: overrides.garageSqft,
     },
     existingChargeableSource: source,
   };

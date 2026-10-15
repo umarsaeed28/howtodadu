@@ -16,7 +16,8 @@ function param(sp: URLSearchParams, name: string, integer: boolean, max: number)
  * GET /api/feasibility/lot?pin=0004000070 or ?address=... → the lot's DADU feasibility in the spec's
  * SeattleLotFeasibilityOutput shape (src/lib/feasibility/lot-feasibility.ts). Optional overrides: units (dwelling
  * units for the headline FAR, house included), bedrooms (per new unit; 3+ raises the cap to 1,200 sq ft) and
- * existing_floor_sqft (the house's above-grade floor area; city records only give its footprint).
+ * existing_floor_sqft (the house's above-grade floor area; city records only give its footprint) and garage (sq ft of a
+ * garage attached to the DADU, which adds a "DADU with attached garage" option; up to 250 sq ft is exempt from the cap).
  */
 export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
@@ -28,9 +29,11 @@ export async function GET(request: NextRequest) {
   const units = param(sp, "units", true, 50);
   const bedrooms = param(sp, "bedrooms", true, 10);
   const existingFloor = param(sp, "existing_floor_sqft", false, 1_000_000);
+  const garage = param(sp, "garage", false, 10_000);
   if (units === null || units === 0) return NextResponse.json({ error: "units must be a whole number from 1 to 50" }, { status: 400 });
   if (bedrooms === null) return NextResponse.json({ error: "bedrooms must be a whole number from 0 to 10" }, { status: 400 });
   if (existingFloor === null) return NextResponse.json({ error: "existing_floor_sqft must be a non-negative number" }, { status: 400 });
+  if (garage === null) return NextResponse.json({ error: "garage must be a number of sq ft from 0 to 10,000" }, { status: 400 });
 
   if (pin && !address) {
     address = (await resolveParcel(pin))?.address ?? null;
@@ -47,7 +50,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: `The address for parcel ${pin} resolved to parcel ${parcel.pin}` }, { status: 404 });
   }
 
-  const overrides: LotFeasibilityOverrides = { units, bedrooms, existingChargeableSqft: existingFloor };
+  const overrides: LotFeasibilityOverrides = { units, bedrooms, existingChargeableSqft: existingFloor, garageSqft: garage };
   const built = lotFeasibilityInputFrom(outcome.data, overrides);
   if (!built) return NextResponse.json({ error: "No lot size on record for this parcel" }, { status: 422 });
 
@@ -67,6 +70,7 @@ export async function GET(request: NextRequest) {
       bedrooms: built.input.bedrooms ?? 2,
       open_spot_sqft: built.input.roomSqft ?? null,
       has_alley: built.input.hasAlley ?? false,
+      garage_sqft: built.input.garageSqft ?? 0,
     },
   });
 }
