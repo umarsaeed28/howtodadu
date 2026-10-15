@@ -108,5 +108,6 @@ python -m pytest tests
 
 - Answers are grounded: the model is instructed to use only retrieved passages
   and to say when the documents don't contain the answer.
-- Verify anything legal/code-related against the Seattle Municipal Code. The
-  included `documents/01-sample-*.md` is a placeholder — replace it.
+- Verify anything legal/code-related against the Seattle Municipal Code.
+- The website's knowledge base now loads into Supabase (`npm run kb:ingest`, see `.claude/skills/kb-sources`);
+  documents can carry front matter with their citation, link and dates.

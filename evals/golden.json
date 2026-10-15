@@ -9,10 +9,6 @@
       "expectDoc": "30-dadu-screening-rules"
     },
     {
-      "query": "how many homes are allowed on a lot near frequent transit",
-      "expectDoc": "01-sample-middle-housing-overview"
-    },
-    {
       "query": "minimum lot size to build a DADU in Seattle",
       "expectDoc": "31-lot-size-and-dimensions"
     },
@@ -55,6 +51,22 @@
     {
       "query": "how is the site score weighted",
       "expectDoc": "36-site-score"
+    },
+    {
+      "query": "what is the maximum lot coverage in a neighborhood residential zone",
+      "expectDoc": "21-dadu-lot-feasibility-math"
+    },
+    {
+      "query": "what FAR does my NR lot get with a house and two DADUs",
+      "expectDoc": "21-dadu-lot-feasibility-math"
+    },
+    {
+      "query": "is there a minimum floor area for a lot under 5,000 sq ft",
+      "expectDoc": "21-dadu-lot-feasibility-math"
+    },
+    {
+      "query": "does the old 1,000 sq ft plus 15 percent coverage rule still apply",
+      "expectDoc": "21-dadu-lot-feasibility-math"
     }
   ],
   "gate": [
