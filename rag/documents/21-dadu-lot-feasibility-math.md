@@ -2,7 +2,7 @@
 title: DADU lot feasibility math (Seattle NR zones)
 citation: SMC 23.42.022; SMC 23.44.050; SMC 23.44.070; SMC 23.44.080
 source_url: https://library.municode.com/wa/seattle/codes/municipal_code
-publisher: Pencil feasibility engine spec v2.5, checked against Pencil's rules engine
+publisher: Pencil feasibility engine spec v2.5 and v2.6, checked against Pencil's rules engine
 effective_date: 2026-01-21
 retrieved_at: 2026-10-15
 ---
@@ -10,15 +10,16 @@ retrieved_at: 2026-10-15
 # DADU lot feasibility math (Seattle NR zones)
 
 > How Pencil works out whether a DADU fits on a Seattle lot in a Neighborhood Residential (NR) zone, from the team's
-> feasibility engine spec (v2.5) as checked against Pencil's rules engine. Rules for the unit itself (count, size,
+> feasibility engine spec (v2.5 and v2.6) as checked against Pencil's rules engine. Rules for the unit itself (count, size,
 > parking, condo sale) are in the SMC 23.42.022 document. Confirm numbers against the code before a permit.
 
 Also called: DADU, ADU, detached accessory dwelling unit, backyard cottage, lot coverage, FAR, floor area ratio, chargeable floor area.
 
 ## The inputs a feasibility check needs
-What do I need to know about a lot to check a DADU? Six inputs: the lot area (square feet), the zone (NR1, NR2, NR3 or
-RSL), the total number of units proposed including the house, the existing building footprint, the existing above-grade
-chargeable floor area, and whether a public alley abuts the lot.
+What do I need to know about a lot to check a DADU? Seven inputs: the lot area (square feet), the zone (NR1, NR2, NR3
+or RSL), the total number of units proposed including the house, the existing building footprint, the existing
+above-grade chargeable floor area, the size of any attached garage planned in the DADU, and whether a public alley
+abuts the lot.
 
 ## Order of the checks
 How is a DADU checked against the lot? In this order:
@@ -28,6 +29,19 @@ How is a DADU checked against the lot? In this order:
    bedrooms or fewer, 1,200 sq ft with three or more), per unit.
 4. Exemptions: fully underground stories, up to 250 sq ft of an attached garage and up to 35 sq ft of long-term bike
    storage are not counted against the ADU size cap.
+
+## Attached garage in a DADU
+Does a garage count toward the DADU's size limit? Up to 250 sq ft of a garage attached to the DADU is excluded from the
+DADU's gross floor area (SMC 23.42.022). Any garage area beyond 250 sq ft counts.
+- A two-bedroom DADU with 1,000 sq ft of living space and a 250 sq ft attached garage is a 1,250 sq ft building that
+  counts as 1,000 sq ft, so it meets the 1,000 sq ft cap.
+- With a 400 sq ft attached garage, 150 sq ft of the garage counts, so the living space can be at most 850 sq ft to
+  stay within 1,000 sq ft.
+- A three-bedroom DADU (1,200 sq ft cap) with a 250 sq ft attached garage can be a 1,450 sq ft building.
+The exemption applies to the ADU size cap only. The garage is still a building on the ground, so its full footprint
+counts toward lot coverage. Whether it also counts toward the lot's FAR is not settled in Pencil's sources; count it
+until confirmed. Pencil's rules engine does not yet model the garage exemption: its DADU size excludes garages
+entirely, so a garage must be added by hand when checking coverage.
 
 ## Lot coverage limit
 How much of the lot can buildings cover in an NR zone? 50 percent of the lot area (SMC 23.44.080.A, as amended
@@ -73,4 +87,7 @@ fully underground basement. The owner adds one detached building with two DADUs 
 ## Not used in Pencil's math
 Alley width credits toward lot coverage appear in the team spec but are not in Pencil's rules engine or its code
 citations; treat them as unverified. The team spec also cites SMC 23.42.022.J for ADUs counting toward the lot's unit
-total; Pencil's FAR math counts them, but that subsection reference is unverified.
+total; Pencil's FAR math counts them, but that subsection reference is unverified. Spec v2.6 cites SMC 23.42.022.C.2.a
+for the garage exemption, while Pencil's engine places the ADU floor area rules in subsection G; the subsection is
+unverified. The spec also says exempt areas are left out of lot coverage; for an above-ground garage that is not right
+(see the garage section).

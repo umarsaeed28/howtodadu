@@ -67,6 +67,14 @@
     {
       "query": "does the old 1,000 sq ft plus 15 percent coverage rule still apply",
       "expectDoc": "21-dadu-lot-feasibility-math"
+    },
+    {
+      "query": "does an attached garage count toward the DADU size cap",
+      "expectDoc": "21-dadu-lot-feasibility-math"
+    },
+    {
+      "query": "how big can the living space be with a 400 sq ft garage in the DADU",
+      "expectDoc": "21-dadu-lot-feasibility-math"
     }
   ],
   "gate": [
