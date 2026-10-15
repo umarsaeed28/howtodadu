@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SeattleLotFeasibilityOutput",
+  "type": "object",
+  "required": ["calculations", "compliance", "playbook_options"],
+  "properties": {
+    "calculations": {
+      "type": "object",
+      "required": ["lot_coverage_sqft", "far_sqft"],
+      "properties": {
+        "lot_coverage_sqft": {
+          "type": "object",
+          "properties": {
+            "max_allowed": { "type": "number" },
+            "existing_consumed": { "type": "number" },
+            "remaining_capacity": { "type": "number" }
+          }
+        },
+        "far_sqft": {
+          "type": "object",
+          "properties": {
+            "max_allowed_chargeable": { "type": "number" },
+            "existing_chargeable": { "type": "number" },
+            "remaining_capacity": { "type": "number" },
+            "is_small_lot_exception_applied": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "compliance": {
+      "type": "object",
+      "properties": {
+        "max_dadu_count_allowed": { "type": "integer", "minimum": 0, "maximum": 2 },
+        "per_unit_size_cap_2br": { "type": "number", "const": 1000 },
+        "per_unit_size_cap_3br": { "type": "number", "const": 1200 },
+        "is_parking_required": { "type": "boolean", "const": false }
+      }
+    },
+    "playbook_options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "configuration_name": { "type": "string" },
+          "feasible": { "type": "boolean" },
+          "max_footprint_per_structure": { "type": "number" },
+          "max_stories_allowed": { "type": "integer" },
+          "design_bottleneck_notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

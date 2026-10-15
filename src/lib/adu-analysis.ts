@@ -157,6 +157,9 @@ function heightLimits(family: string | null, width: number) {
  */
 export const DADU_MAX_GROSS_SQFT = 1000;
 
+/** ADU gross floor area limit with three or more bedrooms (SMC 23.42.022.G.1.b). */
+export const DADU_MAX_GROSS_SQFT_3BR = 1200;
+
 /* ── DADU Footprint Calculation (SMC 23.42.022, 23.44) ── */
 
 /**
