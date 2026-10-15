@@ -91,11 +91,12 @@ describe("lotFeasibility", () => {
   });
 
   it("a small lot gets the 2,500 sq ft floor area minimum, and the FAR can bind", () => {
-    const out = lotFeasibility({ lotSqft: 3000, existingFootprintSqft: 900, existingChargeableSqft: 1800, existingAdus: 0, units: 1 });
+    // One unit on 4,100 sq ft: FAR 0.6 gives 2,460 sq ft, under the 2,500 sq ft minimum.
+    const out = lotFeasibility({ lotSqft: 4100, existingFootprintSqft: 900, existingChargeableSqft: 1800, existingAdus: 0, units: 1 });
     expect(out.calculations.far_sqft.max_allowed_chargeable).toBe(2500);
     expect(out.calculations.far_sqft.is_small_lot_exception_applied).toBe(true);
-    // House + one DADU: 1,500 sq ft per unit gives FAR 1.6 and 4,800 sq ft, so the minimum does not apply there.
-    const big = lotFeasibility({ lotSqft: 3000, existingFootprintSqft: 900, existingChargeableSqft: 4300, existingAdus: 0 });
+    // House + one DADU: 2,050 sq ft per unit gives FAR 1.0 and 4,100 sq ft, so the minimum does not apply there.
+    const big = lotFeasibility({ lotSqft: 4100, existingFootprintSqft: 900, existingChargeableSqft: 3600, existingAdus: 0 });
     expect(option(big, "One DADU, 2 stories").design_bottleneck_notes).toMatch(/^Floor area \(FAR\) binds: 500 sq ft/);
   });
 });

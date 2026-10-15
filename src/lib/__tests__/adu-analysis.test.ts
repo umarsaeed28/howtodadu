@@ -419,10 +419,20 @@ describe("DADU Footprint", () => {
     expect(report.daduFootprint!.maxAllowedSqft).toBe(1000);
   });
 
-  it("allows up to 1000 sqft for lots between 3200-3999 sqft too (SMC 23.42.022.G.1.a has no lot-size tier)", () => {
-    const report = generateADUReport(makeParcel({ lotSqft: 3500 }), makeFactors({ lotCoveragePercent: 0.1 }));
+  it("allows up to 1000 sqft on a small lot too (SMC 23.42.022.G.1.a has no lot-size tier)", () => {
+    const report = generateADUReport(makeParcel({ lotSqft: 3900 }), makeFactors({ lotCoveragePercent: 0.1 }));
     expect(report.daduFootprint).not.toBeNull();
     expect(report.daduFootprint!.maxAllowedSqft).toBe(1000);
+  });
+
+  it("caps the DADU at the floor area the lot's FAR leaves (SMC 23.44.050)", () => {
+    // 4,000 sq ft NR lot, house + DADU: 2,000 sq ft per unit, FAR 1.0, 4,000 sq ft. A 3,500 sq ft house leaves 500.
+    const report = generateADUReport(
+      makeParcel({ lotSqft: 4000, zoning: "NR3" }),
+      makeFactors({ totalBuildingSqft: 3500, lotCoveragePercent: 0.1 })
+    );
+    expect(report.daduFootprint!.buildableSqft).toBe(500);
+    expect(report.daduFootprint!.note).toMatch(/floor area limit \(FAR\)/);
   });
 
   it("caps buildable area at available coverage", () => {
@@ -562,16 +572,18 @@ describe("Feasibility Checks", () => {
     expect(aduCheck!.status).toBe("warning");
   });
 
-  it("passes lot size when >= 3200", () => {
-    const report = generateADUReport(makeParcel({ lotSqft: 3200 }), makeFactors());
+  it("passes lot size at Pencil's 3,800 sq ft screen", () => {
+    const report = generateADUReport(makeParcel({ lotSqft: 3800 }), makeFactors());
     const check = report.checks.find((c) => c.label === "Lot Size");
     expect(check!.status).toBe("pass");
   });
 
-  it("warns lot size when < 3200", () => {
-    const report = generateADUReport(makeParcel({ lotSqft: 3000 }), makeFactors());
+  it("fails lot size under Pencil's 3,800 sq ft screen, and says it is Pencil's screen", () => {
+    const report = generateADUReport(makeParcel({ lotSqft: 3700 }), makeFactors());
     const check = report.checks.find((c) => c.label === "Lot Size");
-    expect(check!.status).toBe("warning");
+    expect(check!.status).toBe("fail");
+    expect(check!.shortNote).toMatch(/Pencil's screen; Seattle has no minimum lot size/);
+    expect(report.daduFootprint).toBeNull();
   });
 });
 

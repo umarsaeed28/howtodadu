@@ -4,7 +4,10 @@
  * These are screening rules from the team guide, not Seattle Municipal Code. Numbers the guide does not give
  * (setbacks, coverage limits) are never invented here.
  */
-export const MIN_LOT_SQFT = 3200;
+import { LOT_SCREEN_NOTE, PENCIL } from "@/lib/rules/seattle-adu";
+
+/** Pencil's hard lot screen (src/lib/rules/seattle-adu.ts): not a city rule. */
+export const MIN_LOT_SQFT = PENCIL.minLotSqft.value;
 
 export type Layout = "single_rear" | "side_by_side" | "staggered" | "none";
 export type Rating = "High" | "Moderate" | "Low";
@@ -49,7 +52,7 @@ export function planSite(i: SitePlanInput): SitePlan {
   let warning: string | null = null;
   if (!pass) {
     kind = "none";
-    why = `The lot is under the ${MIN_LOT_SQFT.toLocaleString()} sq ft minimum, so a DADU is not allowed.`;
+    why = `The lot is under ${MIN_LOT_SQFT.toLocaleString()} sq ft. ${LOT_SCREEN_NOTE}`;
   } else if (!known) {
     why = "The lot's width and depth are not known, so the standard single rear DADU is the default to check.";
   } else if (wide50) {
@@ -118,7 +121,7 @@ export function planSite(i: SitePlanInput): SitePlan {
     lines: [],
   };
   plan.lines = [
-    `Area check: ${i.lotSqft.toLocaleString("en-US")} sq ft against the ${MIN_LOT_SQFT.toLocaleString("en-US")} sq ft minimum: ${pass ? "pass" : "fail"}.`,
+    `Area check: ${i.lotSqft.toLocaleString("en-US")} sq ft against Pencil's ${MIN_LOT_SQFT.toLocaleString("en-US")} sq ft lot screen: ${pass ? "pass" : "fail"}.`,
     `Lot shape: ${known ? `${w} ft wide by ${d} ft deep` : "width and depth unknown"}. Alley: ${alley}.`,
     `Best layout by the team guide: ${plan.layout.label}. ${why}`,
     `Access: ${accessText}`,

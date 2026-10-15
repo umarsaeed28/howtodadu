@@ -2,6 +2,7 @@ import type { FeasibilityData, LotGeometry, SitePlanData } from "@/lib/feasibili
 import type { ADUReport } from "@/lib/adu-analysis";
 import { lotRotation, turn, unturn } from "@/lib/lot-orientation";
 import { MIN_FOOTPRINT_SQFT } from "@/lib/tree-analysis";
+import { NR } from "@/lib/rules/seattle-adu";
 
 /*
  * The site frame behind the master plan: the lot projected to feet and squared to the page, which side faces the
@@ -17,7 +18,7 @@ export const FT_PER_DEG_LAT = 364567;
  * NR front setback: 15 ft on a lot with one or two dwelling units, which is the house plus one DADU (SMC 23.44.090
  * Table A, as amended by Council Bill 120993, January 2026). It is 10 ft with three or more units. A DADU may not sit in it.
  */
-export const FRONT_SETBACK_FT = 15;
+export const FRONT_SETBACK_FT = NR.frontSetbackFt.value;
 /**
  * A side or rear line that faces a street (corner and through lots): treated as 10 ft. This is Pencil's own
  * conservative figure, not a code value: Table A for SMC 23.44.090 has no street-side setback, and on a through lot

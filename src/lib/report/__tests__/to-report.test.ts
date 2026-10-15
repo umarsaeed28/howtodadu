@@ -99,9 +99,10 @@ describe("toReport", () => {
 });
 
 describe("toReport on a lot with no room for a DADU", () => {
-  // 5519 5th Ave NE (parcel 3856904795): 610 sf of lot coverage left, but the house leaves no 15 by 20 ft spot.
+  // 5519 5th Ave NE (parcel 3856904795): coverage left, but the house leaves no 15 by 20 ft spot. The real lot is
+  // 3,420 sf; it is set to 3,900 here so Pencil's 3,800 sf lot screen passes and only the missing room fails.
   const result = fixture();
-  result.parcel = { ...parcel, address: "5519 5TH AVE NE 98105", lotSqft: 3420, zoning: "SF 5000" };
+  result.parcel = { ...parcel, address: "5519 5TH AVE NE 98105", lotSqft: 3900, zoning: "SF 5000" };
   result.feasibility = {
     ...result.feasibility!,
     lotType: "corner", hasAlley: false, lotWidth: 57, lotDepth: 60, totalBuildingSqft: 1100, lotCoveragePercent: 0.3217, sideClearanceFt: 15.2,

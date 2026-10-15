@@ -2,6 +2,10 @@
 
 > Project rules, not Seattle Municipal Code. Cite SMC only for code claims.
 
+## Lot size
+A lot under 3,800 sq ft is never a DADU candidate for Pencil: it is not shown, scored or recommended. This is Pencil's
+hard screen, not a city rule (Seattle has no minimum lot size for a DADU).
+
 ## No HOA
 
 A property with a homeowners association (HOA) is never a DADU candidate.

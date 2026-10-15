@@ -10,6 +10,7 @@ import {
 import type { FeasibilityResult } from "@/lib/feasibility";
 import { nrFar, nrMaxFloorArea } from "@/lib/feasibility/far";
 import { MIN_FOOTPRINT_SQFT } from "@/lib/tree-analysis";
+import { ADU, LOT_SCREEN_NOTE, PENCIL, meetsLotScreen } from "@/lib/rules/seattle-adu";
 
 /**
  * A lot's DADU feasibility in the "SeattleLotFeasibilityOutput" shape of the team's feasibility engine spec (v2.5,
@@ -19,10 +20,10 @@ import { MIN_FOOTPRINT_SQFT } from "@/lib/tree-analysis";
  */
 
 /** SMC 23.42.022: at most two ADUs per lot, attached or detached. */
-export const MAX_ADUS_PER_LOT = 2;
+export const MAX_ADUS_PER_LOT = ADU.maxPerLot.value;
 
 /** Floor-to-floor height used to turn the NR height limit into stories: 32 ft allows three. */
-export const STORY_HEIGHT_FT = 10;
+export const STORY_HEIGHT_FT = PENCIL.storyHeightFt.value;
 export const NR_MAX_STORIES = Math.floor(NR_HEIGHT.base / STORY_HEIGHT_FT);
 
 export interface LotFeasibilityInput {
@@ -122,6 +123,9 @@ export function lotFeasibility(input: LotFeasibilityInput): SeattleLotFeasibilit
 
   const playbook_options = configurations.map((c): PlaybookOption => {
     const base = { configuration_name: c.name, max_stories_allowed: c.stories };
+    if (!meetsLotScreen(lot)) {
+      return { ...base, feasible: false, max_footprint_per_structure: 0, design_bottleneck_notes: `Lot size: ${sf(lot)}. ${LOT_SCREEN_NOTE}` };
+    }
     if (c.newAdus > aduCount) {
       return {
         ...base,

@@ -154,7 +154,7 @@ export async function runAssessment(l: RawListing, lot: Candidate | null, deps: 
     return { verdict: "excluded", headline, findings: [], confirm: [], unavailable: [], citations: [], text: headline, models: [], trace: st.trace, score: null };
   }
 
-  // Other hard gates from the guide (lot under 3,200 sf, ADU cap, no room). Code decides; no model is called.
+  // Other hard gates from the guide (lot under Pencil's 3,800 sf screen, ADU cap, no room). Code decides; no model is called.
   const failed = site ? site.gates.filter((g) => g.status === "fail") : [];
   if (failed.length) {
     st.trace.push({ node: "gate", kind: "deterministic", ms: 0, ok: true, note: `failed: ${failed.map((g) => g.label).join(", ")}` });

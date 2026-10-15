@@ -1,3 +1,4 @@
+import { PENCIL } from "@/lib/rules/seattle-adu";
 import { parcelZoningLabel, type FeasibilityResult } from "./feasibility";
 import { GRADE_STEEP_PCT, gradeNote, type GradeStats } from "@/lib/grade";
 import type { ADUReport } from "./adu-analysis";
@@ -100,7 +101,7 @@ function keyInsightFrom(report: ADUReport, signals: DealSignals): string {
   const d = signals.siteOverview;
   const parts: string[] = [];
   if (d.lotSizeSqft >= 4000) parts.push("Spacious lot");
-  else if (d.lotSizeSqft >= 3200) parts.push("Meets typical DADU lot size");
+  else if (d.lotSizeSqft >= PENCIL.minLotSqft.value) parts.push("Meets Pencil's lot screen");
   if (signals.terrainSignal.rating === "Low terrain risk") parts.push("manageable terrain");
   if (signals.accessSignal.rating === "Excellent" || signals.accessSignal.rating === "Good")
     parts.push("solid access");
@@ -161,8 +162,8 @@ export function buildWhyBullets(
   }
   if (signals.lotSize.sqft >= 4000) {
     bullets.push("Lot size gives flexibility for a rear DADU layout.");
-  } else if (signals.lotSize.sqft >= 3200) {
-    bullets.push("Lot meets common minimums for detached ADUs—verify setbacks on site.");
+  } else if (signals.lotSize.sqft >= PENCIL.minLotSqft.value) {
+    bullets.push("Lot meets Pencil's lot screen; verify setbacks on site.");
   }
   if (signals.terrainSignal.rating === "Low terrain risk") {
     bullets.push("Slope and terrain look manageable for standard construction.");

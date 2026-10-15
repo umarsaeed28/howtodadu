@@ -1,3 +1,5 @@
+import { NR, nrFarFor } from "@/lib/rules/seattle-adu";
+
 /**
  * Floor Area Ratio (FAR) helpers.
  *
@@ -56,16 +58,12 @@ export function isNeighborhoodResidential(zoning: string | null | undefined): bo
  * denser: 1.6. The bonuses in 23.44.050.D-E (stacked units near schools, tree retention, Green Factor) are not modeled.
  */
 export function nrFar(lotSqft: number, units: number): number {
-  const perUnit = lotSqft / Math.max(1, units);
-  if (perUnit > 4000) return 0.6;
-  if (perUnit > 2200) return 0.8;
-  if (perUnit > 1600) return 1.0;
-  return 1.6;
+  return nrFarFor(lotSqft, units);
 }
 
 /** Lots under 5,000 sf may always have 2,500 sf of chargeable floor area, whatever the FAR gives (SMC 23.44.050.B). */
-export const NR_SMALL_LOT_FLOOR_SQFT = 2500;
-const NR_SMALL_LOT_SQFT = 5000;
+export const NR_SMALL_LOT_FLOOR_SQFT = NR.smallLotFloorSqft.value;
+const NR_SMALL_LOT_SQFT = NR.smallLotUnderSqft.value;
 
 /** NR maximum chargeable floor area for all structures on the lot (SMC 23.44.050.B). */
 export function nrMaxFloorArea(lotSqft: number, units: number): number {

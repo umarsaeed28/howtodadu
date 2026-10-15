@@ -28,7 +28,8 @@ for (const f of [".env.local", ".env.credentials"]) {
   }
 }
 
-type Case = { query: string; expectDoc: string };
+/** `alsoAccept`: other documents that state the same answer, e.g. the generated rulebook for a rule question. */
+type Case = { query: string; expectDoc: string; alsoAccept?: string[] };
 type Backend = { name: string; search: (q: string) => Promise<string[]> };
 
 const cases = (JSON.parse(readFileSync("evals/golden.json", "utf8")).retrieval ?? []) as Case[];
@@ -58,7 +59,10 @@ async function main() {
       const t0 = Date.now();
       const docs = await b.search(c.query);
       ms += Date.now() - t0;
-      const rank = docs.indexOf(c.expectDoc) + 1;
+      const ok = new Set([c.expectDoc, ...(c.alsoAccept ?? [])]);
+      const rank = docs.findIndex((d) => ok.has(d)) + 1;
+      // The expected document itself must still be in the top 3, so the explanation is never crowded out.
+      if (!docs.slice(0, 3).includes(c.expectDoc)) misses.push(`  note: "${c.query}" top 3 lacks ${c.expectDoc}: ${docs.slice(0, 3).join(", ")}`);
       if (rank === 1) h1++;
       if (rank >= 1 && rank <= 3) h3++;
       if (rank >= 1) mrr += 1 / rank;

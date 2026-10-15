@@ -161,7 +161,7 @@ export function toCandidate(f: RawFeature, parcelRow: EligibleParcel, sideCleara
   const report = generateADUReport(parcel, feasibility);
   if (!report?.daduFootprint || report.daduFootprint.buildableSqft < MIN_DADU_SQFT) return null; // the rules leave no room for a DADU
   const site = siteScoreFor(result, report);
-  if (!site.eligible) return null; // fails a gate: lot under 3,200 sf, ADU cap, or no room
+  if (!site.eligible) return null; // fails a gate: lot under Pencil's 3,800 sf screen, ADU cap, or no room
 
   const corner = (feasibility.lotType ?? "").toLowerCase().includes("corner");
   return {

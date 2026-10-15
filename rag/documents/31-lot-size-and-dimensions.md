@@ -5,7 +5,13 @@
 Also called: backyard cottage, DADU, detached accessory dwelling unit, detached ADU.
 
 ## Minimum lot area
-A lot needs at least 3,200 sq ft of total area to build a DADU in Seattle. Below that, the lot fails the area check.
+What is the minimum lot size for a DADU? Seattle has no minimum lot size for a DADU: Ordinance 127211 repealed
+SMC 23.44.041 and its old table (3,200 sq ft, 25 ft wide, 70 ft deep). Pencil's own hard screen is 3,800 sq ft: Pencil
+never shows or recommends a lot under 3,800 sq ft. That is Pencil's investment screen, not a city rule, so say so when
+you cite it.
+
+## Narrow or shallow lots
+A lot under 25 ft wide or 70 ft deep gets a warning, not an exclusion: it is tight for a DADU and a path to it.
 
 ## Standard lot width
 - A 40 ft wide lot, such as 40 ft by 100 ft (4,000 sq ft), is very common in Seattle. It usually suits a single DADU.

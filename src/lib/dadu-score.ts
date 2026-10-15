@@ -6,6 +6,7 @@
  * Keep the weights and bands in step with rag/documents/36-site-score.md (a test checks).
  */
 import { MIN_LOT_SQFT, planSite, type Layout } from "@/lib/dadu-site-plan";
+import { LOT_SCREEN_NOTE, PENCIL } from "@/lib/rules/seattle-adu";
 import { MIN_FOOTPRINT_SQFT, type TreeStats } from "@/lib/tree-analysis";
 import { GRADE_MODERATE_PCT, GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT, gradeNote, type GradeStats } from "@/lib/grade";
 
@@ -34,7 +35,7 @@ export const GRADE_BANDS = [
 export type Tier = 3 | 2 | 1 | 0;
 
 /** Lots and listings scoring under this are not shown anywhere in the app (map, list, listing pages). */
-export const MIN_SHOWN_SCORE = 65;
+export const MIN_SHOWN_SCORE = PENCIL.minShownScore.value;
 
 export function gradeOf(score: number): { tier: Tier; label: string } {
   const b = GRADE_BANDS.find((g) => score >= g.min) ?? GRADE_BANDS[3];
@@ -100,7 +101,7 @@ const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
  * Ground clearance is usually a foot or two wider than the roofline gap. So: 12 ft or more is comfortable, 10 to 12 ft
  * fits a driveway, 8 to 10 ft may fit at ground level (confirm on site), under 8 ft is blocked.
  */
-export const DRIVEWAY_FT = 10;
+export const DRIVEWAY_FT = PENCIL.drivewayFt.value;
 export const BLOCKED_BELOW_FT = 8;
 const COMFORTABLE_DRIVEWAY_FT = 12;
 
@@ -268,8 +269,8 @@ export function scoreSite(i: ScoreInput): SiteScore {
         ? { key: "hoa", label: "No HOA", status: "fail", note: `HOA of $${i.hoaMonthly} per month. A property with an HOA is never a DADU candidate.` }
         : { key: "hoa", label: "No HOA", status: "pass", note: "No HOA." },
     i.lotSqft >= MIN_LOT_SQFT
-      ? { key: "area", label: "Lot area", status: "pass", note: `${i.lotSqft.toLocaleString("en-US")} sf meets the ${MIN_LOT_SQFT.toLocaleString("en-US")} sf minimum.` }
-      : { key: "area", label: "Lot area", status: "fail", note: `${i.lotSqft.toLocaleString("en-US")} sf is under the ${MIN_LOT_SQFT.toLocaleString("en-US")} sf minimum.` },
+      ? { key: "area", label: "Lot area", status: "pass", note: `${i.lotSqft.toLocaleString("en-US")} sf meets Pencil's ${MIN_LOT_SQFT.toLocaleString("en-US")} sf lot screen.` }
+      : { key: "area", label: "Lot area", status: "fail", note: `${i.lotSqft.toLocaleString("en-US")} sf. ${LOT_SCREEN_NOTE}` },
     (i.existingAdus ?? 0) >= 2
       ? { key: "adus", label: "ADU slots", status: "fail", note: "The lot already has two ADUs, the maximum." }
       : { key: "adus", label: "ADU slots", status: i.existingAdus == null ? "unknown" : "pass", note: i.existingAdus == null ? "Existing ADU count unknown." : `${i.existingAdus} existing ADU${i.existingAdus === 1 ? "" : "s"}, under the cap of 2.` },

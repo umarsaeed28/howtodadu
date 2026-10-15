@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { decodeLibrary, enforceNrRule, enforceRoomRule, makeLotFinder, zipCounts, type LotLibraryFile } from "@/lib/lot-library";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
 import { inBuyBox } from "@/lib/buy-box";
+import { meetsLotScreen } from "@/lib/rules/seattle-adu";
 import type { Candidate } from "./candidates";
 
 const FILE = join(process.cwd(), "data", "lot-library.json");
@@ -53,6 +54,7 @@ export function getSlimLots(zips: string[] | null): { generatedAt: string; zips:
   const out: SlimLots = { count: 0, pin: [], lat: [], lng: [], score: [], tier: [], flags: [], zip: [] };
   for (let i = 0; i < l.file.count; i++) {
     if (c.score[i] < MIN_SHOWN_SCORE) continue; // only lots at or above the shown-score floor
+    if (!meetsLotScreen(c.lotSqft[i])) continue; // Pencil never shows a lot under its hard lot screen
     if (want && !(c.zip[i] && want.has(c.zip[i]!))) continue;
     out.pin.push(c.pin[i]);
     out.lat.push(c.lat[i]);

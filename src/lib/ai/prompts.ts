@@ -32,9 +32,9 @@ PASSAGES: P1 [screening-rules > No HOA] A property with an HOA is never a DADU c
 Result: verdict "candidate"; headline "This corner lot looks like a strong DADU candidate."; findings: ("There is no HOA, so the screening rule does not rule it out.", [F2, P1]), ("The lot is 6,800 sf and a DADU of up to 895 sf fits.", [F1, F3]); confirm: ["Check tree protection before you design."]; adjustments: [] (the baseline already counts the corner and the DADU size).
 
 Example B
-FACTS: F1 Lot: 3,120 sf interior lot. F2 HOA: none reported by the listing. F3 No DADU size from the engine.
-PASSAGES: P1 [screening-rules > Lot size] A lot under 3,200 sf cannot have a DADU.
-Result: verdict "not_candidate"; headline "This 3,120 sf lot is under the 3,200 sf minimum, so it cannot have a DADU."; findings: ("The lot is 3,120 sf, under the 3,200 sf minimum.", [F1, P1]), ("The engine found no room for a DADU.", [F3]); confirm: [].`;
+FACTS: F1 Lot: 3,520 sf interior lot. F2 HOA: none reported by the listing. F3 No DADU size from the engine.
+PASSAGES: P1 [Pencil rulebook > Pencil screens] Pencil never shows or recommends a lot under 3,800 sq ft. It is Pencil's investment screen, not a city rule.
+Result: verdict "not_candidate"; headline "This 3,520 sf lot is under Pencil's 3,800 sf lot screen."; findings: ("The lot is 3,520 sf, under the 3,800 sf Pencil considers. Seattle itself sets no minimum.", [F1, P1]), ("The engine found no room for a DADU.", [F3]); confirm: [].`;
 
 export const ANALYZE_SCHEMA = {
   type: "object",

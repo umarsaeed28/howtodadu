@@ -7,7 +7,7 @@ Also called: DADU score, site score, grade, backyard cottage score.
 ## Gates
 A lot that fails any gate cannot have a DADU and gets no score:
 - An HOA with dues above $0 per month.
-- A lot under 3,200 sq ft.
+- A lot under 3,800 sq ft (Pencil's hard lot screen; Seattle has no minimum lot size).
 - Two ADUs already on the lot.
 - No room for a DADU: the rules leave under 300 sq ft, or the house leaves no 15 by 20 ft spot on the lot (inside the setbacks, out of the front yard, 5 ft from the house, measured from the city's building outlines). Leftover lot coverage alone does not count as room.
 - No vehicle access to the rear: no alley, not a corner lot, and the house leaves less than 8 ft on both sides at the roofline (measured from the city's building outlines, which include the eaves).

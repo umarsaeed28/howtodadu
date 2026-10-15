@@ -2,7 +2,10 @@
   "retrieval": [
     {
       "query": "can a property with an HOA be a DADU candidate",
-      "expectDoc": "30-dadu-screening-rules"
+      "expectDoc": "30-dadu-screening-rules",
+      "alsoAccept": [
+        "22-pencil-rulebook"
+      ]
     },
     {
       "query": "what if the listing does not say whether there is an HOA",
@@ -26,11 +29,17 @@
     },
     {
       "query": "how big can an ADU with 3 bedrooms be",
-      "expectDoc": "20-adu-rules-smc-23-42-022"
+      "expectDoc": "20-adu-rules-smc-23-42-022",
+      "alsoAccept": [
+        "22-pencil-rulebook"
+      ]
     },
     {
       "query": "do I need off-street parking for a DADU",
-      "expectDoc": "20-adu-rules-smc-23-42-022"
+      "expectDoc": "20-adu-rules-smc-23-42-022",
+      "alsoAccept": [
+        "22-pencil-rulebook"
+      ]
     },
     {
       "query": "can I sell the backyard unit separately as a condo",
@@ -38,11 +47,17 @@
     },
     {
       "query": "does an attached garage count toward ADU floor area",
-      "expectDoc": "20-adu-rules-smc-23-42-022"
+      "expectDoc": "20-adu-rules-smc-23-42-022",
+      "alsoAccept": [
+        "22-pencil-rulebook"
+      ]
     },
     {
       "query": "how many accessory units are allowed on one lot",
-      "expectDoc": "20-adu-rules-smc-23-42-022"
+      "expectDoc": "20-adu-rules-smc-23-42-022",
+      "alsoAccept": [
+        "22-pencil-rulebook"
+      ]
     },
     {
       "query": "what does a finished DADU sell for and what is the return",
@@ -54,27 +69,57 @@
     },
     {
       "query": "what is the maximum lot coverage in a neighborhood residential zone",
-      "expectDoc": "21-dadu-lot-feasibility-math"
+      "expectDoc": "21-dadu-lot-feasibility-math",
+      "alsoAccept": [
+        "22-pencil-rulebook"
+      ]
     },
     {
       "query": "what FAR does my NR lot get with a house and two DADUs",
-      "expectDoc": "21-dadu-lot-feasibility-math"
+      "expectDoc": "21-dadu-lot-feasibility-math",
+      "alsoAccept": [
+        "22-pencil-rulebook"
+      ]
     },
     {
       "query": "is there a minimum floor area for a lot under 5,000 sq ft",
-      "expectDoc": "21-dadu-lot-feasibility-math"
+      "expectDoc": "21-dadu-lot-feasibility-math",
+      "alsoAccept": [
+        "22-pencil-rulebook"
+      ]
     },
     {
       "query": "does the old 1,000 sq ft plus 15 percent coverage rule still apply",
-      "expectDoc": "21-dadu-lot-feasibility-math"
+      "expectDoc": "21-dadu-lot-feasibility-math",
+      "alsoAccept": [
+        "22-pencil-rulebook"
+      ]
     },
     {
       "query": "does an attached garage count toward the DADU size cap",
-      "expectDoc": "21-dadu-lot-feasibility-math"
+      "expectDoc": "21-dadu-lot-feasibility-math",
+      "alsoAccept": [
+        "22-pencil-rulebook"
+      ]
     },
     {
       "query": "how big can the living space be with a 400 sq ft garage in the DADU",
       "expectDoc": "21-dadu-lot-feasibility-math"
+    },
+    {
+      "query": "what is the smallest lot Pencil will show",
+      "expectDoc": "22-pencil-rulebook",
+      "alsoAccept": [
+        "31-lot-size-and-dimensions",
+        "30-dadu-screening-rules"
+      ]
+    },
+    {
+      "query": "is there a minimum lot size for a DADU in Seattle",
+      "expectDoc": "31-lot-size-and-dimensions",
+      "alsoAccept": [
+        "22-pencil-rulebook"
+      ]
     }
   ],
   "gate": [

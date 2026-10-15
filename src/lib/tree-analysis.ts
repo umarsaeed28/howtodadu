@@ -1,5 +1,6 @@
 import { lotRotation, turn, unturn } from "./lot-orientation";
 import { FRONT_SETBACK_FT } from "./site-envelope";
+import { NR, PENCIL } from "./rules/seattle-adu";
 
 /**
  * Tree-by-tree read of a lot from the city's 2021 LiDAR tree crowns: how many medium and large trees there are, how much
@@ -27,10 +28,10 @@ export const LARGE_HEIGHT_FT = 50;
 export const MEDIUM_CROWN_RADIUS_FT = 10;
 export const MEDIUM_HEIGHT_FT = 30;
 /** Smallest footprint worth calling a DADU site: 15 by 20 ft. */
-export const MIN_FOOTPRINT_SQFT = 300;
-export const MIN_FOOTPRINT_SIDE_FT = 15;
-const HOUSE_GAP_FT = 5;
-const SETBACK_FT = 5;
+export const MIN_FOOTPRINT_SQFT = PENCIL.minFootprint.value.sqft;
+export const MIN_FOOTPRINT_SIDE_FT = PENCIL.minFootprint.value.sideFt;
+const HOUSE_GAP_FT = NR.separationFt.value;
+const SETBACK_FT = NR.rearSetbackFt.value;
 
 /** Which way the address street runs: Seattle avenues north-south, streets east-west. Null for other names. */
 export function streetAxis(address: string | null | undefined): "ns" | "ew" | null {
