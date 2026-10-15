@@ -9,6 +9,11 @@ export interface Passage {
   section: string;
   text: string;
   distance: number;
+  /** Where the passage comes from, when the knowledge base knows: e.g. "SMC 23.42.022", a link, the date it took effect. */
+  citation?: string;
+  sourceUrl?: string;
+  effectiveDate?: string;
+  title?: string;
 }
 
 /** A labelled fact from deterministic sources (listing feed, city GIS). Cited as "F1", "F2"… */
@@ -69,6 +74,9 @@ export interface Citation {
   label: string;
   docId: string;
   section: string;
+  /** The code section or document the passage came from, and a link to it, when known. */
+  citation?: string;
+  sourceUrl?: string;
 }
 
 export interface Assessment {

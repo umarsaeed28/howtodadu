@@ -17,6 +17,8 @@
     "check:scores": "tsx scripts/check-scores.ts",
     "build:alleys": "tsx scripts/build-alleys.ts",
     "eval": "tsx scripts/eval.ts",
+    "kb:ingest": "tsx scripts/kb-ingest.ts",
+    "kb:eval": "tsx scripts/kb-eval.ts",
     "smoke": "node scripts/smoke.mjs",
     "mcp": "tsx mcp/dadu-server.ts",
     "build:dataset": "tsx scripts/build-listing-dataset.ts"

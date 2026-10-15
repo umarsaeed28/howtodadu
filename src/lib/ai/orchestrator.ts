@@ -232,7 +232,7 @@ export async function runAssessment(l: RawListing, lot: Candidate | null, deps: 
   }
 
   // Node 5, fuzzy: grounded analysis with a forced schema. The mid model by default; the large one when the case is close.
-  const passageBlock = passages.map((p) => `${p.label} [${p.docId} > ${p.section}] ${p.text}`).join("\n\n");
+  const passageBlock = passages.map((p) => `${p.label} [${p.citation ? `${p.citation}${p.effectiveDate ? `, effective ${p.effectiveDate}` : ""}; ` : ""}${p.docId} > ${p.section}] ${p.text}`).join("\n\n");
   const E = AGENTS.escalate;
   const reasons: string[] = [];
   if (site?.eligible && GRADE_BANDS.some((g) => g.min > 0 && Math.abs(site.score - g.min) <= E.nearBoundaryPts)) reasons.push("near a grade boundary");
@@ -288,7 +288,7 @@ export async function runAssessment(l: RawListing, lot: Candidate | null, deps: 
 
   const used = new Set([...kept.flatMap((k) => k.cites), ...(score?.adjustments ?? []).flatMap((a) => a.cites)]);
   const citations: Citation[] = [
-    ...passages.filter((p) => used.has(p.label)).map((p) => ({ label: p.label, docId: p.docId, section: p.section })),
+    ...passages.filter((p) => used.has(p.label)).map((p) => ({ label: p.label, docId: p.docId, section: p.section, ...(p.citation ? { citation: p.citation } : {}), ...(p.sourceUrl ? { sourceUrl: p.sourceUrl } : {}) })),
     ...facts.filter((f) => used.has(f.label)).map((f) => ({ label: f.label, docId: f.source, section: f.text.split(":")[0] })),
   ];
   const confirm = [...(analysis.confirm ?? []), ...extraConfirm].slice(0, 6);

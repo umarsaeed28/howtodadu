@@ -27,6 +27,34 @@
     {
       "query": "how many stories can a backyard cottage be",
       "expectDoc": "34-height-and-bulk"
+    },
+    {
+      "query": "how big can an ADU with 3 bedrooms be",
+      "expectDoc": "20-adu-rules-smc-23-42-022"
+    },
+    {
+      "query": "do I need off-street parking for a DADU",
+      "expectDoc": "20-adu-rules-smc-23-42-022"
+    },
+    {
+      "query": "can I sell the backyard unit separately as a condo",
+      "expectDoc": "20-adu-rules-smc-23-42-022"
+    },
+    {
+      "query": "does an attached garage count toward ADU floor area",
+      "expectDoc": "20-adu-rules-smc-23-42-022"
+    },
+    {
+      "query": "how many accessory units are allowed on one lot",
+      "expectDoc": "20-adu-rules-smc-23-42-022"
+    },
+    {
+      "query": "what does a finished DADU sell for and what is the return",
+      "expectDoc": "37-dadu-economics"
+    },
+    {
+      "query": "how is the site score weighted",
+      "expectDoc": "36-site-score"
     }
   ],
   "gate": [
