@@ -16,6 +16,7 @@ import MasterPlan, { type DaduState, type PlanSnapshot } from "./MasterPlan";
 import ReportPaywall from "./ReportPaywall";
 import { LimitsStrip, PurchaseBanner, ReportNextSteps, ReportTeaser } from "./ReportJourney";
 import { hasFeasibilityAccess } from "@/lib/report-access";
+import { useReportAccess } from "./report-access-context";
 import { prettyAddress, saveParcel } from "@/lib/parcel-context";
 import { isProductKind, type ProductKind } from "@/lib/pricing";
 import { track } from "@/lib/analytics";
@@ -380,6 +381,7 @@ export default function FeasibilityReportView({
   // Read after mount so the server render and the first client render agree.
   const gateAddress = slim.streetLine || slim.address;
   const pin = slim.pin;
+  const { admin } = useReportAccess();
   const [paid, setPaid] = useState(false);
   const [accessChecked, setAccessChecked] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
@@ -388,14 +390,14 @@ export default function FeasibilityReportView({
   // A pre-approved design chosen on the plans page (?plan=<id>): placed on the master plan, which opens after payment.
   const [initialPlanId, setInitialPlanId] = useState<string | null>(null);
   useEffect(() => {
-    setPaid(!!owned || hasFeasibilityAccess(pin, gateAddress));
+    setPaid(admin || !!owned || hasFeasibilityAccess(pin, gateAddress));
     setInitialPlanId(new URLSearchParams(window.location.search).get("plan"));
     const t = new URLSearchParams(window.location.search).get("tier");
     const tier = t === "reviewed" ? "feasibility_reviewed" : t === "instant" ? "feasibility_instant" : t;
     if (isProductKind(tier)) setDefaultTier(tier);
     if (pin) saveParcel({ pin, address: slim.address });
     setAccessChecked(true);
-  }, [pin, gateAddress, slim.address, owned]);
+  }, [pin, gateAddress, slim.address, owned, admin]);
   const unlocked = paid;
   const eligible = !!detailRow && detailRow.siteScore.eligible && (detailRow.daduScore ?? 0) > 0;
   useEffect(() => {

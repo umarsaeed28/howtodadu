@@ -7,6 +7,9 @@ const LINKS: Record<Viewer["role"], { href: string; label: string }[]> = {
   client: [{ href: "/dashboard", label: "Your properties" }, { href: "/portal/reports", label: "Reports" }, ACCOUNT],
   admin: [
     { href: "/admin", label: "Pipeline" },
+    { href: "/admin/map", label: "Map" },
+    { href: "/admin/feasibility", label: "Feasibility" },
+    { href: "/admin/plans", label: "Plans" },
     { href: "/admin/referrals", label: "Lead routing" },
     { href: "/admin/metrics", label: "Metrics" },
     { href: "/admin/revenue", label: "Revenue" },

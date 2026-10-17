@@ -503,3 +503,22 @@
 .iv-tile { position: relative; }
 .iv-overlay { position: absolute; right: 10px; top: 10px; z-index: 1; }
 .iv-badge--pending { background: #FFF4D6; color: #7A5A12; }
+
+/* Admin workspace (src/components/admin/workspace): the shared lot view beside the admin lot panel. */
+.aw-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1100px) { .aw-grid { grid-template-columns: minmax(0, 1fr) 380px; align-items: start; } }
+.aw-main { min-width: 0; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(17,22,20,.08), 0 0 0 1px rgba(17,22,20,.07); background: var(--paper, #F6F7F6); }
+.aw-panel { display: grid; gap: 18px; padding: 18px; border-radius: 16px; background: #fff; box-shadow: 0 1px 3px rgba(17,22,20,.08), 0 0 0 1px rgba(17,22,20,.07); font-size: 14px; color: var(--ink); }
+@media (min-width: 1100px) { .aw-panel { position: sticky; top: 16px; max-height: calc(100dvh - 32px); overflow-y: auto; } }
+.aw-kicker { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--slate); font-variant-numeric: tabular-nums; }
+.aw-h { font-family: var(--font-display, inherit); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; margin-top: 2px; }
+.aw-h3 { font-weight: 800; font-size: 15px; margin-bottom: 6px; }
+.aw-muted { color: var(--slate); font-size: 13px; }
+.aw-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.aw-list { display: grid; gap: 8px; }
+.aw-row { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: start; }
+.aw-ic { display: inline-flex; padding-top: 2px; }
+.aw-row-t { font-weight: 600; }
+.aw-cite { display: block; font-size: 12px; color: var(--green); font-variant-numeric: tabular-nums; }
+.aw-opt-t { font-weight: 700; }
+.aw-num { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
