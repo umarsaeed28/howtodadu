@@ -1,7 +1,10 @@
 import { resolveParcel } from "@/lib/server/parcel-lookup";
+import { adminOnly } from "@/lib/admin/gate";
 
 /** GET /api/parcel?pin=0004000070 → { pin, address }. Lets any journey start from a parcel id alone. */
 export async function GET(req: Request) {
+  const denied = await adminOnly(req); // lot data is admin-only (src/lib/admin/gate.ts)
+  if (denied) return denied;
   const pin = new URL(req.url).searchParams.get("pin") ?? "";
   if (!/^\d{10}$/.test(pin)) return Response.json({ error: "pin must be 10 digits" }, { status: 400 });
   const p = await resolveParcel(pin);

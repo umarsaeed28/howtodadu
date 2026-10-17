@@ -16,17 +16,21 @@ import { zillowUrl } from "@/lib/property-image";
 import InvestCompliance from "@/components/invest/InvestCompliance";
 import { TrackedLink } from "@/components/home/HomeBits";
 import { sourceLabel, usd } from "@/components/invest/format";
+import MembersTeaser from "@/components/members/MembersTeaser";
+import { currentAdmin } from "@/lib/admin/server";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  if (!(await currentAdmin())) return { title: "Lot intelligence, coming to members — Pencil", robots: { index: false, follow: false } };
   const { id } = await params;
   const found = await getOpportunity(decodeURIComponent(id)).catch(() => null);
-  return { title: found ? `${found.opportunity.street}: DADU investment analysis — Pencil` : "Opportunity — Pencil" };
+  return { title: found ? `${found.opportunity.street}: DADU investment analysis — Pencil` : "Opportunity — Pencil", robots: { index: false, follow: false } };
 }
 
 /** One opportunity: the listing, what the lot can hold, the underwriting with every assumption open, and next steps. */
 export default async function OpportunityPage({ params }: { params: Promise<{ id: string }> }) {
+  if (!(await currentAdmin())) return <MembersTeaser from="/invest" />; // admin-only (src/lib/admin/gate.ts)
   const { id } = await params;
   const [found, { assumptions }, watch] = await Promise.all([getOpportunity(decodeURIComponent(id)), getInvestAssumptions(), watchedIds()]);
   if (!found) notFound();

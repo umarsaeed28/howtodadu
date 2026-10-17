@@ -6,6 +6,7 @@ import {
   buildDashboardPropertyFailed,
   buildDashboardPropertySlim,
 } from "@/lib/dashboard-normalize";
+import { adminOnly } from "@/lib/admin/gate";
 
 export const maxDuration = 300;
 
@@ -36,6 +37,8 @@ async function mapPool<T, R>(
 }
 
 export async function POST(request: NextRequest) {
+  const denied = await adminOnly(request); // lot data is admin-only (src/lib/admin/gate.ts)
+  if (denied) return denied;
   let body: unknown;
   try {
     body = await request.json();

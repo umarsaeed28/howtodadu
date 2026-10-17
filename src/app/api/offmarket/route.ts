@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getListingsProvider, listingsConnected } from "@/lib/listings";
 import { findLotForListing, getOffMarketLots, libraryAvailable } from "@/lib/server/lot-library-store";
+import { adminOnly } from "@/lib/admin/gate";
 
 /**
  * GET /api/offmarket
@@ -8,7 +9,9 @@ import { findLotForListing, getOffMarketLots, libraryAvailable } from "@/lib/ser
  * library, which already scores every lot, so they cost no DealMachine credits. Lots listed right now are left out
  * (they show as priced listings instead). Columnar to keep the payload small.
  */
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await adminOnly(req); // lot data is admin-only (src/lib/admin/gate.ts)
+  if (denied) return denied;
   if (!libraryAvailable()) return NextResponse.json({ error: "The lot library has not been built." }, { status: 503 });
   const onMarket = new Set<string>();
   if (listingsConnected()) {

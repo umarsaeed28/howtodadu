@@ -26,6 +26,8 @@ import { siteScoreFor } from "@/lib/server/site-score";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
 import { isNrZone } from "@/lib/zoning";
 import { GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT, gradeNote } from "@/lib/grade";
+import MembersTeaser from "@/components/members/MembersTeaser";
+import { currentAdmin } from "@/lib/admin/server";
 
 export const dynamic = "force-dynamic";
 
@@ -68,8 +70,9 @@ function riskFlags(i: { hoa?: number; plan: ReturnType<typeof planSite> | null; 
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ mlsId: string }> }): Promise<Metadata> {
+  if (!(await currentAdmin())) return { title: "Lot intelligence, coming to members — Pencil", robots: { index: false, follow: false } };
   const l = await getListingsProvider().getById((await params).mlsId);
-  return { title: l ? `${street(l.address)}, ${usd(l.listPrice)} — Pencil` : "Listing — Pencil" };
+  return { title: l ? `${street(l.address)}, ${usd(l.listPrice)} — Pencil` : "Listing — Pencil", robots: { index: false, follow: false } };
 }
 
 /** 30-year fixed, 20% down. A rough monthly figure, labelled as such on the page. */
@@ -82,7 +85,9 @@ function monthly(price: number, hoa = 0): { pi: number; tax: number; total: numb
   return { pi, tax, total: pi + tax + hoa };
 }
 
+/** Admin-only (src/lib/admin/gate.ts): scored lot data. */
 export default async function ListingPage({ params }: { params: Promise<{ mlsId: string }> }) {
+  if (!(await currentAdmin())) return <MembersTeaser from="/listing" />;
   const { mlsId } = await params;
   const data = await load(mlsId);
   if (!data) notFound();

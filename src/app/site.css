@@ -1526,3 +1526,14 @@ body { background: #F6F7F6; }
 .site .co-name { margin: 16px 0 0; font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; font-size: 1.3rem; letter-spacing: -0.02em; color: var(--ink); }
 .site .co-role { margin: 4px 0 0; font-size: 0.95rem; font-weight: 600; color: var(--flag-deep); }
 .site .co-bio { margin: 10px 0 0; font-size: 0.95rem; line-height: 1.6; color: var(--slate); max-width: 46ch; }
+
+/* Members teaser (src/components/members): a blurred drawing of the map behind one card. */
+.mt-wrap { position: relative; min-height: calc(100svh - 64px); display: grid; align-items: center; padding-block: 48px; overflow: hidden; }
+.mt-preview { position: absolute; inset: 0; filter: blur(7px) saturate(0.9); transform: scale(1.06); opacity: 0.85; pointer-events: none; }
+.mt-body { position: relative; }
+.mt-card { max-width: 520px; margin-inline: auto; padding: 28px; background: var(--surface); box-shadow: var(--nm-out); }
+.mt-order { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.mt-order-t { font-weight: 700; color: var(--ink); }
+.mt-fine { margin-top: 18px; font-size: 0.88rem; color: var(--slate); }
+.mt-fine a { color: var(--green); text-decoration: underline; text-underline-offset: 2px; }
+@media (max-width: 480px) { .mt-card { padding: 20px; } }

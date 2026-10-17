@@ -20,8 +20,8 @@ const VERDICT: Record<string, { bg: string; fg: string }> = {
 };
 
 /**
- * Stage 2, free. The saved summary renders at once; the site plan comes from the engine (the same call the
- * public report makes) so it can be dragged and printed. Ends with the one CTA: start the permit package.
+ * Stage 2, free. The saved summary renders at once; the site plan comes from the engine (the buyer's own lot,
+ * through /api/portal/feasibility) so it can be dragged and printed. Ends with the one CTA: start the permit package.
  */
 export default function FeasibilityStage({ projectId, address, summary, canStart, paid }: { projectId: string; address: string; summary: FeasibilitySummary; canStart: boolean; paid: boolean }) {
   const [data, setData] = useState<FeasibilityResult | null>(null);
@@ -31,7 +31,7 @@ export default function FeasibilityStage({ projectId, address, summary, canStart
 
   useEffect(() => {
     let live = true;
-    fetchFeasibility(address)
+    fetchFeasibility(address, "/api/portal/feasibility")
       .then((d) => live && setData(d))
       .catch((e: unknown) => live && setPlanError(e instanceof Error ? e.message : "The site plan could not be drawn."));
     return () => {
@@ -114,7 +114,7 @@ export default function FeasibilityStage({ projectId, address, summary, canStart
           <button type="button" className="pa-btn pa-btn-sm" onClick={downloadPdf} disabled={!data || pdfBusy} aria-busy={pdfBusy}>
             {pdfBusy ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Download size={14} aria-hidden />} PDF summary
           </button>
-          <Link href={`/feasibility?address=${encodeURIComponent(address)}`} className="pa-btn pa-btn-sm no-underline">Full public report</Link>
+          <Link href="/portal/reports" className="pa-btn pa-btn-sm no-underline">Your reports</Link>
         </div>
       </section>
 

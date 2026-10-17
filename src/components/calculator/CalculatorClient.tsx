@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { ArrowDown, Plus, RotateCcw } from "lucide-react";
 import {
   DEFAULT_FORM,
@@ -305,8 +304,7 @@ export default function CalculatorClient() {
           )}
 
           <p className="text-xs" style={{ color: "var(--slate)" }}>
-            Estimates only, not a quote or financial advice. Back to the{" "}
-            <Link href="/search" className="underline underline-offset-2">map</Link>.
+            Estimates only, not a quote or financial advice.
           </p>
         </div>
       </div>

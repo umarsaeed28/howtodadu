@@ -4,7 +4,7 @@ import type { Viewer } from "@/lib/portal/server";
 
 const ACCOUNT = { href: "/portal/account", label: "Account" };
 const LINKS: Record<Viewer["role"], { href: string; label: string }[]> = {
-  client: [{ href: "/dashboard", label: "Your properties" }, ACCOUNT],
+  client: [{ href: "/dashboard", label: "Your properties" }, { href: "/portal/reports", label: "Reports" }, ACCOUNT],
   admin: [
     { href: "/admin", label: "Pipeline" },
     { href: "/admin/referrals", label: "Lead routing" },

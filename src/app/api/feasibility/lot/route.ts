@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getFeasibilityForAddress } from "@/lib/server/feasibility-query";
 import { resolveParcel } from "@/lib/server/parcel-lookup";
 import { headlineUnits, lotFeasibility, lotFeasibilityInputFrom, type LotFeasibilityOverrides } from "@/lib/feasibility/lot-feasibility";
+import { adminOnly } from "@/lib/admin/gate";
 
 /** A non-negative integer (or number) query parameter, undefined when absent, null when malformed. */
 function param(sp: URLSearchParams, name: string, integer: boolean, max: number): number | undefined | null {
@@ -20,6 +21,8 @@ function param(sp: URLSearchParams, name: string, integer: boolean, max: number)
  * garage attached to the DADU, which adds a "DADU with attached garage" option; up to 250 sq ft is exempt from the cap).
  */
 export async function GET(request: NextRequest) {
+  const denied = await adminOnly(request); // lot data is admin-only (src/lib/admin/gate.ts)
+  if (denied) return denied;
   const sp = request.nextUrl.searchParams;
   const pin = sp.get("pin")?.trim() || null;
   let address = sp.get("address")?.trim() || null;

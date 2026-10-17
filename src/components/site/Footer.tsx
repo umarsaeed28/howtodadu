@@ -5,7 +5,6 @@ const GROUPS = [
   {
     title: "Tools",
     links: [
-      { href: "/search", label: "Map of DADU lots" },
       { href: "/feasibility", label: "Check a property" },
       { href: "/calculator", label: "Estimate your return" },
     ],

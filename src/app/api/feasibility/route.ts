@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFeasibilityForAddress } from "@/lib/server/feasibility-query";
 import { listingForAddress } from "@/lib/server/listing-for-address";
+import { adminOnly } from "@/lib/admin/gate";
 
 export async function GET(request: NextRequest) {
+  const denied = await adminOnly(request); // lot data is admin-only (src/lib/admin/gate.ts)
+  if (denied) return denied;
   const address = request.nextUrl.searchParams.get("address");
   if (!address) {
     return NextResponse.json(

@@ -3,9 +3,13 @@
 import { useId, useState } from "react";
 import { Check, Loader2, ArrowRight } from "lucide-react";
 
-/** Email sign-up for the newsletter. With `label`, the button shows that text instead of an arrow. */
-export default function NewsletterField({ label, placeholder = "you@firm.com" }: { label?: string; placeholder?: string } = {}) {
+/**
+ * Email sign-up for the newsletter. With `label`, the button shows that text instead of an arrow. With `address`,
+ * the property the visitor asked about is shown prefilled (editable) and sent with the sign-up.
+ */
+export default function NewsletterField({ label, placeholder = "you@firm.com", address }: { label?: string; placeholder?: string; address?: string } = {}) {
   const [email, setEmail] = useState("");
+  const [property, setProperty] = useState(address ?? "");
   const [state, setState] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const id = useId();
 
@@ -17,7 +21,7 @@ export default function NewsletterField({ label, placeholder = "you@firm.com" }:
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, kind: "newsletter", source: window.location.pathname }),
+        body: JSON.stringify({ email, kind: "newsletter", source: window.location.pathname, ...(property.trim() ? { message: `Property: ${property.trim()}` } : {}) }),
       });
       setState(res.ok ? "ok" : "error");
     } catch {
@@ -33,7 +37,7 @@ export default function NewsletterField({ label, placeholder = "you@firm.com" }:
     );
   }
 
-  return (
+  const form = (
     <form onSubmit={submit} style={{ display: "flex", gap: 8 }}>
       <label htmlFor={id} className="sr-only">
         Email address
@@ -64,5 +68,13 @@ export default function NewsletterField({ label, placeholder = "you@firm.com" }:
         )}
       </button>
     </form>
+  );
+  if (address === undefined) return form;
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      <label htmlFor={`${id}-property`} className="sr-only">Property address</label>
+      <input id={`${id}-property`} value={property} onChange={(e) => setProperty(e.target.value)} placeholder="Property address (optional)" className="s-field" style={{ minHeight: 44 }} autoComplete="street-address" />
+      {form}
+    </div>
   );
 }

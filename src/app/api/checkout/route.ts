@@ -78,7 +78,8 @@ export async function POST(req: Request) {
 
   // The buyer's receipt email, with a link back to their purchase.
   // TODO: attach the feasibility PDF (render it on the server) instead of linking to the report.
-  const link = kind.startsWith("feasibility") ? portalUrl(`/feasibility?${pin ? `parcel=${pin}&` : ""}address=${encodeURIComponent(address)}`) : portalUrl("/dashboard");
+  // Feasibility reports are read in the portal (the public /feasibility tool is admin-only).
+  const link = kind.startsWith("feasibility") ? portalUrl("/portal/reports") : portalUrl("/dashboard");
   void sendMail({
     to: [email],
     subject: `Pencil: ${product.name} for ${address || `parcel ${pin}`}`,

@@ -355,6 +355,7 @@ export default function FeasibilityReportView({
   favorite,
   onToggleFavorite,
   onBack,
+  owned,
 }: {
   slim: DashboardPropertySlim;
   detailRow: FeasibilityTableRow | null;
@@ -363,6 +364,8 @@ export default function FeasibilityReportView({
   favorite: boolean;
   onToggleFavorite: () => void;
   onBack: () => void;
+  /** Set by the portal for a buyer's paid report (checked on the server): the report opens in full. */
+  owned?: "feasibility_instant" | "feasibility_reviewed";
 }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -385,14 +388,14 @@ export default function FeasibilityReportView({
   // A pre-approved design chosen on the plans page (?plan=<id>): placed on the master plan, which opens after payment.
   const [initialPlanId, setInitialPlanId] = useState<string | null>(null);
   useEffect(() => {
-    setPaid(hasFeasibilityAccess(pin, gateAddress));
+    setPaid(!!owned || hasFeasibilityAccess(pin, gateAddress));
     setInitialPlanId(new URLSearchParams(window.location.search).get("plan"));
     const t = new URLSearchParams(window.location.search).get("tier");
     const tier = t === "reviewed" ? "feasibility_reviewed" : t === "instant" ? "feasibility_instant" : t;
     if (isProductKind(tier)) setDefaultTier(tier);
     if (pin) saveParcel({ pin, address: slim.address });
     setAccessChecked(true);
-  }, [pin, gateAddress, slim.address]);
+  }, [pin, gateAddress, slim.address, owned]);
   const unlocked = paid;
   const eligible = !!detailRow && detailRow.siteScore.eligible && (detailRow.daduScore ?? 0) > 0;
   useEffect(() => {

@@ -4,6 +4,7 @@ import { libraryAvailable } from "@/lib/server/lot-library-store";
 import { screenListings, toMapListing } from "@/lib/server/screened-listings";
 import { getInvestAssumptions, opportunityFromScreened } from "@/lib/server/invest";
 import { toTile } from "@/lib/invest/opportunity";
+import { adminOnly } from "@/lib/admin/gate";
 
 export type { MapListing } from "@/lib/server/screened-listings";
 
@@ -13,6 +14,8 @@ export type { MapListing } from "@/lib/server/screened-listings";
  * `connected: false` means no MLS feed is configured, so an empty list is not "no listings".
  */
 export async function GET(req: Request) {
+  const denied = await adminOnly(req); // lot data is admin-only (src/lib/admin/gate.ts)
+  if (denied) return denied;
   const zipParam = new URL(req.url).searchParams.get("zip");
   const zips = zipParam ? zipParam.split(",").filter((z) => /^98\d{3}$/.test(z)) : undefined;
   const source = listingsProviderName();

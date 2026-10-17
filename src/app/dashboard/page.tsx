@@ -80,7 +80,7 @@ export default async function Dashboard() {
               </ul>
               <Link href={p.next.href} className="pa-btn pa-btn-primary db-next no-underline">{p.next.text} <ArrowRight size={15} aria-hidden /></Link>
               <p className="db-links">
-                <Link href={p.pin ? `/feasibility?parcel=${p.pin}` : "/feasibility"}>Report</Link>
+                <Link href="/portal/reports">Reports</Link>
                 <Link href={p.pin ? `/plans?parcel=${p.pin}` : "/plans"}>Plans</Link>
                 {p.projectId && <Link href={`/portal/projects/${p.projectId}`}>Project</Link>}
               </p>
