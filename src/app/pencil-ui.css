@@ -522,3 +522,33 @@
 .aw-cite { display: block; font-size: 12px; color: var(--green); font-variant-numeric: tabular-nums; }
 .aw-opt-t { font-weight: 700; }
 .aw-num { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* Plan library (src/components/admin/plans). */
+.pl-wrap { display: grid; gap: 16px; }
+.pl-drop { padding: 28px 18px; border: 1.5px dashed rgba(17,22,20,.25); border-radius: 16px; background: #fff; text-align: center; transition: border-color .15s, background .15s; }
+.pl-drop--on { border-color: var(--green); background: var(--green-tint); }
+.pl-drop-t { font-weight: 800; font-size: 17px; color: var(--ink); }
+.pl-err { color: var(--red); font-weight: 600; }
+.pl-plan { display: grid; gap: 4px; }
+.pl-input { width: 100%; min-height: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(17,22,20,.18); background: #fff; font-size: 14px; color: var(--ink); }
+.pl-prog { display: grid; gap: 4px; font-size: 13px; max-height: 280px; overflow-y: auto; }
+.pl-prog-name { font-variant-numeric: tabular-nums; color: var(--ink); overflow-wrap: anywhere; }
+.pl-board-h { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.pl-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.pl-chips .pa-chip { white-space: nowrap; min-height: 36px; }
+.pl-dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; margin-right: 2px; }
+.pl-sets { display: grid; gap: 8px; }
+.pl-set { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; text-align: left; padding: 12px 14px; border-radius: 16px; background: #fff; box-shadow: 0 1px 3px rgba(17,22,20,.08), 0 0 0 1px rgba(17,22,20,.07); }
+.pl-set--on { box-shadow: 0 0 0 2px var(--green); }
+.pl-set-t { font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+.pl-set-meta { grid-column: 1 / -1; overflow-wrap: anywhere; }
+.pl-pill { font-size: 12px; font-weight: 700; padding: 2px 8px; border: 1px solid; border-radius: 999px; white-space: nowrap; align-self: start; }
+.pl-editor { margin-top: 8px; }
+.pl-form { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) { .pl-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pl-field { display: grid; gap: 4px; }
+.pl-field-l { font-size: 12px; font-weight: 700; color: var(--slate); }
+.pl-field-h { font-size: 12px; color: var(--green); overflow-wrap: anywhere; }
+/* A plan library precedent on the admin map: an ink square, unlike the round score pins. */
+.cm-precedent { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: #111614; color: #fff; font: 800 11px/1 var(--font-display, sans-serif); border: 2px solid #fff; box-shadow: 0 2px 6px rgba(17,22,20,.35); text-decoration: none; }
+.cm-precedent:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }

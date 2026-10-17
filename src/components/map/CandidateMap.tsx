@@ -57,7 +57,16 @@ function viewPadding(detailOpen: boolean) {
   return { top: 72, bottom: Math.round(window.innerHeight * (detailOpen ? 0.5 : 0.3)), left: 24, right: 24 };
 }
 
-export default function CandidateMap() {
+/** A plan set from the admin plan library, drawn as a precedent pin on the admin map only. */
+export interface PrecedentPin {
+  id: string;
+  title: string;
+  lat: number;
+  lng: number;
+  status: string;
+}
+
+export default function CandidateMap({ precedents }: { precedents?: PrecedentPin[] } = {}) {
   const mapRef = useRef<MapRef | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const initial = useRef(typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams());
@@ -418,6 +427,12 @@ export default function CandidateMap() {
             />
           </Source>
         )}
+
+        {precedents?.map((p) => (
+          <Marker key={`plan-${p.id}`} longitude={p.lng} latitude={p.lat} anchor="center" style={{ zIndex: 4 }}>
+            <a href={`/admin/plans?set=${p.id}`} className="cm-precedent" title={`Precedent plan: ${p.title} (${p.status.replace("_", " ")})`} aria-label={`Precedent plan: ${p.title}`}>P</a>
+          </Marker>
+        ))}
 
         {searchPin && (
           <Marker longitude={searchPin.lng} latitude={searchPin.lat} anchor="center">

@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { PrecedentPin } from "./CandidateMap";
 
 const CandidateMap = dynamic(() => import("./CandidateMap"), {
   ssr: false,
@@ -11,6 +12,7 @@ const CandidateMap = dynamic(() => import("./CandidateMap"), {
   ),
 });
 
-export default function MapHome() {
-  return <CandidateMap />;
+/** The map. `precedents` (plan library pins) is passed only by the admin map. */
+export default function MapHome({ precedents }: { precedents?: PrecedentPin[] } = {}) {
+  return <CandidateMap precedents={precedents} />;
 }
