@@ -22,12 +22,13 @@ export default function AdminLotPanel() {
   const sp = useSearchParams();
   const pin = sp.get("pin") ?? sp.get("parcel");
   const [state, setState] = useState<{ pin: string; panel?: Panel; error?: string } | null>(null);
-  const [showOptions, setShowOptions] = useState(false);
+  // The plan options are open for one lot at a time: picking another lot closes them.
+  const [optionsFor, setOptionsFor] = useState<string | null>(null);
+  const showOptions = optionsFor != null && optionsFor === pin;
 
   useEffect(() => {
     if (!pin || !/^\d{10}$/.test(pin)) return;
     const ctl = new AbortController();
-    setShowOptions(false);
     fetch(`/api/admin/lot-panel?pin=${pin}`, { signal: ctl.signal })
       .then(async (r) => {
         const j = await r.json();
@@ -58,7 +59,7 @@ export default function AdminLotPanel() {
       </header>
 
       <div className="aw-actions">
-        <button type="button" className="pa-btn pa-btn-primary pa-btn-sm" onClick={() => setShowOptions((s) => !s)} aria-expanded={showOptions}>
+        <button type="button" className="pa-btn pa-btn-primary pa-btn-sm" onClick={() => setOptionsFor(showOptions ? null : pin)} aria-expanded={showOptions}>
           <Sparkles size={14} aria-hidden /> {showOptions ? "Hide plan options" : "Generate plan options"}
         </button>
         <Link href={p.proformaHref} className="pa-btn pa-btn-sm no-underline"><Calculator size={14} aria-hidden /> Open proforma</Link>
