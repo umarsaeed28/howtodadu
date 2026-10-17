@@ -21,6 +21,10 @@
     "context7": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp@4.4.2"]
+    },
+    "rea": {
+      "command": "npx",
+      "args": ["-y", "rea-agents@6.5.0", "mcp"]
     }
   }
 }
