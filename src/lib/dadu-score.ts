@@ -6,7 +6,6 @@
  * Keep the weights and bands in step with rag/documents/36-site-score.md (a test checks).
  */
 import { MIN_LOT_SQFT, planSite, type Layout } from "@/lib/dadu-site-plan";
-import { LOT_SCREEN_NOTE, PENCIL } from "@/lib/rules/seattle-adu";
 import { MIN_FOOTPRINT_SQFT, type TreeStats } from "@/lib/tree-analysis";
 import { GRADE_MODERATE_PCT, GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT, gradeNote, type GradeStats } from "@/lib/grade";
 
@@ -35,7 +34,7 @@ export const GRADE_BANDS = [
 export type Tier = 3 | 2 | 1 | 0;
 
 /** Lots and listings scoring under this are not shown anywhere in the app (map, list, listing pages). */
-export const MIN_SHOWN_SCORE = PENCIL.minShownScore.value;
+export const MIN_SHOWN_SCORE = 65;
 
 export function gradeOf(score: number): { tier: Tier; label: string } {
   const b = GRADE_BANDS.find((g) => score >= g.min) ?? GRADE_BANDS[3];
@@ -101,7 +100,7 @@ const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
  * Ground clearance is usually a foot or two wider than the roofline gap. So: 12 ft or more is comfortable, 10 to 12 ft
  * fits a driveway, 8 to 10 ft may fit at ground level (confirm on site), under 8 ft is blocked.
  */
-export const DRIVEWAY_FT = PENCIL.drivewayFt.value;
+export const DRIVEWAY_FT = 10;
 export const BLOCKED_BELOW_FT = 8;
 const COMFORTABLE_DRIVEWAY_FT = 12;
 
@@ -194,16 +193,6 @@ export const MEDIUM_REMOVALS_FAIR_AT_BEST = 4;
 const noRoomBeforeTrees = (t: TreeStats) => t.siteSqft != null && t.siteSqft < MIN_FOOTPRINT_SQFT;
 
 /**
- * The largest DADU the lot can physically take. The rules allowance (coverage left, the 1,000 sf cap) says nothing
- * about where it goes, so it is held to the open spot the building outlines leave, built two stories (the NR height
- * allows it). Null room means the spot was not measured.
- */
-export function physicalDaduSqft(rulesSqft: number | null, roomSqft: number | null | undefined): number | null {
-  if (roomSqft == null) return rulesSqft;
-  return Math.min(rulesSqft ?? 0, roomSqft * 2);
-}
-
-/**
  * Measured trees. Large trees (likely protected) decide where a DADU can go; medium trees can come out with a review
  * and replacement, so they cost a little and never hide a lot on their own.
  */
@@ -214,8 +203,9 @@ function measuredTreeFactor(t: TreeStats): { score: number; note: string; cap: n
   const byCanopy = t.canopyPct <= 10 ? 100 : t.canopyPct <= 20 ? 85 : t.canopyPct <= 30 ? 65 : t.canopyPct <= 40 ? 45 : t.canopyPct <= 50 ? 30 : 15;
   let score = Math.max(0, byCanopy - t.large * 5 - t.medium * 2);
   if (noRoomBeforeTrees(t)) {
-    // Not a tree finding: the house leaves no 15 by 20 ft spot, and the "Room for a DADU" gate fails the lot.
-    return { score, cap: 0, note: `${count}. The house leaves no 15 by 20 ft spot for a DADU.` };
+    // Not a tree finding: the house leaves no clear 15 by 20 ft rectangle. Keep the lot out of the top grades until
+    // someone confirms where a DADU goes.
+    return { score, cap: GRADE_BANDS[1].min - 1, note: `${count}. The house leaves no clear 15 by 20 ft spot for a DADU in the city outlines, so placement needs a site visit.` };
   }
   // Open ground: clear of large trees. Medium trees in the way are assumed removable.
   const open = t.clearSqftIfMediumRemoved;
@@ -236,28 +226,8 @@ function measuredTreeFactor(t: TreeStats): { score: number; note: string; cap: n
   return { score, cap, note };
 }
 
-/**
- * Room for a DADU, hard: a 15 by 20 ft spot must exist inside the setbacks, outside the front yard and 5 ft from the
- * house (tree-analysis.ts, from the city's building outlines), and the rules must leave at least 300 sf. When the spot
- * was not measured the gate is unknown and the lot cannot read as feasible (see the cap in scoreSite).
- */
-function roomGate(room: number | null, dadu: number | null): Gate {
-  const label = "Room for a DADU";
-  if (room != null && room < MIN_FOOTPRINT_SQFT)
-    return { key: "dadu", label, status: "fail", note: "The house leaves no 15 by 20 ft spot for a DADU inside the setbacks, out of the front yard and 5 ft from the house (city building outlines)." };
-  if ((dadu ?? 0) < MIN_DADU_SQFT) return { key: "dadu", label, status: "fail", note: `The rules leave room for less than ${MIN_DADU_SQFT} sf.` };
-  const size = `A DADU of up to ${Math.round(dadu!).toLocaleString("en-US")} sf`;
-  if (room == null) return { key: "dadu", label, status: "unknown", note: `${size} is allowed, but where it would go on the lot was not measured. Confirm a 15 by 20 ft spot on site.` };
-  return { key: "dadu", label, status: "pass", note: `${size} fits, on an open spot of about ${Math.round(room).toLocaleString("en-US")} sf.` };
-}
-
-/** A lot whose DADU spot was not measured cannot read as feasible: Marginal at best until someone confirms it. */
-export const UNMEASURED_ROOM_CAP = GRADE_BANDS[2].min - 1;
-
 export function scoreSite(i: ScoreInput): SiteScore {
   const w = i.widthFt != null ? Math.round(i.widthFt) : null;
-  const room = i.trees?.siteSqft ?? null;
-  const dadu = physicalDaduSqft(i.daduSqft, room);
   const d = i.depthFt != null ? Math.round(i.depthFt) : null;
   const zone = (i.zoning ?? "").trim().toUpperCase();
   const zoneOk = /^(NR|SF)/.test(zone);
@@ -269,12 +239,14 @@ export function scoreSite(i: ScoreInput): SiteScore {
         ? { key: "hoa", label: "No HOA", status: "fail", note: `HOA of $${i.hoaMonthly} per month. A property with an HOA is never a DADU candidate.` }
         : { key: "hoa", label: "No HOA", status: "pass", note: "No HOA." },
     i.lotSqft >= MIN_LOT_SQFT
-      ? { key: "area", label: "Lot area", status: "pass", note: `${i.lotSqft.toLocaleString("en-US")} sf meets Pencil's ${MIN_LOT_SQFT.toLocaleString("en-US")} sf lot screen.` }
-      : { key: "area", label: "Lot area", status: "fail", note: `${i.lotSqft.toLocaleString("en-US")} sf. ${LOT_SCREEN_NOTE}` },
+      ? { key: "area", label: "Lot area", status: "pass", note: `${i.lotSqft.toLocaleString("en-US")} sf meets the ${MIN_LOT_SQFT.toLocaleString("en-US")} sf minimum.` }
+      : { key: "area", label: "Lot area", status: "fail", note: `${i.lotSqft.toLocaleString("en-US")} sf is under the ${MIN_LOT_SQFT.toLocaleString("en-US")} sf minimum.` },
     (i.existingAdus ?? 0) >= 2
       ? { key: "adus", label: "ADU slots", status: "fail", note: "The lot already has two ADUs, the maximum." }
       : { key: "adus", label: "ADU slots", status: i.existingAdus == null ? "unknown" : "pass", note: i.existingAdus == null ? "Existing ADU count unknown." : `${i.existingAdus} existing ADU${i.existingAdus === 1 ? "" : "s"}, under the cap of 2.` },
-    roomGate(i.trees?.siteSqft ?? null, dadu),
+    (i.daduSqft ?? 0) >= MIN_DADU_SQFT
+      ? { key: "dadu", label: "Room for a DADU", status: "pass", note: `A DADU of up to ${Math.round(i.daduSqft!).toLocaleString("en-US")} sf fits.` }
+      : { key: "dadu", label: "Room for a DADU", status: "fail", note: `The rules leave room for less than ${MIN_DADU_SQFT} sf.` },
     zoneOk
       ? { key: "zoning", label: "Zoning", status: "pass", note: `${zone}: single-family residential, covered by the guide.` }
       : { key: "zoning", label: "Zoning", status: zone ? "unknown" : "unknown", note: zone ? `${zone} is outside the Neighborhood Residential rules in the guide.` : "Zoning unknown." },
@@ -299,7 +271,7 @@ export function scoreSite(i: ScoreInput): SiteScore {
   const parts: Record<FactorKey, { score: number; note: string }> = {
     access: accessFactor(i, w),
     layout: layoutFactor(plan.layout.kind === "none" ? "single_rear" : plan.layout.kind, w, d, plan.warning != null),
-    size: sizeFactor(dadu ?? 0),
+    size: sizeFactor(i.daduSqft ?? 0),
     site: siteFactor(pct(i.steepPct), i.ecaFlags, i.grade),
     trees: i.trees ? measuredTreeFactor(i.trees) : treeFactor(pct(i.canopyPct)),
   };
@@ -313,7 +285,7 @@ export function scoreSite(i: ScoreInput): SiteScore {
   const treeCap = i.trees
     ? measuredTreeFactor(i.trees).cap
     : canopy == null || canopy > CANOPY_FAIR_AT_BEST ? GRADE_BANDS[1].min - 1 : GRADE_BANDS[0].min - 1;
-  const score = eligible ? Math.min(Math.round(clamp(raw)), accessUnknown ? GRADE_BANDS[0].min - 1 : 100, treeCap, gradeCap(i.grade), room == null ? UNMEASURED_ROOM_CAP : 100) : 0;
+  const score = eligible ? Math.min(Math.round(clamp(raw)), accessUnknown ? GRADE_BANDS[0].min - 1 : 100, treeCap, gradeCap(i.grade)) : 0;
   const g = eligible ? gradeOf(score) : { tier: 0 as Tier, label: "Not eligible" };
   return { eligible, gates, factors, score, tier: g.tier, grade: g.label };
 }

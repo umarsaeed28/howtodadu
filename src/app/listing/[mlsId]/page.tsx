@@ -21,13 +21,9 @@ import { zillowUrl } from "@/lib/property-image";
 import { overrideFor, statusOverrides } from "@/lib/listings/status-overrides";
 import { isPending } from "@/lib/listings/status";
 import DaduSnapshot from "@/components/listing/DaduSnapshot";
-import StartProjectCta from "@/components/portal/StartProjectCta";
 import { siteScoreFor } from "@/lib/server/site-score";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
-import { isNrZone } from "@/lib/zoning";
 import { GRADE_STEEP_PCT, GRADE_VERY_STEEP_PCT, gradeNote } from "@/lib/grade";
-import MembersTeaser from "@/components/members/MembersTeaser";
-import { currentAdmin } from "@/lib/admin/server";
 
 export const dynamic = "force-dynamic";
 
@@ -70,9 +66,8 @@ function riskFlags(i: { hoa?: number; plan: ReturnType<typeof planSite> | null; 
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ mlsId: string }> }): Promise<Metadata> {
-  if (!(await currentAdmin())) return { title: "Lot intelligence, coming to members — Pencil", robots: { index: false, follow: false } };
   const l = await getListingsProvider().getById((await params).mlsId);
-  return { title: l ? `${street(l.address)}, ${usd(l.listPrice)} — Pencil` : "Listing — Pencil", robots: { index: false, follow: false } };
+  return { title: l ? `${street(l.address)}, ${usd(l.listPrice)} — Pencil` : "Listing — Pencil" };
 }
 
 /** 30-year fixed, 20% down. A rough monthly figure, labelled as such on the page. */
@@ -85,34 +80,17 @@ function monthly(price: number, hoa = 0): { pi: number; tax: number; total: numb
   return { pi, tax, total: pi + tax + hoa };
 }
 
-/** Admin-only (src/lib/admin/gate.ts): scored lot data. */
 export default async function ListingPage({ params }: { params: Promise<{ mlsId: string }> }) {
-  if (!(await currentAdmin())) return <MembersTeaser from="/listing" />;
   const { mlsId } = await params;
   const data = await load(mlsId);
   if (!data) notFound();
   const { listing: l, detail: d } = data;
   const lot = libraryAvailable() ? findLotForListing(l.address, l.lat, l.lng) : null;
-  // The NR gate: a listing not on an NR library lot gets a short note, no analysis (src/lib/zoning.ts).
-  if (!lot || !isNrZone(lot.zoning)) {
-    return (
-      <div className="pencil-app">
-        <article className="mx-auto max-w-[640px] px-4 pb-16 pt-10 md:px-6">
-          <h1 className="pa-display text-2xl" style={{ color: "var(--ink)" }}>{street(l.address)} is not suitable for a DADU</h1>
-          <p className="mt-3 text-base leading-relaxed" style={{ color: "var(--ink)" }}>
-            It is not on a Neighborhood Residential (NR) lot with room for a DADU, so Pencil does not analyze it. Search NR-zoned properties for the best development opportunities.
-          </p>
-          <div className="mt-6">
-            <Link href="/search?top=1" className="pa-btn pa-btn-primary no-underline">Search NR-zoned properties <ArrowRight size={14} aria-hidden /></Link>
-          </div>
-        </article>
-      </div>
-    );
-  }
   const [adu, values] = lot ? await Promise.all([getAduniverseFacts(lot.pin), getParcelValues(lot.pin)]) : [null, null];
   const plan = lot ? planSite({ lotSqft: lot.lotSqft, widthFt: adu?.raw.lotWidth ?? null, depthFt: adu?.raw.lotDepth ?? null, alley: lot.alley }) : null;
   const basis = computeBasis({ price: l.listPrice, livingSqft: l.livingSqft, lotSqft: l.lotSqft || lot?.lotSqft, daduSqft: lot?.daduSqft, landAv: values?.landAv, bldgAv: values?.bldgAv });
   const risks = riskFlags({ hoa: l.hoaMonthly, plan, adu, canopyPct: lot?.canopyPct ?? null, zoning: lot?.zoning ?? "" });
+  if (!lot) risks.push({ text: "This address is not in the city lot library: it is not an eligible single-family lot, or the DADU engine found no room.", source: "City GIS", level: "watch" });
   const isTest = listingsProviderName() === "fixture";
   const photos = d.photos.length ? d.photos : l.photos;
   const e = 0.0009;
@@ -235,7 +213,6 @@ export default async function ListingPage({ params }: { params: Promise<{ mlsId:
                   </p>
                 )}
                 {plan?.warning && <p className="mt-3 rounded-lg px-3 py-2 text-sm" style={{ background: "var(--amber-tint)", color: "var(--amber)" }}>{plan.warning}</p>}
-                <div className="mt-4"><StartProjectCta address={l.address} compact /></div>
                 {plan && (
                   <details className="pa-more mt-3 text-sm">
                     <summary className="cursor-pointer font-semibold" style={{ color: "var(--green)" }}>Layout, access and resale notes</summary>

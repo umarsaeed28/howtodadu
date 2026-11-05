@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Heart, AlertTriangle, ExternalLink, Lock } from "lucide-react";
+import { Heart, AlertTriangle, ExternalLink } from "lucide-react";
 import type { DashboardPropertySlim } from "@/lib/dashboard-normalize";
 import { verdictFromScore, feasPhoto, zillowUrl } from "@/lib/feasibility-verdict";
 import VerdictPill from "@/components/shared/VerdictPill";
@@ -18,14 +18,11 @@ export default function FeasCard({
   favorite,
   onToggleFavorite,
   onOpen,
-  locked = false,
 }: {
   slim: DashboardPropertySlim;
   favorite: boolean;
   onToggleFavorite: () => void;
   onOpen: () => void;
-  /** No report bought for this address yet: the score stays hidden. */
-  locked?: boolean;
 }) {
   const [imgErrored, setImgErrored] = useState(false);
 
@@ -77,7 +74,7 @@ export default function FeasCard({
           onError={() => setImgErrored(true)}
         />
         <div className="absolute left-2 top-2">
-          {!locked && <VerdictPill verdict={verdict} size="md" />}
+          <VerdictPill verdict={verdict} size="md" />
         </div>
         <button
           type="button"
@@ -101,17 +98,13 @@ export default function FeasCard({
 
       <div className="p-3">
         <div className="flex items-baseline justify-between gap-2">
-          {locked ? (
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--slate)" }}><Lock size={14} aria-hidden /> Report locked</span>
-          ) : (
-            <span className="pa-mono text-2xl font-medium leading-none" style={{ color: scoreColor }}>
-              {slim.daduScore}
-              <span className="text-sm" style={{ color: "var(--slate)" }}>
-                {" "}
-                / 100
-              </span>
+          <span className="pa-mono text-2xl font-medium leading-none" style={{ color: scoreColor }}>
+            {slim.daduScore}
+            <span className="text-sm" style={{ color: "var(--slate)" }}>
+              {" "}
+              / 100
             </span>
-          )}
+          </span>
           <span className="pa-mono text-sm" style={{ color: "var(--ink)" }}>
             {slim.priceDisplay}
           </span>

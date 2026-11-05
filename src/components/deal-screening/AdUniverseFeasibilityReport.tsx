@@ -13,8 +13,9 @@ import {
   fmtSqftShort,
   fmtYesNo,
 } from "@/lib/aduniverse-gis-format";
-import { daduRules, SMC_2342022, type DaduRule } from "./dadu-rules";
 
+const SMC_2344041 =
+  "https://library.municode.com/wa/seattle/codes/code_of_ordinances?nodeId=TIT23LANDUSAND_PLANDE_CH23.44RESNCODE";
 
 function FactRow({ label, value }: { label: string; value: string }) {
   return (
@@ -122,25 +123,57 @@ function lotTypeNarrative(lotType: string | null, hasAlley: boolean): string {
   return "Lot type was not returned in the feasibility factors layer.";
 }
 
-function DaduRulesTable({ rules }: { rules: DaduRule[] }) {
+function heightBracketCopy(widthFt: number | null): string {
+  if (widthFt == null || !Number.isFinite(widthFt)) {
+    return "Maximum DADU height depends on lot width under Section 23.44.041. Lot width from the feasibility layer was not available.";
+  }
+  if (widthFt < 30) {
+    return `The feasibility factors layer reports lot width (MBG) of about ${widthFt} feet (less than 30 ft). See the height table below for base and roof allowances.`;
+  }
+  if (widthFt < 40) {
+    return `The feasibility factors layer reports lot width (MBG) of about ${widthFt} feet (30 up to 40 ft). See the height table below.`;
+  }
+  if (widthFt < 50) {
+    return `The feasibility factors layer reports lot width (MBG) of about ${widthFt} feet (40 up to 50 ft). The lot width appears to be near a bracket boundary; a survey may be necessary to determine the exact width. See the height table below.`;
+  }
+  return `The feasibility factors layer reports lot width (MBG) of about ${widthFt} feet (50 ft or greater). See the height table below.`;
+}
+
+function DaduHeightTable() {
   return (
     <div className="mt-4 overflow-x-auto rounded-md border border-zinc-200">
       <table className="w-full text-left text-sm text-zinc-800">
         <thead>
           <tr className="border-b border-zinc-200 bg-zinc-50">
-            <th className="p-3 font-semibold">Standard</th>
-            <th className="p-3 font-semibold">Current rule</th>
-            <th className="p-3 font-semibold">Code</th>
+            <th className="p-3 font-semibold">Maximum DADU height (in feet)</th>
+            <th className="p-3 font-semibold text-center">Lot width &lt; 30</th>
+            <th className="p-3 font-semibold text-center">30 up to 40</th>
+            <th className="p-3 font-semibold text-center">40 up to 50</th>
+            <th className="p-3 font-semibold text-center">50 or greater</th>
           </tr>
         </thead>
         <tbody>
-          {rules.map((r) => (
-            <tr key={r.item} className="border-b border-zinc-100 last:border-b-0 align-top">
-              <td className="p-3 font-medium text-zinc-900">{r.item}</td>
-              <td className="p-3">{r.value}</td>
-              <td className="p-3 whitespace-nowrap text-zinc-600">{r.ref}</td>
-            </tr>
-          ))}
+          <tr className="border-b border-zinc-100">
+            <td className="p-3">Base structure height limit</td>
+            <td className="p-3 text-center tabular-nums">14</td>
+            <td className="p-3 text-center tabular-nums">16</td>
+            <td className="p-3 text-center tabular-nums">18</td>
+            <td className="p-3 text-center tabular-nums">18</td>
+          </tr>
+          <tr className="border-b border-zinc-100">
+            <td className="p-3">Additional height allowed for pitched roof</td>
+            <td className="p-3 text-center tabular-nums">3</td>
+            <td className="p-3 text-center tabular-nums">7</td>
+            <td className="p-3 text-center tabular-nums">5</td>
+            <td className="p-3 text-center tabular-nums">7</td>
+          </tr>
+          <tr>
+            <td className="p-3">Additional height allowed for shed or butterfly roof</td>
+            <td className="p-3 text-center tabular-nums">3</td>
+            <td className="p-3 text-center tabular-nums">4</td>
+            <td className="p-3 text-center tabular-nums">4</td>
+            <td className="p-3 text-center tabular-nums">4</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -153,7 +186,6 @@ export function AdUniverseFeasibilityReport({ result }: { result: FeasibilityRes
   const f = result.feasibility;
   const z = describeZoning(p?.zoning ?? null);
   const adu = existingADUsNarrative(f);
-  const rules = daduRules(p?.zoning ?? null, p?.lotSqft ?? null);
 
   const lotSizeLine =
     p?.lotSqft != null && Number.isFinite(p.lotSqft) ? fmtSqft(p.lotSqft) : "—";
@@ -265,20 +297,18 @@ export function AdUniverseFeasibilityReport({ result }: { result: FeasibilityRes
           <SectionTitle>Additional requirements for a DADU</SectionTitle>
           <Prose>
             <p>
-              Seattle&apos;s ADU standards are in{" "}
+              For detailed development standards, see Seattle&apos;s ADU ordinance in{" "}
               <a
-                href={SMC_2342022}
+                href={SMC_2344041}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sky-700 underline underline-offset-2 hover:text-sky-900"
               >
-                Section 23.42.022
+                Section 23.44.041
               </a>{" "}
-              of the Land Use Code, with the Neighborhood Residential rules updated in January 2026
-              (Council Bill 120993).
+              of the Land Use Code.
             </p>
           </Prose>
-          <DaduRulesTable rules={rules} />
 
           <div className="mt-8 space-y-8">
             <div>
@@ -323,9 +353,21 @@ export function AdUniverseFeasibilityReport({ result }: { result: FeasibilityRes
                 <p>
                   Width above is <strong>MBG_Width</strong> from the feasibility factors layer.
                 </p>
-                <p>
-                  DADU height no longer depends on lot width: a DADU may be as tall as the house
-                  (Section 23.42.022.E). See the table above.
+                <p>{heightBracketCopy(f?.lotWidth ?? null)}</p>
+              </Prose>
+              <DaduHeightTable />
+              <Prose>
+                <p className="text-sm mt-3">
+                  For more detail on height limits and other standards, review{" "}
+                  <a
+                    href={SMC_2344041}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sky-700 underline underline-offset-2 hover:text-sky-900"
+                  >
+                    Section 23.44.041
+                  </a>{" "}
+                  of the Land Use Code.
                 </p>
               </Prose>
             </div>

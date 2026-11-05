@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import { getLot } from "@/lib/server/lot-library-store";
-import { adminOnly } from "@/lib/admin/gate";
 
 /** GET /api/lot?pin=1234567890 */
 export async function GET(req: Request) {
-  const denied = await adminOnly(req); // lot data is admin-only (src/lib/admin/gate.ts)
-  if (denied) return denied;
   const pin = new URL(req.url).searchParams.get("pin") ?? "";
   if (!/^\d{10}$/.test(pin)) return NextResponse.json({ error: "pin must be 10 digits" }, { status: 400 });
   const lot = getLot(pin);

@@ -5,6 +5,7 @@ const GROUPS = [
   {
     title: "Tools",
     links: [
+      { href: "/", label: "Map of DADU lots" },
       { href: "/feasibility", label: "Check a property" },
       { href: "/calculator", label: "Estimate your return" },
     ],
@@ -13,7 +14,7 @@ const GROUPS = [
     title: "Company",
     links: [
       { href: "/company", label: "About Pencil" },
-      { href: "/contact", label: "Free consult" },
+      { href: "/contact", label: "Talk to us" },
     ],
   },
   {

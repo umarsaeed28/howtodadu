@@ -3,13 +3,8 @@
 import { useId, useState } from "react";
 import { Check, Loader2, ArrowRight } from "lucide-react";
 
-/**
- * Email sign-up for the newsletter. With `label`, the button shows that text instead of an arrow. With `address`,
- * the property the visitor asked about is shown prefilled (editable) and sent with the sign-up.
- */
-export default function NewsletterField({ label, placeholder = "you@firm.com", address }: { label?: string; placeholder?: string; address?: string } = {}) {
+export default function NewsletterField() {
   const [email, setEmail] = useState("");
-  const [property, setProperty] = useState(address ?? "");
   const [state, setState] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const id = useId();
 
@@ -21,7 +16,7 @@ export default function NewsletterField({ label, placeholder = "you@firm.com", a
       const res = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, kind: "newsletter", source: window.location.pathname, ...(property.trim() ? { message: `Property: ${property.trim()}` } : {}) }),
+        body: JSON.stringify({ email, kind: "newsletter", source: window.location.pathname }),
       });
       setState(res.ok ? "ok" : "error");
     } catch {
@@ -37,7 +32,7 @@ export default function NewsletterField({ label, placeholder = "you@firm.com", a
     );
   }
 
-  const form = (
+  return (
     <form onSubmit={submit} style={{ display: "flex", gap: 8 }}>
       <label htmlFor={id} className="sr-only">
         Email address
@@ -48,33 +43,23 @@ export default function NewsletterField({ label, placeholder = "you@firm.com", a
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder={placeholder}
+        placeholder="you@firm.com"
         className="s-field"
         style={{ minHeight: 44 }}
       />
       <button
         type="submit"
         className="s-btn s-btn--primary"
-        aria-label={label ? undefined : "Subscribe"}
+        aria-label="Subscribe"
         disabled={state === "loading"}
-        style={{ minHeight: 44, padding: "0 0.9rem", whiteSpace: "nowrap" }}
+        style={{ minHeight: 44, padding: "0 0.9rem" }}
       >
         {state === "loading" ? (
           <Loader2 size={16} className="animate-spin" aria-hidden />
-        ) : label ? (
-          label
         ) : (
           <ArrowRight size={16} aria-hidden />
         )}
       </button>
     </form>
-  );
-  if (address === undefined) return form;
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      <label htmlFor={`${id}-property`} className="sr-only">Property address</label>
-      <input id={`${id}-property`} value={property} onChange={(e) => setProperty(e.target.value)} placeholder="Property address (optional)" className="s-field" style={{ minHeight: 44 }} autoComplete="street-address" />
-      {form}
-    </div>
   );
 }

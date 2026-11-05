@@ -1,11 +1,8 @@
-import { isNrZone } from "@/lib/zoning";
 /**
  * The lot library: every Seattle lot the rules say can take a DADU, scored once.
  * Stored columnar so ~100k lots stay small on the wire. Pure encode/decode, no I/O.
  */
 import type { Candidate } from "@/lib/server/candidates";
-import { physicalDaduSqft } from "@/lib/dadu-score";
-import { MIN_FOOTPRINT_SQFT } from "@/lib/tree-analysis";
 
 export interface LotLibraryFile {
   generatedAt: string;
@@ -95,41 +92,6 @@ export function encodeLibrary(rows: Candidate[], source: string, now = new Date(
       gradeRiseFt: rows.map((r) => r.grade?.riseFt ?? null),
     },
   };
-}
-
-/**
- * Hold a library built before the room rule (dadu-score.ts, roomGate) to it: a lot whose house leaves no 15 by 20 ft
- * spot has no DADU, so its score drops to 0 (under the shown floor everywhere), and every DADU size is held to its
- * open spot built two stories. A rebuild (`npm run build:lots`) drops such lots outright and rescores the rest.
- * Mutates and returns the file.
- */
-/**
- * The NR rule: the library holds Neighborhood Residential lots only. Any row whose zone is not NR is dropped on load,
- * so a rebuilt library can never put a non-NR lot on the map, the off-market dots or the listings feed.
- */
-export function enforceNrRule(f: LotLibraryFile): LotLibraryFile {
-  const keep: number[] = [];
-  for (let i = 0; i < f.count; i++) if (isNrZone(f.cols.zone[i])) keep.push(i);
-  if (keep.length === f.count) return f;
-  const cols = Object.fromEntries(Object.entries(f.cols).map(([k, arr]) => [k, Array.isArray(arr) ? keep.map((i) => arr[i]) : arr])) as LotLibraryFile["cols"];
-  return { ...f, count: keep.length, cols };
-}
-
-export function enforceRoomRule(f: LotLibraryFile): LotLibraryFile {
-  const c = f.cols;
-  const room = c.siteSqft;
-  if (!room) return f;
-  for (let i = 0; i < f.count; i++) {
-    const r = room[i];
-    if (r == null) continue;
-    if (r < MIN_FOOTPRINT_SQFT) {
-      c.score[i] = 0;
-      c.tier[i] = 0;
-      c.topPick[i] = 0;
-      c.daduSqft[i] = null;
-    } else c.daduSqft[i] = physicalDaduSqft(c.daduSqft[i], r);
-  }
-  return f;
 }
 
 export function decodeLibrary(f: LotLibraryFile, zips?: string[] | null): Candidate[] {

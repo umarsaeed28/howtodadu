@@ -18,13 +18,6 @@ const nextConfig: NextConfig = {
       { source: "/app", destination: "/", permanent: true },
       { source: "/app/:path*", destination: "/", permanent: true },
       { source: "/product", destination: "/", permanent: true },
-      { source: "/about", destination: "/", permanent: true },
-      // Drawing your own DADU now happens on the feasibility report's master plan.
-      { source: "/custom", destination: "/feasibility", permanent: true },
-      // The permit page was removed: the permit is sold with the custom plan, through the free consult.
-      { source: "/permit", destination: "/contact", permanent: true },
-      // The Invest list moved onto the search map; each listing keeps its investment summary at /invest/[id].
-      { source: "/invest", destination: "/search?top=1", permanent: false },
     ];
   },
 };

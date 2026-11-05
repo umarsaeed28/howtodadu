@@ -202,7 +202,7 @@ export function Canopy({ row }: { row: FeasibilityTableRow }) {
       <Card title="Trees" source="2021 LiDAR tree crowns, one by one">
         <Bar value={ts.canopyPct} max={60} color={ts.canopyPct > 25 || tight ? "var(--amber)" : "var(--green)"} marker={25} />
         <div className="grid grid-cols-4 gap-2 text-center">
-          {([[ts.large, "large", "#2F6B49"], [ts.medium, "medium", "#4F9068"], [ts.small, "small", "#5E8F70"], [ts.canopyPct, "% canopy", "var(--ink)"]] as [number, string, string][]).map(([n, label, color]) => (
+          {([[ts.large, "large", "#2F6B49"], [ts.medium, "medium", "#4F9068"], [ts.small, "small", "#9CC2A8"], [ts.canopyPct, "% canopy", "var(--ink)"]] as [number, string, string][]).map(([n, label, color]) => (
             <div key={label} className="rounded-lg py-2" style={{ background: "rgba(23,36,29,.04)" }}>
               <p className="pa-display text-xl tabular-nums" style={{ color }}>{n}</p>
               <p className="text-[11px]" style={{ color: "var(--slate)" }}>{label}</p>
@@ -244,12 +244,12 @@ export function NearbyAdus({ row }: { row: FeasibilityTableRow }) {
   const max = 1320;
   const marks = [
     { label: "Nearest attached ADU", d: f.nearestAADUDist, color: "var(--flag)" },
-    { label: "Nearest DADU", d: f.nearestDADUDist, color: "#B9573F" },
+    { label: "Nearest backyard cottage", d: f.nearestDADUDist, color: "#B9573F" },
   ].filter((m) => m.d != null);
   return (
     <Card title="Nearby ADUs" source="Permitted ADUs within 1,320 ft (quarter mile)">
       <div className="flex gap-6 text-sm" style={{ color: "var(--ink)" }}>
-        <p><span className="pa-display text-2xl tabular-nums">{f.nearbyDADU ?? 0}</span> DADUs</p>
+        <p><span className="pa-display text-2xl tabular-nums">{f.nearbyDADU ?? 0}</span> backyard cottages</p>
         <p><span className="pa-display text-2xl tabular-nums">{f.nearbyAADU ?? 0}</span> attached units</p>
       </div>
       <div className="relative mt-1 h-10">

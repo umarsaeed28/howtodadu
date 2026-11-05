@@ -25,23 +25,6 @@ With the Supabase GitHub integration on this repo (working directory `supabase`,
 migration in `supabase/migrations/` is applied to the project when it is merged to `main`. Only add migrations there
 that should run in production. `config.toml` is the CLI project config (`supabase link --project-ref afinrgvsfepcedmzhmrp`).
 
-## Client portal (`migrations/0007_portal.sql`)
-Accounts and projects for the portal at `/portal`, `/admin` and `/gc`: `profiles` (role: client, admin or gc), `portal_admins`,
-`gc_partners`, `projects`, `feasibility_reports`, `permit_packages`, `files`, `design_options`, `build_requests`, `referrals`,
-`bids`, `activity_log`, plus the private `project-files` storage bucket. RLS is on with real policies here: the website
-reads and writes as the signed-in user (`src/lib/portal/server.ts`), and the secret key is used only for storage objects,
-notification recipients and the seed. A trigger on `auth.users` creates the profile; an email in `portal_admins` or
-`gc_partners` makes the new account an admin or a builder.
-
-Apply it like the others (GitHub integration on merge, `psql`, or the SQL editor), then seed the sample data:
-
-```
-npx tsx scripts/seed-portal.ts
-```
-
-That inserts the admin email, two builders, a demo client and three projects (feasibility, permit, build). Demo sign-ins
-are listed at the top of the script.
-
 ## Superseded
 `superseded/0001`-`0004` (GIS tables, a voyage-law-2 `chunks` store, `report_cache`, `config`, `rules`) are not applied and no code
 uses them. The knowledge base is the Pencil API's Jina store in `0005`. Kept for reference only.

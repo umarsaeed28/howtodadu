@@ -1,7 +1,4 @@
 import { parcelZoningLabel, type ParcelData, type FeasibilityData } from "./feasibility";
-import { MIN_FOOTPRINT_SQFT } from "./tree-analysis";
-import { ADU, LOT_SCREEN_NOTE, NR, PENCIL } from "./rules/seattle-adu";
-import { isNeighborhoodResidential, nrMaxFloorArea } from "./feasibility/far";
 
 export type CheckStatus = "pass" | "fail" | "info" | "warning";
 
@@ -102,10 +99,9 @@ export interface ADUReport {
 }
 
 const ADU_ELIGIBLE_ZONES = ["NR", "RSL", "LR", "SF"];
-/** Pencil's hard lot screen and its width and depth warnings (src/lib/rules/seattle-adu.ts); not city rules. */
-const MIN_LOT_SIZE = PENCIL.minLotSqft.value;
-const MIN_LOT_WIDTH = PENCIL.minLotWidthFt.value;
-const MIN_LOT_DEPTH = PENCIL.minLotDepthFt.value;
+const MIN_LOT_SIZE = 3200;
+const MIN_LOT_WIDTH = 25;
+const MIN_LOT_DEPTH = 70;
 
 function zoneFamily(zoning: string | null): string | null {
   if (!zoning) return null;
@@ -117,124 +113,44 @@ function zoneFamily(zoning: string | null): string | null {
   return null;
 }
 
-/** NR maximum lot coverage for structures: 50 percent of the lot (SMC 23.44.080.A). */
-export const NR_MAX_LOT_COVERAGE = NR.maxLotCoverage.value;
-
 /**
- * Seattle residential max lot coverage (sq ft): 50% of the lot in Neighborhood Residential zones (SMC 23.44.080.A,
- * as amended by Council Bill 120993, January 2026). This replaced the old single-family curve (1,000 sf + 15% under
- * 5,000 sf, 35% above). Not modeled: the 60% for stacked units or courtyard development (23.44.080.F-G), and leaving
- * riparian, wetland, shoreline and steep-slope areas out of the lot size (23.44.080.B), which needs ECA geometry.
+ * Seattle residential max lot coverage (sq ft), aligned with SDCI ADU guidance:
+ * lots under 5,000 sf → 1,000 sq ft + 15% of lot area; lots 5,000 sf+ → 35% of lot area.
+ * (Continuity: at exactly 5,000 sf both formulas yield 1,750 sq ft.)
  */
 export function maxLotCoverageSqft(lotSqft: number): number {
   if (lotSqft <= 0) return 0;
-  return Math.round(NR_MAX_LOT_COVERAGE * lotSqft);
+  if (lotSqft >= 5000) return Math.round(0.35 * lotSqft);
+  return Math.round(1000 + 0.15 * lotSqft);
 }
 
-/**
- * DADU height. Since Ordinance 127211 repealed SMC 23.44.041, an accessory dwelling unit has the same height limit as
- * a principal dwelling unit (SMC 23.42.022.E). In NR that is 32 ft (23.44.070.A.1), plus 5 ft for the ridge of a
- * pitched roof of 4:12 or steeper, or 3 ft for the high side of a shed or butterfly roof (23.44.070.B). The 42 ft
- * limit for tree retention or three or more principal units (23.44.070.A.2) is not assumed.
- */
-export const NR_HEIGHT = NR.height.value;
-
-/**
- * Other zones keep the width-based DADU heights of the repealed SMC 23.44.041 until their own rules are modeled.
- * Under 23.42.022.E these zones also take the principal-unit height, so treat these as unconfirmed.
- */
-function legacyHeightLimits(width: number) {
+function heightLimits(width: number) {
   if (width >= 50) return { base: 18, pitched: 7, shed: 4 };
   if (width >= 40) return { base: 18, pitched: 5, shed: 4 };
   if (width >= 30) return { base: 16, pitched: 7, shed: 4 };
   return { base: 14, pitched: 3, shed: 3 };
 }
 
-function heightLimits(family: string | null, width: number) {
-  return family === "NR" || family === "SF" ? { ...NR_HEIGHT } : legacyHeightLimits(width);
-}
+/* ── DADU Footprint Calculation (SMC 23.44.041) ── */
 
-/**
- * ADU gross floor area limit: 1,000 sf with up to two bedrooms (SMC 23.42.022.G.1.a); 1,200 sf with three or more
- * (G.1.b) is not assumed. Underground stories do not count (G.2.b). No longer depends on lot size.
- */
-export const DADU_MAX_GROSS_SQFT = ADU.maxGrossSqft.value;
-
-/** ADU gross floor area limit with three or more bedrooms (SMC 23.42.022.G.1.b). */
-export const DADU_MAX_GROSS_SQFT_3BR = ADU.maxGrossSqft3br.value;
-
-/**
- * Up to 250 sq ft of a garage attached to an ADU is left out of the ADU's gross floor area (SMC 23.42.022); garage area
- * beyond that counts toward the size cap. The exemption is for the cap only: the garage's full footprint still counts
- * toward lot coverage (SMC 23.44.080), and it is counted toward FAR until a source says otherwise.
- */
-export const ADU_GARAGE_EXEMPT_SQFT = ADU.garageExemptSqft.value;
-
-/** The part of an attached garage that counts toward the ADU size cap. */
-export function aduCountedGarageSqft(garageSqft: number): number {
-  return Math.max(0, garageSqft - ADU_GARAGE_EXEMPT_SQFT);
-}
-
-/** The most living space an ADU with this attached garage may have under the size cap. */
-export function maxAduLivingSqft(capSqft: number, garageSqft = 0): number {
-  return Math.max(0, capSqft - aduCountedGarageSqft(Math.max(0, garageSqft)));
-}
-
-/** The largest building, garage included, an ADU with this attached garage may be under the size cap. */
-export function maxAduBuildingSqft(capSqft: number, garageSqft = 0): number {
-  return maxAduLivingSqft(capSqft, garageSqft) + Math.max(0, garageSqft);
-}
-
-/** Whether an ADU's living space and attached garage meet the size cap. */
-export function meetsAduSizeCap(livingSqft: number, garageSqft: number, capSqft: number): boolean {
-  return livingSqft + aduCountedGarageSqft(garageSqft) <= capSqft;
-}
-
-/* ── DADU Footprint Calculation (SMC 23.42.022, 23.44) ── */
-
-/**
- * The largest DADU the rules and the lot allow. `roomSqft` is the open spot the building outlines leave for it (inside
- * the setbacks, out of the front yard, 5 ft from the house; tree-analysis.ts): the footprint may not exceed it, and
- * under 15 by 20 ft there is no DADU at all, whatever lot coverage is left. Null room means not measured.
- * `garageSqft` is a garage attached to the DADU, on its ground floor: up to 250 sq ft of it is exempt from the size cap
- * (ADU_GARAGE_EXEMPT_SQFT), but all of it is in the footprint, so it counts toward coverage. `buildableSqft` is then
- * the whole building, garage included, and `livingSqft` the part that is not garage.
- */
-export function computeDADUFootprint(
+function computeDADUFootprint(
   lot: number,
   availCov: number,
   w: number,
-  hl: { base: number; pitched: number } | null,
-  roomSqft: number | null = null,
-  garageSqft = 0,
-  /** Chargeable floor area the lot has left under its FAR (SMC 23.44.050). Null when not known (non-NR zones). */
-  floorAreaLeftSqft: number | null = null
+  hl: { base: number; pitched: number } | null
 ): DADUFootprint | null {
   if (lot < MIN_LOT_SIZE) return null;
-  if (roomSqft != null && roomSqft < MIN_FOOTPRINT_SQFT) return null;
 
-  const codeMax = DADU_MAX_GROSS_SQFT;
-  const garage = Math.max(0, garageSqft);
-  const maxBuilding = maxAduBuildingSqft(codeMax, garage);
-  const byRules = Math.min(maxBuilding, availCov, floorAreaLeftSqft ?? Infinity);
-  if (byRules - garage <= 0) return null;
+  const codeMax = lot >= 4000 ? 1000 : 800;
+  const buildable = Math.min(codeMax, availCov);
+  if (buildable <= 0) return null;
 
   const maxH = hl ? hl.base + hl.pitched : 17;
-  const canTwoStory = maxH >= 18 && byRules >= 400;
-  const stories: 1 | 2 = canTwoStory && byRules >= 500 ? 2 : 1;
+  const canTwoStory = maxH >= 18 && buildable >= 400;
+  const stories: 1 | 2 = canTwoStory && buildable >= 500 ? 2 : 1;
 
-  // Coverage counts the footprint; the open spot caps it too. Floor area is the footprint times the stories. The
-  // garage sits on the ground floor, so the footprint is never smaller than the garage.
-  const ruleFootprint = stories === 2 ? Math.max(garage, Math.round(byRules / 2)) : byRules;
-  const footprint = roomSqft != null ? Math.min(ruleFootprint, roomSqft) : ruleFootprint;
-  if (footprint < garage) return null;
-  const buildable = footprint < ruleFootprint ? footprint * stories : byRules;
-  const living = buildable - garage;
-  if (living <= 0) return null;
-  const roomBound = footprint < ruleFootprint;
-  const garageNote = garage > 0
-    ? `Includes a ${garage} sq ft attached garage: ${Math.min(garage, ADU_GARAGE_EXEMPT_SQFT)} sq ft of it is exempt from the ${codeMax} sq ft ADU size cap${aduCountedGarageSqft(garage) > 0 ? ` and ${aduCountedGarageSqft(garage)} sq ft counts` : ""} (SMC 23.42.022), and all of it counts toward lot coverage, leaving ${living} sq ft of living space.`
-    : null;
+  const footprint = stories === 2 ? Math.round(buildable / 2) : buildable;
+  const living = stories === 2 ? buildable : buildable;
 
   const dims = suggestDimensions(footprint, w);
 
@@ -247,17 +163,14 @@ export function computeDADUFootprint(
     suggestedWidth: dims.w,
     suggestedDepth: dims.d,
     maxHeight: maxH,
-    rearSetback: NR.rearSetbackFt.value, // ADU rear setback (SMC 23.44.090 Table A, note 3)
-    sideSetback: NR.sideSetbackFt.value.average, // NR side setback: 5 ft average, 3 ft minimum (SMC 23.44.090 Table A); the average is used
+    rearSetback: 5,
+    sideSetback: 5,
     garageConversion: false,
-    garageNote,
-    note: roomBound
-      ? `The open spot the house leaves caps your DADU at a ${footprint} sq ft footprint, ${buildable} sq ft over ${stories} ${stories === 2 ? "stories" : "story"} (code allows up to ${codeMax}).`
-      : floorAreaLeftSqft != null && buildable === floorAreaLeftSqft && buildable < Math.min(maxBuilding, availCov)
-        ? `The lot's floor area limit (FAR) caps your buildable DADU at ${buildable} sq ft (code allows up to ${maxBuilding}${garage > 0 ? " with the garage" : ""}).`
-      : buildable < maxBuilding
-        ? `Coverage limits cap your buildable DADU at ${buildable} sq ft (code allows up to ${maxBuilding}${garage > 0 ? " with the garage" : ""}).`
-        : `You can build up to ${maxBuilding} sq ft${garage > 0 ? ", garage included" : ""}.`,
+    garageNote: null,
+    note:
+      buildable < codeMax
+        ? `Coverage limits cap your buildable DADU at ${buildable} sq ft (code allows up to ${codeMax}).`
+        : `You can build up to ${codeMax} sq ft.`,
   };
 }
 
@@ -504,9 +417,7 @@ function computeAccess(factors: FeasibilityData | null, lotWidth: number, lotSqf
 
 export function generateADUReport(
   parcel: ParcelData | null,
-  factors: FeasibilityData | null,
-  /** A garage planned in the DADU, attached to it (sq ft). */
-  options: { garageSqft?: number } = {}
+  factors: FeasibilityData | null
 ): ADUReport {
   const zone = parcelZoningLabel(parcel);
   const family = zoneFamily(zone);
@@ -539,9 +450,6 @@ export function generateADUReport(
   const aduOk = totalADU < 2;
   /** GIS may flag over-limit; numeric check uses Seattle max coverage curve (see maxLotCoverageSqft). */
   const covOk = factors?.lotCoverageOver === false || covFrac < maxCovFrac;
-  /** Open spot for a DADU the building outlines leave (tree-analysis.ts). Under 15 by 20 ft, no DADU fits. */
-  const room = factors?.treeStats?.siteSqft ?? null;
-  const noRoom = room != null && room < MIN_FOOTPRINT_SQFT;
 
   const eca = computeEca(factors);
   const access = computeAccess(factors, w, lot);
@@ -592,8 +500,7 @@ export function generateADUReport(
   // No access is a significant practical concern
   if (access.type === "none" && w > 0) score -= 13;
 
-  // Nowhere to put a DADU outweighs every other strength.
-  const confidence = Math.max(0, Math.min(noRoom ? 20 : 100, score));
+  const confidence = Math.max(0, Math.min(100, score));
 
   let confidenceLabel: string;
   let headline: string;
@@ -637,27 +544,27 @@ export function generateADUReport(
     },
     {
       label: "Lot Size",
-      status: sizeOk ? "pass" : "fail",
+      status: sizeOk ? "pass" : "warning",
       value: `${lot.toLocaleString()} sq ft`,
       shortNote: sizeOk
-        ? `Meets Pencil's ${MIN_LOT_SIZE.toLocaleString()} sq ft lot screen.`
-        : LOT_SCREEN_NOTE,
+        ? `Meets the ${MIN_LOT_SIZE.toLocaleString()} sq ft minimum.`
+        : `Below the ${MIN_LOT_SIZE.toLocaleString()} sq ft minimum.`,
     },
     {
       label: "Lot Width",
       status: widthOk ? "pass" : "warning",
       value: `~${w} ft`,
       shortNote: widthOk
-        ? `At least ${MIN_LOT_WIDTH} ft wide.`
-        : `Under ${MIN_LOT_WIDTH} ft wide: tight for a DADU and a path to it (Pencil's warning, not a city rule).`,
+        ? `Meets the ${MIN_LOT_WIDTH} ft minimum.`
+        : `Below the ${MIN_LOT_WIDTH} ft minimum.`,
     },
     {
       label: "Lot Depth",
       status: depthOk ? "pass" : "warning",
       value: `~${d} ft`,
       shortNote: depthOk
-        ? `At least ${MIN_LOT_DEPTH} ft deep.`
-        : `Under ${MIN_LOT_DEPTH} ft deep: little room behind the house (Pencil's warning, not a city rule).`,
+        ? `Meets the ${MIN_LOT_DEPTH} ft minimum.`
+        : `Below the ${MIN_LOT_DEPTH} ft minimum.`,
     },
     {
       label: "Lot Coverage",
@@ -667,16 +574,6 @@ export function generateADUReport(
         ? `Under max lot coverage (${maxCovSqft.toLocaleString()} sq ft) — room to build.`
         : `At or near max lot coverage (${maxCovSqft.toLocaleString()} sq ft).`,
     },
-    ...(room != null
-      ? [{
-          label: "Room for a DADU",
-          status: (noRoom ? "fail" : "pass") as CheckStatus,
-          value: noRoom ? "No 15 x 20 ft spot" : `~${Math.round(room).toLocaleString()} sq ft open`,
-          shortNote: noRoom
-            ? "The house leaves no 15 by 20 ft spot inside the setbacks, out of the front yard and 5 ft from the house. Lot coverage left over is not a place to build."
-            : "An open spot at least 15 by 20 ft fits inside the setbacks, 5 ft from the house.",
-        }]
-      : []),
   ];
 
   const availCov = Math.max(0, maxCovSqft - usedSqft);
@@ -691,7 +588,7 @@ export function generateADUReport(
         }
       : null;
 
-  const hl = w > 0 || family === "NR" || family === "SF" ? heightLimits(family, w) : null;
+  const hl = w > 0 ? heightLimits(w) : null;
   const height: HeightData | null = hl
     ? { ...hl, total: hl.base + hl.pitched, lotWidth: w }
     : null;
@@ -828,16 +725,10 @@ export function generateADUReport(
     { label: "Year Built", value: parcel?.yearBuilt || "—" },
   ];
 
-  // In NR the lot's FAR also caps the DADU. City records give the house's footprint, not its floor area, so the
-  // footprint stands in for the existing floor area: a lower bound for a house of more than one story.
-  const existingFloorSqft = factors?.totalBuildingSqft ?? usedSqft;
-  const floorAreaLeft = lot > 0 && isNeighborhoodResidential(zone)
-    ? Math.max(0, nrMaxFloorArea(lot, 1 + totalADU + 1) - existingFloorSqft)
+  const daduFootprint = zoningOk
+    ? computeDADUFootprint(lot, availCov, w, hl)
     : null;
-  const daduFootprint = zoningOk && sizeOk
-    ? computeDADUFootprint(lot, availCov, w, hl, room, options.garageSqft ?? 0, floorAreaLeft)
-    : null;
-  // An ADU needs no rear setback where the rear lot line abuts an alley (SMC 23.44.090 Table A, note 3).
+  // A rear lot line on an alley needs no setback (team rule; SMC 23.44.041 measures the DADU setback from the alley).
   if (daduFootprint && factors?.hasAlley) daduFootprint.rearSetback = 0;
 
   const housingOptions = computeHousingOptions(family, zone, lot, totalADU);

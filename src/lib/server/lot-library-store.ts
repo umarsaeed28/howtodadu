@@ -1,9 +1,8 @@
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { decodeLibrary, enforceNrRule, enforceRoomRule, makeLotFinder, zipCounts, type LotLibraryFile } from "@/lib/lot-library";
+import { decodeLibrary, makeLotFinder, zipCounts, type LotLibraryFile } from "@/lib/lot-library";
 import { MIN_SHOWN_SCORE } from "@/lib/dadu-score";
 import { inBuyBox } from "@/lib/buy-box";
-import { meetsLotScreen } from "@/lib/rules/seattle-adu";
 import type { Candidate } from "./candidates";
 
 const FILE = join(process.cwd(), "data", "lot-library.json");
@@ -25,7 +24,7 @@ function load(): Loaded | null {
   if (!existsSync(FILE)) return null;
   const m = statSync(FILE).mtimeMs;
   if (loaded && m === mtime) return loaded;
-  const file = enforceRoomRule(enforceNrRule(JSON.parse(readFileSync(FILE, "utf8")) as LotLibraryFile));
+  const file = JSON.parse(readFileSync(FILE, "utf8")) as LotLibraryFile;
   const byPin = new Map<string, number>();
   file.cols.pin.forEach((p, i) => byPin.set(p, i));
   loaded = { file, byPin, all: null, find: null };
@@ -54,7 +53,6 @@ export function getSlimLots(zips: string[] | null): { generatedAt: string; zips:
   const out: SlimLots = { count: 0, pin: [], lat: [], lng: [], score: [], tier: [], flags: [], zip: [] };
   for (let i = 0; i < l.file.count; i++) {
     if (c.score[i] < MIN_SHOWN_SCORE) continue; // only lots at or above the shown-score floor
-    if (!meetsLotScreen(c.lotSqft[i])) continue; // Pencil never shows a lot under its hard lot screen
     if (want && !(c.zip[i] && want.has(c.zip[i]!))) continue;
     out.pin.push(c.pin[i]);
     out.lat.push(c.lat[i]);

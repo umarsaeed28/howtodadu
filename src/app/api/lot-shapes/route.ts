@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { adminOnly } from "@/lib/admin/gate";
 
 const URL_ = "https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services/ADUniverse_feasibility_factors/FeatureServer/0/query";
 const MAX_SPAN = 0.022;
@@ -18,8 +17,6 @@ async function byPins(pins: string[]) {
 
 /** GET /api/lot-shapes?bbox=w,s,e,n  Lot outlines (GeoJSON) for street-level zoom. Properties: pin. */
 export async function GET(req: Request) {
-  const denied = await adminOnly(req); // lot data is admin-only (src/lib/admin/gate.ts)
-  if (denied) return denied;
   const pinsParam = new URL(req.url).searchParams.get("pins");
   if (pinsParam) {
     const pins = pinsParam.split(",").filter((p) => /^\d{10}$/.test(p)).slice(0, 300);

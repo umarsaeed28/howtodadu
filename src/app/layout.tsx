@@ -25,6 +25,7 @@ export const metadata: Metadata = {
   keywords: [
     "Seattle middle housing",
     "DADU Seattle",
+    "backyard cottage Seattle",
     "middle housing investing",
     "Seattle property development",
     "ADU Seattle",

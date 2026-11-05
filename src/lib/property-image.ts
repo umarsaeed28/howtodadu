@@ -61,17 +61,6 @@ export function propertyPhoto(
 }
 
 /** Deep link to the Zillow listing/search for an address. */
-/**
- * The property on Google Maps. Searches by address (Seattle, WA added when missing) so the pin carries the street
- * name; falls back to the coordinates when there is no address.
- */
-export function googleMapsUrl(address: string | null | undefined, lat?: number | null, lng?: number | null): string {
-  const a = (address ?? "").trim().replace(/\s+/g, " ");
-  const withCity = /seattle/i.test(a) ? a : /\s(98\d{3})$/.test(a) ? a.replace(/\s(98\d{3})$/, ", Seattle, WA $1") : `${a}, Seattle, WA`;
-  const query = a ? withCity : hasCoords(lat, lng) ? `${lat},${lng}` : "Seattle, WA";
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-}
-
 export function zillowUrl(address: string): string {
   const a = address.trim().replace(/\s+/g, " ");
   return `https://www.zillow.com/homes/${encodeURIComponent(a)}_rb/`;

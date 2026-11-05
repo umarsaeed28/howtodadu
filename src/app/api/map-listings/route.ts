@@ -1,12 +1,39 @@
 import { NextResponse } from "next/server";
-import { listingsConnected, listingsProviderName } from "@/lib/listings";
-import { libraryAvailable } from "@/lib/server/lot-library-store";
-import { screenListings, toMapListing } from "@/lib/server/screened-listings";
-import { getInvestAssumptions, opportunityFromScreened } from "@/lib/server/invest";
-import { toTile } from "@/lib/invest/opportunity";
-import { adminOnly } from "@/lib/admin/gate";
+import { getListingsProvider, listingsConnected, listingsProviderName } from "@/lib/listings";
+import { findLotForListing, libraryAvailable } from "@/lib/server/lot-library-store";
+import { inBuyBox } from "@/lib/buy-box";
+import { isForSale, isPending } from "@/lib/listings/status";
+import { overrideFor, statusOverrides } from "@/lib/listings/status-overrides";
 
-export type { MapListing } from "@/lib/server/screened-listings";
+export interface MapListing {
+  mlsId: string;
+  address: string;
+  lat: number;
+  lng: number;
+  price: number;
+  lotSqft: number;
+  status: string;
+  photo: string | null;
+  pin: string;
+  score: number;
+  tier: number;
+  corner: boolean;
+  alley: boolean;
+  beds: number | null;
+  baths: number | null;
+  sqft: number | null;
+  daduSqft: number | null;
+  zip: string;
+  daysOnMarket: number | null;
+  /** The listing page at the source, when it gave one (Redfin feed). DealMachine does not. */
+  listingUrl: string | null;
+  /** Under contract (pending or contingent): shown with a tag; users can hide these. */
+  pending: boolean;
+  /** Why it is marked pending, when we know. */
+  pendingNote: string | null;
+  /** True for sample listings (the fixture provider). Real listings come from the live feed. */
+  test: boolean;
+}
 
 /**
  * GET /api/map-listings?zip=98103,98107
@@ -14,8 +41,6 @@ export type { MapListing } from "@/lib/server/screened-listings";
  * `connected: false` means no MLS feed is configured, so an empty list is not "no listings".
  */
 export async function GET(req: Request) {
-  const denied = await adminOnly(req); // lot data is admin-only (src/lib/admin/gate.ts)
-  if (denied) return denied;
   const zipParam = new URL(req.url).searchParams.get("zip");
   const zips = zipParam ? zipParam.split(",").filter((z) => /^98\d{3}$/.test(z)) : undefined;
   const source = listingsProviderName();
@@ -25,10 +50,26 @@ export async function GET(req: Request) {
   }
   if (!connected) return NextResponse.json({ listings: [], scanned: 0, total: 0, source, connected });
   try {
-    const [r, { assumptions }] = await Promise.all([screenListings(zips), getInvestAssumptions()]);
-    // Each card carries its investment tile, built the same way as the listing's investment summary.
-    const listings = r.listings.map((l) => ({ ...toMapListing(l), invest: toTile(opportunityFromScreened(l, assumptions)) }));
-    return NextResponse.json({ listings, scanned: r.scanned, total: r.total, source, connected });
+    const { listings, total } = await getListingsProvider().search({ city: source === "flex" || source === "redfin" ? "Seattle" : undefined, zips, pageSize: 250 });
+    const out: MapListing[] = [];
+    const overrides = statusOverrides();
+    for (const l of listings) {
+      // Active listings, plus pending ones we show with a tag (from the feed, our status list, or the Redfin check).
+      const override = overrideFor(overrides, l.address, l.zip);
+      const pending = !!override || isPending(l.status);
+      if (!pending && !isForSale(l.status)) continue; // sold, closed, expired, withdrawn and the rest are out
+      if ((l.hoaMonthly ?? 0) > 0) continue; // screening rule: a property with an HOA is never a DADU candidate
+      const lot = findLotForListing(l.address, l.lat, l.lng);
+      if (!lot) continue; // the lot library only holds lots where the engine finds a DADU of at least 300 sf
+      // The buy box: NR zoning, one unit, lot 3,800 sf+, under 25% built on, score 75+ (src/lib/buy-box.ts).
+      if (!inBuyBox({ zoning: lot.zoning, lotSqft: lot.lotSqft, coveragePct: lot.coveragePct, existingAdus: lot.existingAdus, score: lot.score })) continue;
+      out.push({
+        mlsId: l.mlsId, address: l.address, lat: l.lat, lng: l.lng, price: l.listPrice, lotSqft: l.lotSqft || lot.lotSqft,
+        status: l.status, photo: l.photos[0] ?? null, pin: lot.pin, score: lot.score, tier: lot.tier, corner: lot.corner, alley: lot.alley,
+        beds: l.beds ?? null, baths: l.baths ?? null, sqft: l.livingSqft ?? null, daduSqft: lot.daduSqft ?? null, zip: l.zip, daysOnMarket: l.daysOnMarket ?? null, listingUrl: l.listingUrl ?? null, pending, pendingNote: override?.note ?? (pending ? "Marked pending by the listing source." : null), test: source === "fixture",
+      });
+    }
+    return NextResponse.json({ listings: out, scanned: listings.length, total, source, connected });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Listings unavailable", listings: [], scanned: 0, source, connected }, { status: 502 });
   }

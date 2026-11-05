@@ -7,14 +7,16 @@ import type { FeasibilityData, LotGeometry, SitePlanData } from "@/lib/feasibili
 import type { ADUReport } from "@/lib/adu-analysis";
 import { calculatorHref } from "@/lib/calculator/inputs";
 import { contourLines, profile, type TerrainGrid } from "@/lib/terrain";
-import { computeSiteFrame, clipInside, nearPoly, pointInPoly, planFitFor, setbackViolations, violationText, FRONT_SETBACK_FT, STREET_SIDE_SETBACK_FT, MIN_SIDE_FT, type Pt } from "@/lib/site-envelope";
+import { lotRotation, turn, unturn } from "@/lib/lot-orientation";
 import { MIN_FOOTPRINT_SQFT, treeSize } from "@/lib/tree-analysis";
 import LotSection from "./LotSection";
 import { PlanPicker, PlacedPlanCard, type PlanFit } from "./PlanPicker";
 import { PREAPPROVED_PLANS, type PreApprovedPlan } from "@/lib/preapproved-dadus";
-import type { SavedPlan } from "@/lib/saved-plan";
 
+type Pt = { x: number; y: number };
+type Side = "N" | "S" | "E" | "W";
 
+const FT_PER_DEG_LAT = 364567;
 const MIN_ACCESS_FT = 12; // construction heuristic, mirrors config.min_access_width_ft
 const DRIVEWAY_FT = 10; // a driveway needs 10 ft (dadu-score)
 const BLOCKED_BELOW_FT = 8; // roofline gap under 8 ft: no vehicle access (dadu-score)
@@ -52,9 +54,44 @@ function labelAt(paths: Pt[][], target: Pt, avoid?: Pt[]): { p: Pt; deg: number 
   return best ? { p: best.p, deg: best.deg } : null;
 }
 
+function pointInPoly(p: Pt, poly: Pt[]): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i];
+    const b = poly[j];
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
 
+const signedArea = (pts: Pt[]) => pts.reduce((s, p, i) => { const q = pts[(i + 1) % pts.length]; return s + p.x * q.y - q.x * p.y; }, 0) / 2;
 
+/** Keep the part of a polygon at least `dist` inside the line through `a` with inward unit normal `n` (Sutherland-Hodgman). */
+/** True when a point lies within `tol` feet of the polygon's outline (touching counts as inside). */
+function nearPoly(p: Pt, poly: Pt[], tol: number): boolean {
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const dx = b.x - a.x, dy = b.y - a.y, len2 = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
+    if (Math.hypot(a.x + t * dx - p.x, a.y + t * dy - p.y) <= tol) return true;
+  }
+  return false;
+}
 
+function clipInside(poly: Pt[], a: Pt, n: Pt, dist: number): Pt[] {
+  const f = (p: Pt) => (p.x - a.x) * n.x + (p.y - a.y) * n.y - dist;
+  const out: Pt[] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i], q = poly[(i + 1) % poly.length];
+    const fp = f(p), fq = f(q);
+    if (fp >= 0) out.push(p);
+    if ((fp >= 0) !== (fq >= 0)) {
+      const t = fp / (fp - fq);
+      out.push({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t });
+    }
+  }
+  return out;
+}
 
 const path = (pts: Pt[], close = true) =>
   pts.map((q, i) => `${i ? "L" : "M"}${q.x.toFixed(2)} ${q.y.toFixed(2)}`).join(" ") + (close ? " Z" : "");
@@ -82,18 +119,7 @@ type PlanProps = {
   snapshotRef?: MutableRefObject<(() => PlanSnapshot) | null>;
   /** Fired with the DADU's living area (sf) as drawn, so the page's build estimate and return follow the plan. Null when there is no DADU. */
   onDaduChange?: (livingSf: number | null) => void;
-  /** Place this pre-approved design on load (the plans journey's "See it on my lot"). */
-  initialPlanId?: string | null;
-  mode?: "report" | "plans";
-  /** The DADU as it stands after every change: size, living area, stories and what passes or fails. */
-  onDaduState?: (s: DaduState | null) => void;
-  /** A drawing saved earlier for this lot (positions, sizes, stories): the sheet opens with it instead of the engine's suggestion. */
-  initialPlan?: SavedPlan | null;
-  /** Every change to the drawing, in a form that can be saved and given back as `initialPlan`. */
-  onPlanChange?: (plan: SavedPlan) => void;
 };
-
-export type DaduState = { w: number; d: number; footprint: number; living: number; stories: 1 | 2; ok: boolean; reasons: string[]; checks: { ok: boolean; text: string }[] };
 
 /** DADU in lot-local feet: u across the street frontage, v from the street toward the rear. */
 type Box = { u: number; v: number; w: number; d: number };
@@ -112,10 +138,17 @@ const extent = (x: Unit): Box => {
   const w = x.w * c + x.d * s, d = x.w * s + x.d * c;
   return { u: x.u + x.w / 2 - w / 2, v: x.v + x.d / 2 - d / 2, w, d };
 };
+const MIN_SIDE_FT = 10;
 /** A detached ADU keeps 5 ft from the house (team rule). An attached ADU joins the house, so it does not. */
 const HOUSE_SEPARATION_FT = 5;
+/** NR front yard: 20 ft (the city may allow less where the neighbours sit closer). A DADU may not sit in it. */
+const FRONT_SETBACK_FT = 20;
+/** A side or rear line that faces a street (corner and through lots): treated as 10 ft. Confirm with the city. */
+const STREET_SIDE_SETBACK_FT = 10;
+/** An edge faces a street when a street centreline runs within this distance outside it. */
+const STREET_NEAR_FT = 60;
 const UNIT_STYLE = {
-  dadu: { fill: "#E6C97E", name: "DADU", long: "Detached ADU (DADU)" },
+  dadu: { fill: "#E6C97E", name: "DADU", long: "Detached ADU (backyard cottage)" },
   aadu: { fill: "#A9CFC4", name: "AADU", long: "Attached ADU (addition)" },
 } as const;
 
@@ -130,10 +163,71 @@ export default function MasterPlan(props: PlanProps) {
   return <PlanSheet key={props.pin ?? "lot"} {...props} lot={props.lot} />;
 }
 
-function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotRef, onDaduChange, initialPlanId, onDaduState, initialPlan, onPlanChange }: PlanProps & { lot: LotGeometry }) {
-  /* ---- the site frame (projection, street side, lot lines, setbacks, envelope): src/lib/site-envelope.ts ---- */
-  const frame = computeSiteFrame({ lot, sitePlan, feasibility, report });
-  const { theta, proj, ring, unproj, lotPts, x0, x1, y0, y1, cx, cy, streets, swap, lw, ld, L, toLocal, rect, fp, onAlley, side, rear, lotRing, lotEdges, sideL, sideR, rearSb, frontSb, polyEnvelope, envelope, maxLiving, coverageLeft, canTwoStory } = frame;
+function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotRef, onDaduChange }: PlanProps & { lot: LotGeometry }) {
+  /* ---- projection: lng/lat to feet, north up ---- */
+  const lat0 = lot.rings.reduce((s, r) => s + r[1], 0) / lot.rings.length;
+  const lng0 = lot.rings.reduce((s, r) => s + r[0], 0) / lot.rings.length;
+  const ftLng = FT_PER_DEG_LAT * Math.cos((lat0 * Math.PI) / 180);
+  const projNorth = (lng: number, lat: number): Pt => ({ x: (lng - lng0) * ftLng, y: -(lat - lat0) * FT_PER_DEG_LAT });
+  // Square the lot to the page: a lot at an angle drawn north-up gives a tilted frame, so its width, depth, setbacks
+  // and the DADU would all be measured against the wrong box. Everything goes through `proj`, so it all turns together.
+  const theta = lotRotation(lot.rings.map((r) => projNorth(r[0], r[1])));
+  const proj = (lng: number, lat: number): Pt => unturn(projNorth(lng, lat), theta);
+  const ring = (rs: number[][]) => rs.map((r) => proj(r[0], r[1]));
+  const unproj = (p: Pt): [number, number] => { const q = turn(p, theta); return [lng0 + q.x / ftLng, lat0 - q.y / FT_PER_DEG_LAT]; };
+
+  const lotPts = ring(lot.rings);
+  const x0 = Math.min(...lotPts.map((q) => q.x));
+  const x1 = Math.max(...lotPts.map((q) => q.x));
+  const y0 = Math.min(...lotPts.map((q) => q.y));
+  const y1 = Math.max(...lotPts.map((q) => q.y));
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+
+  /* ---- which side faces the street ---- */
+  const streets = (sitePlan?.streets ?? []).map((s) => ({ name: s.name, paths: s.paths.map((p) => p.map((c) => proj(c[0], c[1]))) }));
+  const mids: Record<Side, Pt> = { N: { x: cx, y: y0 }, S: { x: cx, y: y1 }, W: { x: x0, y: cy }, E: { x: x1, y: cy } };
+  let front: Side = "S";
+  let best = Infinity;
+  // The street frontage is the side whose length matches the recorded lot width.
+  const recordedW = feasibility?.lotWidth ?? null;
+  const spanX = x1 - x0;
+  const spanY = y1 - y0;
+  const frontageIsNS = recordedW == null ? true : Math.abs(spanX - recordedW) <= Math.abs(spanY - recordedW);
+  const candidates: Side[] = frontageIsNS ? ["N", "S"] : ["E", "W"];
+  for (const side of candidates) {
+    for (const st of streets)
+      for (const pth of st.paths)
+        for (const q of pth) {
+          const d = Math.hypot(q.x - mids[side].x, q.y - mids[side].y);
+          if (d < best) {
+            best = d;
+            front = side;
+          }
+        }
+  }
+  const swap = front === "E" || front === "W";
+  const lw = swap ? y1 - y0 : x1 - x0; // width across the street frontage
+  const ld = swap ? x1 - x0 : y1 - y0; // depth from street to rear
+
+  /** local (u across, v from street) to svg */
+  const L = (u: number, v: number): Pt => {
+    switch (front) {
+      case "S": return { x: x0 + u, y: y1 - v };
+      case "N": return { x: x0 + u, y: y0 + v };
+      case "W": return { x: x0 + v, y: y0 + u };
+      default: return { x: x1 - v, y: y0 + u };
+    }
+  };
+  const toLocal = (q: Pt): { u: number; v: number } => {
+    switch (front) {
+      case "S": return { u: q.x - x0, v: y1 - q.y };
+      case "N": return { u: q.x - x0, v: q.y - y0 };
+      case "W": return { u: q.y - y0, v: q.x - x0 };
+      default: return { u: q.y - y0, v: x1 - q.x };
+    }
+  };
+  const rect = (u: number, v: number, w: number, d: number): Pt[] => [L(u, v), L(u + w, v), L(u + w, v + d), L(u, v + d)];
   /** A unit's four corners on the plan, turned about its centre. */
   function screenCorners(x: Unit): Pt[] {
     const a = ((x.angle ?? 0) * Math.PI) / 180, ca = Math.cos(a), sa = Math.sin(a);
@@ -158,7 +252,48 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   const houseMaxU = hLocal.length ? Math.max(...hLocal.map((q) => q.u)) : null;
   const houseMaxV = hLocal.length ? Math.max(...hLocal.map((q) => q.v)) : 0;
 
-
+  /* ---- setbacks, envelope, DADU ---- */
+  const fp = report?.daduFootprint ?? null;
+  const onAlley = !!feasibility?.hasAlley;
+  const side = fp?.sideSetback ?? 5;
+  const rear = onAlley ? 0 : fp?.rearSetback ?? 5; // a rear line on an alley needs no setback
+  /* The buildable envelope follows the real lot lines: each edge is a front, side or rear line by which way it faces,
+     and the lot is cut back by that line's setback. Falls back to the bounding rectangle if the shape is degenerate. */
+  const frontDir: Pt = front === "N" ? { x: 0, y: -1 } : front === "S" ? { x: 0, y: 1 } : front === "W" ? { x: -1, y: 0 } : { x: 1, y: 0 };
+  const lotRing = lotPts.length > 3 && Math.hypot(lotPts[0].x - lotPts[lotPts.length - 1].x, lotPts[0].y - lotPts[lotPts.length - 1].y) < 0.01 ? lotPts.slice(0, -1) : lotPts;
+  const orient = signedArea(lotRing) > 0 ? 1 : -1;
+  const lotEdges = lotRing.map((a, i) => {
+    const b = lotRing[(i + 1) % lotRing.length];
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const n = { x: (-(b.y - a.y) / len) * orient, y: ((b.x - a.x) / len) * orient }; // inward unit normal
+    const facing = -(n.x * frontDir.x + n.y * frontDir.y); // +1 faces the street, -1 faces the rear
+    const kind: "front" | "side" | "rear" = facing > 0.6 ? "front" : facing < -0.6 ? "rear" : "side";
+    // A side or rear line with a street outside it (a corner or through lot) gets the street-side setback, not 5 ft.
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const onStreet = kind !== "front" && streets.some((st) => st.paths.some((pth) => pth.some((q, k) => {
+      const r = pth[k + 1];
+      if (!r) return false;
+      const dx = r.x - q.x, dy = r.y - q.y, l2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((mid.x - q.x) * dx + (mid.y - q.y) * dy) / l2));
+      const px = q.x + t * dx - mid.x, py = q.y + t * dy - mid.y;
+      return Math.hypot(px, py) <= STREET_NEAR_FT && -(px * n.x + py * n.y) > 0; // outside the lot, not across it
+    })));
+    const setback = kind === "front" ? FRONT_SETBACK_FT : onStreet ? STREET_SIDE_SETBACK_FT : kind === "side" ? side : rear;
+    return { a, b, n, len, kind, onStreet, setback };
+  });
+  // The same setbacks on the lot's own axes (u across the frontage, v from the street), for placing and clamping units.
+  const edgeU = (e: (typeof lotEdges)[number]) => toLocal({ x: (e.a.x + e.b.x) / 2, y: (e.a.y + e.b.y) / 2 }).u;
+  const maxSb = (pred: (e: (typeof lotEdges)[number]) => boolean, dflt: number) => lotEdges.filter((e) => e.len > 1 && pred(e)).reduce((m, e) => Math.max(m, e.setback), dflt);
+  const sideL = maxSb((e) => e.kind === "side" && edgeU(e) < lw / 2, side);
+  const sideR = maxSb((e) => e.kind === "side" && edgeU(e) >= lw / 2, side);
+  const rearSb = maxSb((e) => e.kind === "rear", rear);
+  const frontSb = FRONT_SETBACK_FT;
+  const clipped = lotEdges.reduce((poly, e) => (e.setback > 0 && e.len > 1 && poly.length >= 3 ? clipInside(poly, e.a, e.n, e.setback) : poly), lotRing);
+  const polyEnvelope = clipped.length >= 3 && Math.abs(signedArea(clipped)) > 20;
+  const envelope = polyEnvelope ? clipped : rect(sideL, frontSb, Math.max(0, lw - sideL - sideR), Math.max(0, ld - rearSb - frontSb));
+  const maxLiving = fp?.maxAllowedSqft ?? 1000;
+  const coverageLeft = report?.coverage?.availableSqft ?? null;
+  const canTwoStory = fp?.stories === 2;
 
   /* ---- existing buildings in lot-local feet; the largest is the house ---- */
   const bldgBoxes = houses
@@ -192,7 +327,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
         const inside = (u: number, v: number, ww: number, dd: number) => !polyEnvelope || rect(u, v, ww, dd).every((q) => pointInPoly(q, envelope) || nearPoly(q, envelope, 0.6));
         const behind = houseMaxV ? houseMaxV + HOUSE_SEPARATION_FT : 0;
         // Pass 1: behind the house and clear of trees (the same open ground the score measures). Pass 2: anywhere.
-        // Widths shrink after depths, down to 15 ft, so a small spot still gets a DADU.
+        // Widths shrink after depths, down to 15 ft, so a small spot still gets a cottage.
         for (const avoidTrees of [true, false])
           for (let ww = w; ww >= Math.min(w, 15); ww -= 1) {
             const us: number[] = [];
@@ -202,25 +337,14 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
               for (let v = ld - rearSb - dd; v >= Math.max(frontSb, avoidTrees ? behind : 0); v -= 1)
                 for (const u of us) if (inside(u, v, ww, dd) && clear(u, v, dd, avoidTrees)) return { kind: "dadu", u, v, w: ww, d: dd };
           }
-        // Nothing fits: draw no DADU. A footprint dropped on the envelope would sit on the house and read as a site.
-        return null;
+        // Nothing fits: centre a minimum footprint on the envelope so it at least starts on the lot.
+        const c = envelope.reduce((a, q) => ({ x: a.x + q.x / envelope.length, y: a.y + q.y / envelope.length }), { x: 0, y: 0 });
+        const cl = toLocal(c);
+        return { kind: "dadu", u: cl.u - MIN_SIDE_FT / 2, v: cl.v - MIN_SIDE_FT / 2, w: MIN_SIDE_FT, d: MIN_SIDE_FT };
       })()
     : null);
-  // A saved drawing wins over the engine's suggestion; a pre-approved design comes back by its id.
-  const [units, setUnits] = useState<Unit[]>(() =>
-    initialPlan?.units.length
-      ? initialPlan.units.map((x) => {
-          const plan = x.planId ? PREAPPROVED_PLANS.find((p) => p.id === x.planId) : undefined;
-          return { kind: x.kind, u: x.u, v: x.v, w: x.w, d: x.d, ...(plan ? { plan, angle: x.angle ?? 0 } : {}) };
-        })
-      : initialDadu ? [initialDadu] : []
-  );
-  const [stories, setStories] = useState<1 | 2>(initialPlan?.stories ?? (canTwoStory ? 2 : 1));
-  const planKey = JSON.stringify([stories, units.map((x) => [x.kind, x.u, x.v, x.w, x.d, x.angle ?? 0, x.plan?.id ?? ""])]);
-  useEffect(() => {
-    onPlanChange?.({ stories, units: units.map((x) => ({ kind: x.kind, u: x.u, v: x.v, w: x.w, d: x.d, ...(x.angle ? { angle: x.angle } : {}), ...(x.plan ? { planId: x.plan.id } : {}) })) });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the key captures every change to the drawing
-  }, [planKey, onPlanChange]);
+  const [units, setUnits] = useState<Unit[]>(initialDadu ? [initialDadu] : []);
+  const [stories, setStories] = useState<1 | 2>(canTwoStory ? 2 : 1);
   const [active, setActive] = useState<number | null>(null);
   const [dragging, setDragging] = useState<Grab | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -289,7 +413,13 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   const envW = Math.max(MIN_SIDE_FT, lw - sideL - sideR);
   const envD = Math.max(MIN_SIDE_FT, ld - rearSb - frontSb);
   /** Whether a design fits behind the setbacks (turned either way) and inside the living-area limit. */
-  const planFit = (p: PreApprovedPlan): PlanFit => planFitFor(frame, p);
+  const planFit = (p: PreApprovedPlan): PlanFit => {
+    const straight = p.widthFt <= envW + 0.01 && p.depthFt <= envD + 0.01;
+    const turned = p.depthFt <= envW + 0.01 && p.widthFt <= envD + 0.01;
+    if (p.sqft > maxLiving) return { fits: false, reason: `Over the ${maxLiving.toLocaleString("en-US")} sf limit` };
+    if (!straight && !turned) return { fits: false, reason: "Too big for this lot" };
+    return { fits: true, reason: null };
+  };
   const placePlan = (p: PreApprovedPlan | null) => {
     if (!p) return removePlan();
     // Use the orientation that fits; start where the DADU box was so the swap reads as the same spot.
@@ -335,11 +465,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     const list: { ok: boolean; text: string }[] = [];
     if (x.plan && (ex.w > lw - sideL - sideR + 0.01 || ex.d > ld - rearSb - frontSb + 0.01))
       list.push({ ok: false, text: "Too large for the buildable area behind the setbacks. Try turning it" });
-    else if (polyEnvelope && !screenCorners(x).every((q) => pointInPoly(q, envelope) || nearPoly(q, envelope, 0.6))) {
-      // Say which line and by how much ("Too close to the rear property line by 2 ft."), falling back to the general rule.
-      const worst = setbackViolations(lotEdges, screenCorners(x))[0];
-      list.push({ ok: false, text: worst ? violationText(worst) : "Crosses a setback. Drag it inside the green area" });
-    }
+    else if (polyEnvelope && !screenCorners(x).every((q) => pointInPoly(q, envelope) || nearPoly(q, envelope, 0.6)))
+      list.push({ ok: false, text: "Crosses a setback. Drag it inside the green area" });
     else list.push({ ok: true, text: "Inside the lot setbacks" });
     if (x.plan) list.push({ ok: true, text: `Pre-approved design by ${x.plan.designer}` });
     if (hitsBuilding) list.push({ ok: false, text: "Overlaps an existing building" });
@@ -372,24 +499,6 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
   useEffect(() => {
     onDaduChange?.(daduLiving);
   }, [daduLiving, onDaduChange]);
-  // The DADU's live state for the custom journey (size, living area, what passes or fails).
-  const daduStateKey = daduUnit ? `${daduUnit.w}|${daduUnit.d}|${stories}|${checks[daduIdx].list.map((c) => `${c.ok}${c.text}`).join(";")}` : "none";
-  useEffect(() => {
-    if (!onDaduState) return;
-    if (!daduUnit) return onDaduState(null);
-    const c = checks[daduIdx];
-    onDaduState({ w: daduUnit.w, d: daduUnit.d, footprint: c.footprint, living: c.living, stories, ok: c.ok, reasons: c.list.filter((x) => !x.ok).map((x) => x.text), checks: c.list });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the key captures everything that changes the state
-  }, [daduStateKey, onDaduState]);
-  // A chosen design placed once on load ("See it on my lot").
-  const placedInitial = useRef(false);
-  useEffect(() => {
-    if (placedInitial.current || !initialPlanId) return;
-    placedInitial.current = true;
-    const p = PREAPPROVED_PLANS.find((x) => x.id === initialPlanId);
-    if (p) placePlan(p);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per sheet
-  }, [initialPlanId]);
 
   /* ---- vehicle access: alley, corner, or the roomier side yard (same rule as the score) ---- */
   type AccessKind = "alley" | "corner" | "side" | "tight" | "blocked";
@@ -409,7 +518,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     const u = useLeft ? left / 2 : houseMaxU + right / 2;
     const kind: AccessKind = width >= DRIVEWAY_FT ? "side" : width >= BLOCKED_BELOW_FT ? "tight" : "blocked";
     const label = kind === "side" ? `Driveway ${width.toFixed(1)}'` : kind === "tight" ? `${width.toFixed(1)}': confirm` : `No car access: ${width.toFixed(1)}'`;
-    // From the front lot line past the house to the DADU (or just past the house): the lane a car would use.
+    // From the front lot line past the house to the cottage (or just past the house): the lane a car would use.
     const vEnd = Math.min(ld - 2, Math.max(houseMaxV + 4, daduExt && daduExt.v > houseMaxV ? daduExt.v : 0));
     const laneW = Math.max(1, Math.min(drawn - 0.5, DRIVEWAY_FT));
     const lane = rect(u - laneW / 2, 0, laneW, vEnd);
@@ -602,7 +711,7 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
 
   /* ---- the sentence under the plan, also printed in the PDF ---- */
   const notes = [
-    `The front yard is drawn at ${FRONT_SETBACK_FT} ft, the Neighborhood Residential standard for a lot with one or two homes (SMC 23.44.090)${lotEdges.some((e) => e.onStreet) ? `, and a side or rear line on a street at ${STREET_SIDE_SETBACK_FT} ft; confirm that one with the city` : ""}. ECA outlines are not drawn: this data has no geometry for them.`,
+    `The front yard is drawn at ${FRONT_SETBACK_FT} ft, the Neighborhood Residential standard (the city can allow less where the neighbours sit closer)${lotEdges.some((e) => e.onStreet) ? `, and a side or rear line on a street at ${STREET_SIDE_SETBACK_FT} ft; confirm both with the city` : ""}. ECA outlines are not drawn: this data has no geometry for them.`,
     daduConflict && " The DADU breaks a rule where it sits now (see the checks below). Drag it clear.",
     access?.kind === "alley" && " Cars and construction reach the back from the alley.",
     access?.kind === "side" && access.width != null && access.width < MIN_ACCESS_FT && ` The side yard fits a ${DRIVEWAY_FT} ft driveway but is under the ${MIN_ACCESS_FT} ft construction heuristic.`,
@@ -613,10 +722,8 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
     !streets.length && " No street geometry returned, so the street side is assumed south.",
   ].filter(Boolean).join("");
   const ts = feasibility?.treeStats;
-  const noRoom = (ts?.siteSqft != null && ts.siteSqft < MIN_FOOTPRINT_SQFT) || (!!fp && !initialDadu);
   const warnings = [
-    noRoom && `No room for a DADU: the house leaves no 15 by 20 ft spot inside the setbacks, out of the front yard and ${HOUSE_SEPARATION_FT} ft from the house, so none is drawn.`,
-    ts && !noRoom && ts.clearSqft < MIN_FOOTPRINT_SQFT && `Trees: ${ts.large} large and ${ts.medium} medium trees reach this lot, and no open 15 by 20 ft spot behind the house clears them. A DADU here means removing trees, with a tree review and replacement${ts.clearSqftIfMediumRemoved < MIN_FOOTPRINT_SQFT ? "; even then, large trees leave no room" : ""}.`,
+    ts && ts.clearSqft < MIN_FOOTPRINT_SQFT && `Trees: ${ts.large} large and ${ts.medium} medium trees reach this lot, and no open 15 by 20 ft spot behind the house clears them. A DADU here means removing trees, with a tree review and replacement${ts.clearSqftIfMediumRemoved < MIN_FOOTPRINT_SQFT ? "; even then, large trees leave no room" : ""}.`,
     overCoverage && `Together the new footprints (${totalFootprint.toLocaleString("en-US")} sf) are over the ${Math.round(coverageLeft ?? 0).toLocaleString("en-US")} sf of lot coverage left.`,
     overAduCap && `A lot can have 2 ADUs. This one already has ${existingAdus}, so you can add ${Math.max(0, 2 - existingAdus)} more.`,
   ].filter((w): w is string => !!w);
@@ -994,11 +1101,6 @@ function PlanSheet({ lot, sitePlan, feasibility, report, pin, terrain, snapshotR
       </div>
 
       <div className="min-w-0 xl:sticky xl:top-[186px] xl:max-h-[calc(100vh-200px)] xl:overflow-y-auto xl:overscroll-contain xl:pr-3">
-      {units.length === 0 && noRoom && (
-        <div role="note" className="mt-3 rounded-xl p-3 text-sm leading-relaxed xl:mt-0" style={{ background: "var(--red-tint)", color: "var(--red)" }}>
-          <strong>No room for a DADU.</strong> The house leaves no 15 by 20 ft spot inside the setbacks, out of the front yard and {HOUSE_SEPARATION_FT} ft from the house, so none is drawn.
-        </div>
-      )}
       {units.length > 0 && (
         <div className="mt-3 flex flex-col gap-2 xl:mt-0" aria-live="polite">
           {units.map((x, idx) => {

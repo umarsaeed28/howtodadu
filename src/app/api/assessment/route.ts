@@ -2,14 +2,11 @@ import { NextResponse } from "next/server";
 import { getListingsProvider } from "@/lib/listings";
 import { findLotForListing } from "@/lib/server/lot-library-store";
 import { assessListing } from "@/lib/server/dadu-assessment";
-import { adminOnly } from "@/lib/admin/gate";
 
 /** GET /api/assessment?id=<mlsId>: RAG retrieval plus a Claude read of one listing. */
 export const maxDuration = 60;
 
 export async function GET(req: Request) {
-  const denied = await adminOnly(req); // lot data is admin-only (src/lib/admin/gate.ts)
-  if (denied) return denied;
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
   const listing = await getListingsProvider().getById(id);

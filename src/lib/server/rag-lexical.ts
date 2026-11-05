@@ -1,8 +1,6 @@
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import type { Passage } from "@/lib/ai/types";
-import { chunkMarkdown, kindOf, parseFrontmatter } from "@/lib/kb/markdown";
-import { SYNONYMS } from "@/lib/kb/query";
 
 /**
  * Built-in search over the knowledge base (rag/documents/*.md) that runs anywhere Node runs, including Vercel functions.
@@ -31,6 +29,16 @@ interface Index {
 
 const STOP = new Set("a an and are as at be by can do does for from has have how if in into is it its may not of on or so than that the their then there these this to was what when where which while who why will with you your".split(" "));
 
+/** Domain synonyms folded to one term, so "backyard cottage" finds "DADU" passages and the reverse. */
+const SYNONYMS: [RegExp, string][] = [
+  [/\bbackyard cottages?\b/g, " dadu "],
+  [/\bdetached (accessory dwelling units?|adus?)\b/g, " dadu "],
+  [/\battached (accessory dwelling units?|adus?)\b/g, " aadu "],
+  [/\baccessory dwelling units?\b/g, " adu "],
+  [/\bdriveways?\b/g, " driveway access "],
+  [/\bsq\.? ?ft\b|\bsquare feet\b|\bsf\b/g, " sqft "],
+];
+
 const stem = (w: string) => w.replace(/(ings|ing|edly|ed|ies|es|s)$/, (m) => (m === "ies" ? "y" : "")).replace(/(.)\1$/, "$1");
 
 function tokenize(text: string): string[] {
@@ -53,13 +61,45 @@ function walk(dir: string): string[] {
   return out;
 }
 
-/** One file's chunks, cut by the shared knowledge-base chunker (front matter, if any, is not searchable text). */
+/** Split a markdown file on headings, keeping the heading path, then pack paragraphs up to the size limit. */
 function chunkFile(path: string): Omit<Chunk, "terms" | "len">[] {
   const rel = relative(DOCS_DIR, path);
   const docId = rel.replace(/\.md$/, "");
-  const kind = kindOf(rel);
-  const { body } = parseFrontmatter(readFileSync(path, "utf8"));
-  return chunkMarkdown(body, MAX_CHUNK_CHARS).map((c) => ({ id: `${docId}#${c.idx}`, docId, kind, breadcrumb: c.breadcrumb, text: c.text }));
+  const kind = rel.startsWith("test-listings") ? "test_listing" : "rules";
+  const lines = readFileSync(path, "utf8").split("\n");
+  const sections: { path: string[]; body: string[] }[] = [];
+  const stack: string[] = [];
+  let cur = { path: [] as string[], body: [] as string[] };
+  let inFence = false;
+  for (const line of lines) {
+    if (/^\s*```/.test(line)) inFence = !inFence;
+    const h = !inFence && /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
+    if (h) {
+      if (cur.body.join("").trim()) sections.push(cur);
+      const level = h[1].length;
+      stack.length = level - 1;
+      stack[level - 1] = h[2].trim();
+      cur = { path: stack.filter(Boolean), body: [] };
+    } else cur.body.push(line);
+  }
+  if (cur.body.join("").trim()) sections.push(cur);
+
+  const out: Omit<Chunk, "terms" | "len">[] = [];
+  for (const s of sections) {
+    const paras = s.body.join("\n").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+    let buf = "";
+    const flush = () => {
+      if (!buf.trim()) return;
+      out.push({ id: `${docId}#${out.length}`, docId, kind, breadcrumb: s.path.join(" > "), text: buf.trim() });
+      buf = "";
+    };
+    for (const p of paras) {
+      if (buf && buf.length + p.length > MAX_CHUNK_CHARS) flush();
+      buf += (buf ? "\n\n" : "") + p;
+    }
+    flush();
+  }
+  return out;
 }
 
 let index: Index | null = null;

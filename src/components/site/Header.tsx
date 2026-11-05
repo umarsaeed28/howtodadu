@@ -3,14 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
-import ProfileMenu from "./ProfileMenu";
+import { Heart, Menu, X } from "lucide-react";
+import { useSavedListings } from "@/hooks/useSavedListings";
 
 const NAV = [
-  { href: "/feasibility", label: "Check my lot" },
-  // Points at the free calculator until /proforma ships (docs/PROFORMA_PLAN.md, phase 3).
-  { href: "/calculator", label: "Proforma" },
-  { href: "/company", label: "About us" },
+  { href: "/", label: "Map" },
+  { href: "/feasibility", label: "Feasibility" },
+  { href: "/calculator", label: "Calculator" },
+  { href: "/insights", label: "Insights" },
+  { href: "/company", label: "Company" },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -39,8 +40,8 @@ function Brand({ onClick }: { onClick?: () => void }) {
 export default function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  // Saved listings live behind the admin gate with the map (src/lib/admin/gate.ts), so the public nav has no Saved link.
-  const nav = NAV;
+  const { saved } = useSavedListings();
+  const nav = [...NAV, { href: "/saved", label: saved.length ? `Saved (${saved.length})` : "Saved", icon: true }];
 
   const solid = true;
 
@@ -57,13 +58,16 @@ export default function Header() {
               className="site-nav-link"
               data-active={isActive(pathname, l.href)}
             >
+              {"icon" in l && l.icon && <Heart size={13} aria-hidden className="mr-1 inline" fill={saved.length ? "#C2412D" : "none"} color={saved.length ? "#C2412D" : "currentColor"} />}
               {l.label}
             </Link>
           ))}
         </nav>
 
         <div className="site-actions">
-          <ProfileMenu />
+          <Link href="/contact" className="s-btn s-btn--primary">
+            Talk to us
+          </Link>
         </div>
 
         <button
@@ -98,7 +102,14 @@ export default function Header() {
             ))}
           </nav>
           <div style={{ marginTop: "auto", paddingTop: 24 }}>
-            <ProfileMenu variant="sheet" />
+            <Link
+              href="/contact"
+              className="s-btn s-btn--primary s-btn--lg"
+              style={{ width: "100%" }}
+              onClick={() => setOpen(false)}
+            >
+              Talk to us
+            </Link>
           </div>
         </div>
       )}

@@ -20,7 +20,6 @@ import {
   coverageAvailabilityPanelToneClass,
   coverageAvailabilityValueClass,
 } from "@/lib/metric-health";
-import { daduRules, SMC_2342022 } from "./dadu-rules";
 
 const MIN_LOT_SIZE = 3200;
 const MIN_LOT_WIDTH = 25;
@@ -117,7 +116,14 @@ export function ADUniversePropertyInfo({ result, report }: ADUniversePropertyInf
   const coverageOk = !report.checks.find((c) => c.label === "Lot Coverage")?.status?.includes("fail");
   const availBand = cov ? coverageAvailabilityBand(cov.availableSqft) : "unknown";
 
-  const rules = daduRules(zone, lotSqft || null);
+  const heightTable = [
+    { width: "<30 ft", base: 14, pitched: 3, shed: 3 },
+    { width: "30–40 ft", base: 16, pitched: 7, shed: 4 },
+    { width: "40–50 ft", base: 18, pitched: 5, shed: 4 },
+    { width: "≥50 ft", base: 18, pitched: 7, shed: 4 },
+  ];
+
+  const maxHeight = Math.max(...heightTable.map((r) => r.base + Math.max(r.pitched, r.shed)));
 
   return (
     <section
@@ -164,16 +170,7 @@ export function ADUniversePropertyInfo({ result, report }: ADUniversePropertyInf
             Additional requirements for a DADU
           </h3>
           <p className="mb-4 text-xs leading-relaxed text-zinc-600">
-            See Seattle Land Use Code{" "}
-            <a
-              href={SMC_2342022}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`font-medium ${accent} underline-offset-2 hover:underline`}
-            >
-              Section 23.42.022
-            </a>{" "}
-            for full standards.
+            See Seattle Land Use Code Section 23.44.041 for full standards.
           </p>
 
           <div className="mb-6 grid gap-3 sm:grid-cols-2 sm:gap-4">
@@ -189,7 +186,7 @@ export function ADUniversePropertyInfo({ result, report }: ADUniversePropertyInf
               value={`~${lotWidth} ft`}
               status={widthOk ? "pass" : "warning"}
               explanation={widthOk ? "Wide enough for a DADU." : "May be narrow for a new DADU."}
-              subNote={`Minimum ${MIN_LOT_WIDTH} ft. Height no longer depends on width.`}
+              subNote={`Minimum ${MIN_LOT_WIDTH} ft. Height limits vary by width.`}
             />
             <StatusCard
               label="Lot depth"
@@ -251,17 +248,47 @@ export function ADUniversePropertyInfo({ result, report }: ADUniversePropertyInf
 
           <div className="overflow-hidden rounded-xl border border-zinc-200/90">
             <p className="border-b border-zinc-200/80 bg-zinc-50/80 px-3 py-2.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-              DADU standards (current code)
+              Max DADU height by lot width
             </p>
-            <dl className="divide-y divide-zinc-100">
-              {rules.map((r) => (
-                <div key={r.item} className="grid gap-1 p-3 sm:grid-cols-[9rem_1fr_auto] sm:gap-4">
-                  <dt className="text-xs font-medium text-zinc-800">{r.item}</dt>
-                  <dd className="text-xs leading-relaxed text-zinc-700">{r.value}</dd>
-                  <dd className="text-[11px] text-zinc-500 sm:text-right">{r.ref}</dd>
-                </div>
-              ))}
-            </dl>
+            <div className="divide-y divide-zinc-100">
+              {heightTable.map((row, i) => {
+                const isActive =
+                  lotWidth >= 50
+                    ? i === 3
+                    : lotWidth >= 40
+                      ? i === 2
+                      : lotWidth >= 30
+                        ? i === 1
+                        : i === 0;
+                return (
+                  <div
+                    key={i}
+                    className={`flex items-center gap-4 p-3 ${
+                      isActive ? "bg-teal-50/40" : "bg-white"
+                    }`}
+                  >
+                    <span className="w-20 shrink-0 text-xs font-medium text-zinc-800">{row.width}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex h-4 items-center gap-1">
+                        <div
+                          className={`h-3 rounded-sm ${isActive ? accentBg : "bg-zinc-400"}`}
+                          style={{ width: `${(row.base / maxHeight) * 100}%`, minWidth: 8 }}
+                          title={`Base: ${row.base} ft`}
+                        />
+                        <div
+                          className="h-2 rounded-sm bg-zinc-300 opacity-90"
+                          style={{ width: `${(row.pitched / maxHeight) * 100}%`, minWidth: 4 }}
+                          title={`+ pitched: ${row.pitched} ft`}
+                        />
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs tabular-nums text-zinc-600">
+                      {row.base}+{Math.max(row.pitched, row.shed)} ft
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 

@@ -34,8 +34,7 @@ const SURVEY_REQUIRED = [
   "Exact grade beyond DEM resolution",
 ];
 
-/** ADU standards moved to SMC 23.42.022 when Ordinance 127211 repealed 23.44.041. */
-const DADU_SECTION = "SMC 23.42.022";
+const DADU_SECTION = "SMC 23.44.041";
 
 function unverified(section: string): Citation {
   return { section, effective_from: null, status: "unverified", chunk_id: null, quote: null };
@@ -119,7 +118,7 @@ export function toReport(row: FeasibilityTableRow, now: Date = new Date()): Feas
     "single_dadu",
     fp != null,
     fp ? 1 : 0,
-    fp?.note ?? report.checks.find((c) => c.label === "Room for a DADU" && c.status === "fail")?.shortNote ?? "Lot does not meet the minimum for a detached accessory dwelling unit.",
+    fp?.note ?? "Lot does not meet the minimum for a detached accessory dwelling unit.",
     true
   );
   const opt = (needle: string) =>

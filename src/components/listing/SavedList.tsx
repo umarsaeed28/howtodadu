@@ -43,7 +43,7 @@ export default function SavedList() {
       {saved.length === 0 ? (
         <div className="pa-raised mt-6 p-6 text-sm" style={{ color: "var(--ink)" }}>
           <p>Tap the <Heart size={14} className="inline" aria-label="heart" /> on any home on the map, in a lot&apos;s panel or on a listing page to keep it here.</p>
-          <Link href="/search" className="pa-btn pa-btn-primary mt-4 inline-flex no-underline">Open the map <ArrowRight size={15} aria-hidden /></Link>
+          <Link href="/" className="pa-btn pa-btn-primary mt-4 inline-flex no-underline">Open the map <ArrowRight size={15} aria-hidden /></Link>
         </div>
       ) : (
         <ul className="mt-6 flex flex-col gap-3">

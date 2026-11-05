@@ -42,8 +42,6 @@ export interface DealInputs {
     loanToCostPct: number;
     /** A fixed loan amount. When set it replaces loan-to-cost (capped at the pre-financing cost). */
     loanAmount?: number;
-    /** The cash the buyer has. When set it wins: the loan is everything above it (never below zero). */
-    equityCash?: number;
     interestRatePct: number;
     buildMonths: number;
     propertyTaxMonthly: number;
@@ -108,9 +106,6 @@ export interface DealResult {
   };
   equityRequired: number;
   loanAmount: number;
-  /** Loan interest alone (financing less the carrying costs), and the monthly interest while the loan is fully drawn. */
-  interest: number;
-  interestMonthlyPeak: number;
   grossRevenue: number;
   sellingCosts: number;
   profit: number;
@@ -209,10 +204,7 @@ function run(
   const soft = softCost(inputs, hb);
 
   const preFinancing = acquisition + hard + soft;
-  const f = inputs.financing;
-  const loanAmount = f.equityCash != null
-    ? Math.max(0, preFinancing - f.equityCash)
-    : f.loanAmount != null ? Math.max(0, Math.min(f.loanAmount, preFinancing)) : preFinancing * (f.loanToCostPct / 100);
+  const loanAmount = inputs.financing.loanAmount != null ? Math.max(0, Math.min(inputs.financing.loanAmount, preFinancing)) : preFinancing * (inputs.financing.loanToCostPct / 100);
   const rate = inputs.financing.interestRatePct / 100;
   const permitMonths = inputs.financing.permitMonths ?? 0;
   const exitMonths = inputs.financing.exitMonths ?? 0;
@@ -257,8 +249,6 @@ function run(
       financing: Math.round(financing),
       total: Math.round(total),
     },
-    interest: Math.round(interest),
-    interestMonthlyPeak: Math.round((loanAmount * rate) / 12),
     equityRequired: Math.round(equityRequired),
     loanAmount: Math.round(loanAmount),
     grossRevenue: Math.round(grossRevenue),

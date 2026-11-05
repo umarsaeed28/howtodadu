@@ -2,7 +2,7 @@ import type { Layout } from "@/lib/dadu-site-plan";
 
 /**
  * A plan view of the lot, drawn to scale in feet: street at the bottom, rear (and alley, when there is one) at the top.
- * The house and DADU are schematic placements from the layout rules, not a survey or a design.
+ * The house and cottage are schematic placements from the layout rules, not a survey or a design.
  */
 export default function LotSketch({
   widthFt,
@@ -39,7 +39,7 @@ export default function LotSketch({
   const hx = 5;
   const hy = D - 20 - hd;
 
-  // DADU footprint: a 1.5 to 2 storey DADU, so the footprint is well under its floor area.
+  // Cottage footprint: a 1.5 to 2 storey DADU, so the footprint is well under its floor area.
   const fp = daduSqft ? Math.min(daduSqft, 1000) * 0.62 : 0;
   const dw = fp ? Math.min(W - 10, Math.sqrt(fp * 1.25)) : 0;
   const dd = fp ? fp / dw : 0;
@@ -56,7 +56,7 @@ export default function LotSketch({
         className="block h-auto w-full"
         style={{ maxHeight: 360 }}
         role="img"
-        aria-label={`Plan of a ${W} by ${D} foot ${corner ? "corner " : ""}lot${alley ? " with an alley at the rear" : ""}, the house at the front and a ${daduSqft ?? 0} square foot DADU at the rear.`}
+        aria-label={`Plan of a ${W} by ${D} foot ${corner ? "corner " : ""}lot${alley ? " with an alley at the rear" : ""}, the house at the front and a ${daduSqft ?? 0} square foot cottage at the rear.`}
       >
         <defs>
           <pattern id="sk-drive" width={3} height={3} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -82,7 +82,7 @@ export default function LotSketch({
         <rect x={hx} y={hy} width={hw} height={hd} rx={1} fill="#CDD4D0" stroke="#8D9892" strokeWidth={1} vectorEffect="non-scaling-stroke" />
         <text x={hx + hw / 2} y={hy + hd / 2} fontSize={fs * 0.85} textAnchor="middle" dominantBaseline="central" fill="#3C4642" fontWeight={600}>House</text>
 
-        {/* DADU */}
+        {/* Cottage */}
         {fp > 0 && (
           <g>
             <rect x={dx} y={dy} width={dw} height={dd} rx={1} fill="#1F7A55" />

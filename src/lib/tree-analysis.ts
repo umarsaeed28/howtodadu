@@ -1,6 +1,4 @@
 import { lotRotation, turn, unturn } from "./lot-orientation";
-import { FRONT_SETBACK_FT } from "./site-envelope";
-import { NR, PENCIL } from "./rules/seattle-adu";
 
 /**
  * Tree-by-tree read of a lot from the city's 2021 LiDAR tree crowns: how many medium and large trees there are, how much
@@ -28,10 +26,12 @@ export const LARGE_HEIGHT_FT = 50;
 export const MEDIUM_CROWN_RADIUS_FT = 10;
 export const MEDIUM_HEIGHT_FT = 30;
 /** Smallest footprint worth calling a DADU site: 15 by 20 ft. */
-export const MIN_FOOTPRINT_SQFT = PENCIL.minFootprint.value.sqft;
-export const MIN_FOOTPRINT_SIDE_FT = PENCIL.minFootprint.value.sideFt;
-const HOUSE_GAP_FT = NR.separationFt.value;
-const SETBACK_FT = NR.rearSetbackFt.value;
+export const MIN_FOOTPRINT_SQFT = 300;
+export const MIN_FOOTPRINT_SIDE_FT = 15;
+const HOUSE_GAP_FT = 5;
+const SETBACK_FT = 5;
+/** The front yard, between the street and the house, is not a DADU site. */
+const FRONT_YARD_FT = 20;
 
 /** Which way the address street runs: Seattle avenues north-south, streets east-west. Null for other names. */
 export function streetAxis(address: string | null | undefined): "ns" | "ew" | null {
@@ -121,9 +121,6 @@ export function largestRect(ok: Uint8Array, w: number, h: number, minSide: numbe
  * rectangle that lines up with the lot lines, the way a DADU would be placed.
  */
 export function analyzeTrees(lot: [number, number][], buildings: [number, number][][], crowns: Crown[], streetRuns: "ns" | "ew" | null = null): TreeStats {
-  // The front yard, between the street and the house, is not a DADU site: the NR front setback (SMC 23.44.090).
-  // Read here, not at module load: site-envelope imports this module too.
-  const FRONT_YARD_FT = FRONT_SETBACK_FT;
   const lat0 = lot.reduce((s, p) => s + p[1], 0) / lot.length;
   const lng0 = lot.reduce((s, p) => s + p[0], 0) / lot.length;
   const ftLng = FT_PER_DEG_LAT * Math.cos((lat0 * Math.PI) / 180);
@@ -165,7 +162,7 @@ export function analyzeTrees(lot: [number, number][], buildings: [number, number
     behind = front.behind;
     pastFront = front.past;
   } else if (streetRuns) {
-    // No house on record, so the front cannot be told from the back: keep the front setback clear on both street-facing sides.
+    // No house on record, so the front cannot be told from the back: keep 20 ft clear on both street-facing sides.
     behind = pastFront = streetRuns === "ns" ? (p) => p.x > x0 + FRONT_YARD_FT && p.x < x1 - FRONT_YARD_FT : (p) => p.y > y0 + FRONT_YARD_FT && p.y < y1 - FRONT_YARD_FT;
   }
 

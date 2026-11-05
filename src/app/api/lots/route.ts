@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSlimLots } from "@/lib/server/lot-library-store";
-import { adminOnly } from "@/lib/admin/gate";
 
 /** GET /api/lots?zip=98103,98107  Omit zip for all of Seattle. */
 export async function GET(req: Request) {
-  const denied = await adminOnly(req); // lot data is admin-only (src/lib/admin/gate.ts)
-  if (denied) return denied;
   const zipParam = new URL(req.url).searchParams.get("zip");
   const zips = zipParam ? zipParam.split(",").map((z) => z.trim()).filter((z) => /^98\d{3}$/.test(z)) : null;
   const data = getSlimLots(zips);

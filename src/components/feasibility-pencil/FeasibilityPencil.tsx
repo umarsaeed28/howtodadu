@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2, Upload, MapPin, Calculator, BadgeCheck } from "lucide-react";
-import { fetchFeasibility, isNotSuitable } from "@/lib/feasibility";
-import NotSuitable from "./NotSuitable";
+import { fetchFeasibility } from "@/lib/feasibility";
 import FeasAddressSearch from "./FeasAddressSearch";
 import { generateADUReport } from "@/lib/adu-analysis";
 import { buildFeasibilityTableRow, type FeasibilityTableRow } from "@/lib/feasibility-table-model";
@@ -16,13 +15,10 @@ import { pushRecentAddress } from "@/lib/recent-addresses";
 import { useFavorites } from "@/hooks/useFavorites";
 import type { Verdict } from "@/lib/verdict";
 import { verdictFromScore } from "@/lib/feasibility-verdict";
-import { hasFeasibilityAccess } from "@/lib/report-access";
 import FeasAppBar from "./FeasAppBar";
 import FeasFilterBar from "./FeasFilterBar";
 import FeasCard from "./FeasCard";
 import FeasibilityReportView from "@/components/report/FeasibilityReportView";
-import LoadingSteps from "./LoadingSteps";
-import { isPin, saveParcel } from "@/lib/parcel-context";
 import { NoSearchResults } from "@/components/shared/states";
 import type { FeasSortKey } from "./types";
 
@@ -34,13 +30,10 @@ export default function FeasibilityPencil() {
 
   const [rows, setRows] = useState<DashboardPropertySlim[]>([]);
   const [singleAddress, setSingleAddress] = useState("");
-  const prefillRan = useRef(false);
   const [singleLoading, setSingleLoading] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkPhase, setBulkPhase] = useState("");
   const [errorBanner, setErrorBanner] = useState("");
-  // A property turned away by the NR zoning gate: shown as "not suitable", never as a report.
-  const [notSuitable, setNotSuitable] = useState<{ address: string; zoning: string | null; message: string } | null>(null);
 
   const [pencilsOnly, setPencilsOnly] = useState(false);
   const [verdicts, setVerdicts] = useState<Set<Verdict>>(new Set());
@@ -169,7 +162,6 @@ export default function FeasibilityPencil() {
     pushRecentAddress(q);
     setSingleLoading(true);
     setErrorBanner("");
-    setNotSuitable(null);
     try {
       const data = await fetchFeasibility(q);
       const report =
@@ -181,21 +173,10 @@ export default function FeasibilityPencil() {
       const slim = buildDashboardPropertySlim(data, report);
       const full = buildFeasibilityTableRow(data, report);
       detailCache.current.set(slim.id, full);
-      // Carry the parcel in the URL and this browser, so plans, custom and permit never ask for the address again.
-      if (isPin(slim.pin)) {
-        saveParcel({ pin: slim.pin, address: slim.address });
-        const sp = new URLSearchParams(window.location.search);
-        sp.set("parcel", slim.pin);
-        sp.set("address", q);
-        // This lot is now the one in the URL: no second run of it, and the menu link knows a report is open.
-        prefillRan.current = true;
-        window.history.replaceState(null, "", `${window.location.pathname}?${sp.toString()}`);
-      }
       setRows((prev) => mergeDashboardSlims(prev, [slim], 5000));
       setSelectedId(slim.id);
     } catch (err) {
-      if (isNotSuitable(err)) setNotSuitable({ address: q, zoning: err.zoning, message: err.message });
-      else setErrorBanner(err instanceof Error ? err.message : "Something went wrong.");
+      setErrorBanner(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSingleLoading(false);
     }
@@ -231,40 +212,13 @@ export default function FeasibilityPencil() {
   );
 
   /* ---- url prefill ---- */
+  const prefillRan = useRef(false);
   useEffect(() => {
-    // "Check my lot" in the menu links here with nothing in the URL: it always opens the empty search, even when
-    // a report is already open on this page.
     const prefill = searchParams.get("address");
-    const parcel = searchParams.get("parcel");
-    if (!prefill && !parcel && searchParams.get("view") !== "favorites" && prefillRan.current) {
-      prefillRan.current = false;
-      setRows([]);
-      setSingleAddress("");
-      setSelectedId(null);
-      setDetailRow(null);
-      setErrorBanner("");
-      return;
-    }
     if (prefill && !prefillRan.current) {
       prefillRan.current = true;
       setSingleAddress(prefill);
       void runSingle(prefill);
-    } else if (isPin(parcel) && !prefillRan.current) {
-      // Only a parcel id (from another journey): look up its address, then run as usual.
-      prefillRan.current = true;
-      setSingleLoading(true);
-      fetch(`/api/parcel?pin=${parcel}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((p: { address?: string } | null) => {
-          if (p?.address) {
-            setSingleAddress(p.address);
-            void runSingle(p.address);
-          } else {
-            setSingleLoading(false);
-            setErrorBanner("We could not find that parcel. Enter the address instead.");
-          }
-        })
-        .catch(() => setSingleLoading(false));
     }
     if (searchParams.get("view") === "favorites") {
       setFavoritesOnly(true);
@@ -297,11 +251,15 @@ export default function FeasibilityPencil() {
     return (
       <div className="flex min-h-[calc(100dvh_-_var(--nav-h))] flex-col items-center justify-center px-4 py-16">
         <div className="w-full max-w-2xl text-center">
-          <h1 className="pa-display text-3xl md:text-4xl" style={{ color: "var(--ink)" }}>
+          <p className="pa-eyebrow" style={{ color: "var(--green)" }}>
+            Free feasibility check
+          </p>
+          <h1 className="pa-display mt-3 text-3xl md:text-4xl" style={{ color: "var(--ink)" }}>
             Check a Seattle address.
           </h1>
           <p className="mt-3 text-[15px] leading-relaxed" style={{ color: "var(--slate)" }}>
-            The feasibility report shows what the lot allows, where a DADU fits, and whether it pencils.
+            Enter an address to see what the property allows, the ways to build it, and an early read
+            on whether it pencils. No signup.
           </p>
 
           {errorBanner && (
@@ -313,7 +271,6 @@ export default function FeasibilityPencil() {
               {errorBanner}
             </div>
           )}
-          {notSuitable && <NotSuitable address={notSuitable.address} zoning={notSuitable.zoning} message={notSuitable.message} />}
 
           <form
             className="mx-auto mt-6 flex w-full max-w-xl flex-col gap-2.5 sm:flex-row"
@@ -416,12 +373,8 @@ export default function FeasibilityPencil() {
               {errorBanner}
             </div>
           )}
-          {notSuitable && <NotSuitable address={notSuitable.address} zoning={notSuitable.zoning} message={notSuitable.message} />}
           {singleLoading && (
-            <div className="mb-4">
-              <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>Checking {singleAddress}</p>
-              <LoadingSteps compact />
-            </div>
+            <p className="mb-4 text-sm" style={{ color: "var(--slate)" }} aria-live="polite">Checking {singleAddress}…</p>
           )}
           <FeasibilityReportView
             slim={selectedSlim}
@@ -465,7 +418,6 @@ export default function FeasibilityPencil() {
                 {errorBanner}
               </div>
             )}
-          {notSuitable && <NotSuitable address={notSuitable.address} zoning={notSuitable.zoning} message={notSuitable.message} />}
 
             {bulkLoading && bulkPhase && (
               <p className="pa-mono mb-4 flex items-center gap-2 text-xs" style={{ color: "var(--slate)" }}>
@@ -475,17 +427,10 @@ export default function FeasibilityPencil() {
 
             {showSkeleton ? (
               <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
-                {bulkLoading ? (
-                  <>
-                    <Loader2 size={28} className="animate-spin" aria-hidden style={{ color: "var(--green)" }} />
-                    <p className="mt-4 text-sm" style={{ color: "var(--slate)" }}>{bulkPhase || "Screening addresses…"}</p>
-                  </>
-                ) : (
-                  <>
-                    {singleAddress && <p className="mb-3 text-base font-semibold" style={{ color: "var(--ink)" }}>{singleAddress}</p>}
-                    <LoadingSteps />
-                  </>
-                )}
+                <Loader2 size={28} className="animate-spin" aria-hidden style={{ color: "var(--green)" }} />
+                <p className="mt-4 text-sm" style={{ color: "var(--slate)" }}>
+                  {bulkLoading ? bulkPhase || "Screening addresses…" : "Checking the property…"}
+                </p>
               </div>
             ) : sorted.length === 0 ? (
               <NoSearchResults />
@@ -499,7 +444,6 @@ export default function FeasibilityPencil() {
                       favorite={favoritesSet.has(slim.address.trim().toLowerCase())}
                       onToggleFavorite={() => toggleFavorite(slim.address)}
                       onOpen={() => setSelectedId(slim.id)}
-                      locked={!hasFeasibilityAccess(slim.pin, slim.address)}
                     />
                   ))}
                 </div>

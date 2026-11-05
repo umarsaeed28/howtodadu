@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowDown, Plus, RotateCcw } from "lucide-react";
+import Link from "next/link";
+import { RotateCcw } from "lucide-react";
 import {
   DEFAULT_FORM,
   fromSearchParams,
@@ -16,12 +17,9 @@ import { usd, pct } from "@/lib/format";
 import Field from "./Field";
 import CostStack from "./CostStack";
 import Proforma from "./Proforma";
-import { REHAB_LABELS, REHAB_RATES, salePricePerSf, type RehabLevel } from "@/lib/dadu-value";
+import { REHAB_LABELS, REHAB_RATES, type RehabLevel } from "@/lib/dadu-value";
 import Heatmap, { TONE_TINT, TONE_VAR, toneOf } from "./Heatmap";
 import { RentCard } from "./ExitCompare";
-
-type PayMode = "all_cash" | "cash" | "amount" | "ltc";
-const PAY_MODES: [PayMode, string][] = [["all_cash", "All cash"], ["cash", "I have this much cash"], ["amount", "A loan amount"], ["ltc", "Loan to cost"]];
 
 function Group({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
   return (
@@ -47,16 +45,6 @@ export default function CalculatorClient() {
   const sp = useSearchParams();
   const address = sp.get("addr");
   const [form, setForm] = useState<CalcForm>(() => fromSearchParams(new URLSearchParams(sp.toString())));
-  // The AADU block is open when a link or the visitor put an area in it.
-  const [aaduOn, setAaduOn] = useState(() => !!form.aaduSf);
-  // One way to pay: the cash in hand (the loan covers the rest), a loan amount, loan to cost, or all cash.
-  const [payMode, setPayMode] = useState<PayMode>(() => (form.cashDown ? "cash" : form.loanAmount ? "amount" : form.ltcPct ? "ltc" : "all_cash"));
-  const choosePay = (k: PayMode) => {
-    setPayMode(k);
-    setForm((f) => ({ ...f, cashDown: k === "cash" ? f.cashDown : "", loanAmount: k === "amount" ? f.loanAmount : "", ltcPct: k === "ltc" ? f.ltcPct : "" }));
-    const name = k === "cash" ? "cashDown" : k === "amount" ? "loanAmount" : k === "ltc" ? "ltcPct" : null;
-    if (name) setTimeout(() => document.querySelector<HTMLInputElement>(`input[name="${name}"]`)?.focus(), 0);
-  };
 
   // Mirror the inputs into the URL so a result can be shared.
   useEffect(() => {
@@ -92,7 +80,7 @@ export default function CalculatorClient() {
         <div>
           <h1 className="pa-display text-2xl sm:text-3xl" style={{ color: "var(--ink)" }}>Estimate your return</h1>
           <p className="mt-1 max-w-xl text-sm" style={{ color: "var(--slate)" }}>
-            A full proforma: the house, the DADU, financing, holding costs and the exit. Team rules start filled in; market numbers are yours.
+            A full proforma: the house, the cottage, financing, holding costs and the exit. Team rules start filled in; market numbers are yours.
             {address ? <> Estimating for <strong style={{ color: "var(--ink)" }}>{address}</strong>.</> : null}
           </p>
         </div>
@@ -120,10 +108,11 @@ export default function CalculatorClient() {
               </div>
               {parsed.rehab.cost > 0 && <p className="mt-1 text-xs tabular-nums" style={{ color: "var(--slate)" }}>{parsed.rehab.houseSqft.toLocaleString("en-US")} sf × {usd(parsed.rehab.rate)} = {usd(parsed.rehab.cost)}</p>}
             </div>
+            <Field label="House ARV" value={form.houseArv} onChange={set("houseArv")} prefix="$" placeholder={parsed.autoSaleParts && !parsed.autoSaleParts.houseIsOwn && parsed.autoSaleParts.house > 0 ? Math.round(parsed.autoSaleParts.house).toLocaleString("en-US") : undefined} hint="What the house is worth after the rehab. Blank means break-even: price plus rehab." error={err("houseArv")} />
           </Group>
 
           <Group title="The DADU" note="The report fills in the area from the lot's design. $50,000 soft costs is the team's rule; change it if you know better.">
-            <Field label="DADU area" name="sf" value={form.sf} onChange={set("sf")} suffix="sf" placeholder="1,000" error={err("sf")} />
+            <Field label="DADU area" value={form.sf} onChange={set("sf")} suffix="sf" placeholder="1,000" error={err("sf")} />
             <Field label="Build cost" value={form.costPerSf} onChange={set("costPerSf")} prefix="$" suffix="per sf" error={err("costPerSf")} />
             <Field label="Soft costs" value={form.softFlat} onChange={set("softFlat")} prefix="$" hint="Design, permits, fees, utilities" error={err("softFlat")} />
             <Field label="Site work" value={form.siteWork} onChange={set("siteWork")} prefix="$" error={err("siteWork")} />
@@ -131,52 +120,22 @@ export default function CalculatorClient() {
             <Field label="Contingency" value={form.contingencyPct} onChange={set("contingencyPct")} suffix="% of build" error={err("contingencyPct")} />
           </Group>
 
-          <Group title="Financing" note="How is it paid for?">
-            <div className="flex flex-wrap gap-2 sm:col-span-2" role="radiogroup" aria-label="How it is paid for">
-              {PAY_MODES.map(([k, label]) => (
-                <button key={k} type="button" role="radio" aria-checked={payMode === k} className={`pa-chip ${payMode === k ? "pa-chip-active" : ""}`} style={{ minHeight: 40 }} onClick={() => choosePay(k)}>{label}</button>
-              ))}
-            </div>
-            {payMode === "cash" && <Field label="Cash you have" name="cashDown" value={form.cashDown} onChange={set("cashDown")} prefix="$" hint="The loan covers everything above this" error={err("cashDown")} />}
-            {payMode === "amount" && <Field label="Loan amount" name="loanAmount" value={form.loanAmount} onChange={set("loanAmount")} prefix="$" hint="Your cash covers the rest" error={err("loanAmount")} />}
-            {payMode === "ltc" && <Field label="Loan to cost" name="ltcPct" value={form.ltcPct} onChange={set("ltcPct")} suffix="%" hint="Share of the cost the loan covers" error={err("ltcPct")} />}
-            {payMode !== "all_cash" && <Field label="Interest rate" value={form.ratePct} onChange={set("ratePct")} suffix="% a year" error={err("ratePct")} />}
-          </Group>
-
-          <Group title="Timeline" note="Months in each stage. Holding costs run through all of them.">
-            <div className="grid grid-cols-3 gap-2 sm:col-span-2">
+          <Group title="Financing and holding" note="Loan amount wins over loan to cost. Blank loan means all cash. Holding costs run for the whole timeline.">
+            <Field label="Loan amount" value={form.loanAmount} onChange={set("loanAmount")} prefix="$" error={err("loanAmount")} />
+            <Field label="Or loan to cost" value={form.ltcPct} onChange={set("ltcPct")} suffix="%" error={err("ltcPct")} />
+            <Field label="Interest rate" value={form.ratePct} onChange={set("ratePct")} suffix="%" error={err("ratePct")} />
+            <div className="grid grid-cols-3 gap-2">
               <Field label="Permits" value={form.permitMonths} onChange={set("permitMonths")} suffix="mo" inputMode="numeric" error={err("permitMonths")} />
               <Field label="Build" value={form.buildMonths} onChange={set("buildMonths")} suffix="mo" inputMode="numeric" error={err("buildMonths")} />
               <Field label="Sale" value={form.exitMonths} onChange={set("exitMonths")} suffix="mo" inputMode="numeric" error={err("exitMonths")} />
             </div>
-            <details className="sm:col-span-2" open={!!(form.taxMonthly || form.insuranceMonthly || form.utilitiesMonthly)}>
-              <summary className="cursor-pointer text-xs font-semibold" style={{ color: "var(--ink)", minHeight: 32, display: "flex", alignItems: "center" }}>Holding costs a month (optional)</summary>
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <Field label="Property tax" value={form.taxMonthly} onChange={set("taxMonthly")} prefix="$" error={err("taxMonthly")} />
-                <Field label="Insurance" value={form.insuranceMonthly} onChange={set("insuranceMonthly")} prefix="$" error={err("insuranceMonthly")} />
-                <Field label="Utilities and upkeep" value={form.utilitiesMonthly} onChange={set("utilitiesMonthly")} prefix="$" error={err("utilitiesMonthly")} />
-              </div>
-            </details>
+            <Field label="Property tax" value={form.taxMonthly} onChange={set("taxMonthly")} prefix="$" suffix="a month" error={err("taxMonthly")} />
+            <Field label="Insurance" value={form.insuranceMonthly} onChange={set("insuranceMonthly")} prefix="$" suffix="a month" error={err("insuranceMonthly")} />
+            <Field label="Utilities and upkeep" value={form.utilitiesMonthly} onChange={set("utilitiesMonthly")} prefix="$" suffix="a month" error={err("utilitiesMonthly")} />
           </Group>
 
-          <Group title="The exit" note="One value for each building. The house starts at break-even (price plus rehab); the units start at Pencil's resale estimate. Once the MLS feed is connected, comps will suggest these. Your number wins.">
-            <Field label="House ARV" value={form.houseArv} onChange={set("houseArv")} prefix="$" placeholder={parsed.exit && !parsed.exit.houseIsOwn && parsed.exit.house ? Math.round(parsed.exit.house).toLocaleString("en-US") : undefined} hint="What the house is worth after the rehab. Blank means break-even." error={err("houseArv")} />
-            <Field label="DADU resale value" value={form.daduArv} onChange={set("daduArv")} prefix="$" placeholder={parsed.exit && !parsed.exit.daduIsOwn ? Math.round(parsed.exit.dadu).toLocaleString("en-US") : undefined} hint={parsed.exit && !parsed.exit.daduIsOwn ? `Pencil estimate, ${usd(salePricePerSf(parsed.sf))} per sf` : undefined} error={err("daduArv")} />
-            {aaduOn ? (
-              <>
-                <Field label="AADU area" name="aaduSf" value={form.aaduSf} onChange={set("aaduSf")} suffix="sf" hint="An attached ADU in the house, built at the same cost per sf as the DADU" error={err("aaduSf")} />
-                <Field label="AADU resale value" value={form.aaduArv} onChange={set("aaduArv")} prefix="$" placeholder={parsed.exit?.aadu != null && !parsed.exit.aaduIsOwn ? Math.round(parsed.exit.aadu).toLocaleString("en-US") : undefined} hint={parsed.aadu && parsed.exit && !parsed.exit.aaduIsOwn ? `Pencil estimate, ${usd(salePricePerSf(parsed.aadu.sf))} per sf` : undefined} error={err("aaduArv")} />
-                <button type="button" className="pa-btn pa-btn-sm sm:col-span-2 justify-self-start" onClick={() => { setAaduOn(false); setForm((f) => ({ ...f, aaduSf: "", aaduArv: "" })); }}>Remove the AADU</button>
-              </>
-            ) : (
-              <button type="button" className="pa-btn pa-btn-sm sm:col-span-2 justify-self-start" onClick={() => { setAaduOn(true); setTimeout(() => document.querySelector<HTMLInputElement>('input[name="aaduSf"]')?.focus(), 0); }}><Plus size={14} aria-hidden /> Add an AADU</button>
-            )}
-            {parsed.exit && (
-              <p className="text-sm tabular-nums sm:col-span-2" style={{ color: "var(--ink)" }}>
-                Sale price <strong>{usd(parsed.exit.total)}</strong>
-                <span className="ml-2 text-xs" style={{ color: "var(--slate)" }}>{[parsed.exit.house != null && `house ${usd(parsed.exit.house)}`, `DADU ${usd(parsed.exit.dadu)}`, parsed.exit.aadu != null && `AADU ${usd(parsed.exit.aadu)}`].filter(Boolean).join(" + ")}</span>
-              </p>
-            )}
+          <Group title="The exit" note="The sale price starts at the house ARV (or break-even) plus what the DADU sells for. Type your own to override.">
+            <Field label="Sale price (ARV)" value={form.salePrice} onChange={set("salePrice")} prefix="$" placeholder={parsed.autoSalePrice ? Math.round(parsed.autoSalePrice).toLocaleString("en-US") : undefined} hint={parsed.autoSaleParts && !form.salePrice ? `House ${usd(parsed.autoSaleParts.house)} + DADU ${usd(parsed.autoSaleParts.dadu)}` : undefined} error={err("salePrice")} />
             <div>
               <p className="mb-1 text-xs font-semibold" style={{ color: "var(--ink)" }}>Selling costs</p>
               <label className="flex items-center gap-2 text-sm" style={{ color: "var(--ink)", minHeight: 44 }}>
@@ -199,32 +158,17 @@ export default function CalculatorClient() {
               </div>
             </details>
           </Group>
-          {/* The numbers update as you type; this button takes you to them (they sit below the form on a phone),
-              or to the one field that is still needed. */}
-          <button
-            type="button"
-            className="pa-btn pa-btn-primary"
-            onClick={() => {
-              if (!parsed.ready && !parsed.errors.length) {
-                document.querySelector<HTMLInputElement>('input[name="sf"]')?.focus();
-                return;
-              }
-              document.getElementById("calc-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-          >
-            {parsed.ready ? "See the result" : "Calculate"} <ArrowDown size={14} aria-hidden />
-          </button>
         </div>
 
         {/* Results */}
-        <div id="calc-results" className="flex scroll-mt-24 flex-col gap-5 lg:sticky lg:top-24" aria-live="polite">
+        <div className="flex flex-col gap-5 lg:sticky lg:top-24" aria-live="polite">
           <section className="pa-raised p-5" aria-label="Construction estimate">
             <p className="text-xs font-semibold" style={{ color: "var(--slate)" }}>{COST_LABEL}</p>
             {parsed.ready ? (
               <>
                 <p className="pa-display mt-1 text-3xl tabular-nums sm:text-4xl" style={{ color: "var(--ink)" }}>{usd(parsed.construction)}</p>
                 <p className="mt-1 text-sm tabular-nums" style={{ color: "var(--slate)" }}>
-                  {`${parsed.sf.toLocaleString("en-US")} sf${parsed.aadu ? ` DADU + ${parsed.aadu.sf.toLocaleString("en-US")} sf AADU` : ""} × ${usd(parsed.costPerSf)} per sf`}
+                  {parsed.sf.toLocaleString("en-US")} sf × {usd(parsed.costPerSf)} per sf
                 </p>
               </>
             ) : (
@@ -240,7 +184,7 @@ export default function CalculatorClient() {
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Stat label="Total project cost" value={usd(cost.costBreakdown.total)} sub={`${cost.timelineMonths} months`} />
                   <Stat label="Cash you put in" value={usd(cost.equityRequired)} />
-                  <Stat label="Borrowed" value={usd(cost.loanAmount)} sub={cost.loanAmount > 0 ? `${usd(cost.interest)} interest, ≈ ${usd(cost.interestMonthlyPeak)} a month at full draw` : undefined} />
+                  <Stat label="Borrowed" value={usd(cost.loanAmount)} />
                 </div>
                 <div className="mt-5">
                   <CostStack
@@ -290,7 +234,7 @@ export default function CalculatorClient() {
               )}
 
               {parsed.sale && (
-                <Proforma inputs={parsed.sale.inputs} result={parsed.sale.result} rehabCost={parsed.rehab.cost} soft={{ flat: parseFloat(form.softFlat.replace(/[$,\s]/g, "")) || 0, permits: parseFloat(form.permits.replace(/[$,\s]/g, "")) || 0, pct: parseFloat(form.softPct) || 0 }} sellingPct={parsed.sellingPct} exit={parsed.exit} daduSf={parsed.sf} aadu={parsed.aadu} />
+                <Proforma inputs={parsed.sale.inputs} result={parsed.sale.result} rehabCost={parsed.rehab.cost} soft={{ flat: parseFloat(form.softFlat.replace(/[$,\s]/g, "")) || 0, permits: parseFloat(form.permits.replace(/[$,\s]/g, "")) || 0, pct: parseFloat(form.softPct) || 0 }} sellingPct={parsed.sellingPct} />
               )}
               {parsed.rent && <RentCard r={parsed.rent.result} />}
 
@@ -304,7 +248,8 @@ export default function CalculatorClient() {
           )}
 
           <p className="text-xs" style={{ color: "var(--slate)" }}>
-            Estimates only, not a quote or financial advice.
+            Estimates only, not a quote or financial advice. Back to the{" "}
+            <Link href="/" className="underline underline-offset-2">map</Link>.
           </p>
         </div>
       </div>

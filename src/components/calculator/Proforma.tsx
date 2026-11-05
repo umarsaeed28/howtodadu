@@ -1,5 +1,4 @@
 import type { DealInputs, DealResult } from "@/lib/feasibility/model";
-import type { ParsedCalc } from "@/lib/calculator/inputs";
 import { usd, pct } from "@/lib/format";
 
 type Line = { k: string; v: number; sub?: boolean; strong?: boolean; tone?: "good" | "bad" | "muted"; note?: string };
@@ -22,16 +21,15 @@ function Row({ line }: { line: Line }) {
 /**
  * The proforma: every dollar in, every dollar out, in the order a lender reads it. Uses, sources, the exit, the return.
  */
-export default function Proforma({ inputs, result, rehabCost, soft, sellingPct, exit: exitParts, daduSf, aadu }: { inputs: DealInputs; result: DealResult; rehabCost: number; soft: { flat: number; permits: number; pct: number }; sellingPct: number; exit: ParsedCalc["exit"]; daduSf: number; aadu: ParsedCalc["aadu"] }) {
+export default function Proforma({ inputs, result, rehabCost, soft, sellingPct }: { inputs: DealInputs; result: DealResult; rehabCost: number; soft: { flat: number; permits: number; pct: number }; sellingPct: number }) {
   const c = result.costBreakdown;
   const a = inputs.acquisition;
   const closing = a.purchasePrice * (a.closingCostsPct / 100);
   const build = inputs.hard.buildableSqft * inputs.hard.costPerSqft;
-  const daduBuild = daduSf * inputs.hard.costPerSqft;
   const contingency = (build + rehabCost) * (inputs.hard.contingencyPct / 100);
   const months = result.timelineMonths;
   const carry = (inputs.financing.propertyTaxMonthly + inputs.financing.utilitiesMaintMonthly) * months;
-  const interest = result.interest;
+  const interest = c.financing - carry;
   const sell = result.exits.sell;
   const net = sell ? sell.netRevenue : null;
   const profit = sell ? sell.profit : null;
@@ -41,23 +39,19 @@ export default function Proforma({ inputs, result, rehabCost, soft, sellingPct, 
     ...(closing > 0 ? [{ k: "Closing costs", v: closing, sub: true, note: `${a.closingCostsPct}%` }] : []),
     ...(a.demoSitePrep > 0 ? [{ k: "Site work and utilities", v: a.demoSitePrep, sub: true }] : []),
     ...(rehabCost > 0 ? [{ k: "Rehab of the house", v: rehabCost, note: `${inputs.hard.rehabSqft.toLocaleString("en-US")} sf × ${usd(inputs.hard.rehabCostPerSqft)}` }] : []),
-    { k: "DADU construction", v: daduBuild, note: `${daduSf.toLocaleString("en-US")} sf × ${usd(inputs.hard.costPerSqft)}` },
-    ...(aadu ? [{ k: "AADU construction", v: aadu.construction, note: `${aadu.sf.toLocaleString("en-US")} sf × ${usd(inputs.hard.costPerSqft)}` }] : []),
+    { k: "DADU construction", v: build, note: `${inputs.hard.buildableSqft.toLocaleString("en-US")} sf × ${usd(inputs.hard.costPerSqft)}` },
     ...(contingency > 0 ? [{ k: "Contingency", v: contingency, sub: true, note: `${inputs.hard.contingencyPct}%` }] : []),
     ...(c.soft > 0 ? [{ k: "Soft costs", v: c.soft, note: [soft.permits > 0 && `permits ${usd(soft.permits)}`, soft.pct > 0 && `${soft.pct}% of build`].filter(Boolean).join(" + ") || undefined }] : []),
-    ...(interest > 0 ? [{ k: "Loan interest", v: interest, note: `${inputs.financing.interestRatePct}% over ${months} months, about ${usd(result.interestMonthlyPeak)} a month at full draw` }] : []),
+    ...(interest > 0 ? [{ k: "Loan interest", v: interest, note: `${inputs.financing.interestRatePct}% over ${months} months` }] : []),
     ...(carry > 0 ? [{ k: "Holding costs", v: carry, note: `${usd(inputs.financing.propertyTaxMonthly + inputs.financing.utilitiesMaintMonthly)} a month × ${months}` }] : []),
     { k: "Total cost", v: c.total, strong: true },
   ];
   const sources: Line[] = [
     { k: "Loan", v: result.loanAmount, note: c.total > 0 ? `${Math.round((result.loanAmount / Math.max(1, c.total - c.financing)) * 100)}% of cost` : undefined },
-    { k: "Your cash", v: result.equityRequired, strong: true, note: inputs.financing.equityCash != null ? `${usd(inputs.financing.equityCash)} down plus interest and holding costs` : undefined },
+    { k: "Your cash", v: result.equityRequired, strong: true },
   ];
   const exit: Line[] = sell
     ? [
-        ...(exitParts && exitParts.house != null ? [{ k: "House", v: exitParts.house, sub: true, note: exitParts.houseIsOwn ? "your ARV" : "break-even" }] : []),
-        ...(exitParts ? [{ k: "DADU", v: exitParts.dadu, sub: true, note: exitParts.daduIsOwn ? "your value" : "Pencil estimate" }] : []),
-        ...(exitParts && exitParts.aadu != null ? [{ k: "AADU", v: exitParts.aadu, sub: true, note: exitParts.aaduIsOwn ? "your value" : "Pencil estimate" }] : []),
         { k: "Sale price (ARV)", v: sell.grossRevenue },
         { k: "Selling costs", v: -(sell.grossRevenue - sell.netRevenue), sub: true, note: `${sellingPct}%` },
         { k: "Net proceeds", v: sell.netRevenue, strong: true },

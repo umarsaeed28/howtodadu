@@ -3,28 +3,19 @@
 import { REHAB_LABELS, daduEconomics, type RehabLevel } from "@/lib/dadu-value";
 import RehabPicker from "@/components/listing/RehabPicker";
 import type { ReportListing } from "@/lib/feasibility";
-import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { ArrowLeft, Download, Heart, Loader2, ExternalLink } from "lucide-react";
 import type { DashboardPropertySlim } from "@/lib/dashboard-normalize";
 import type { FeasibilityTableRow } from "@/lib/feasibility-table-model";
 import type { FeasibilityReport } from "../../../packages/schema/src";
 import { toReport } from "@/lib/report/to-report";
 import { zillowUrl } from "@/lib/feasibility-verdict";
-import { googleMapsUrl } from "@/lib/property-image";
 import FeasPropertyDetails from "@/components/feasibility-pencil/FeasPropertyDetails";
-import MasterPlan, { type DaduState, type PlanSnapshot } from "./MasterPlan";
-import ReportPaywall from "./ReportPaywall";
-import { LimitsStrip, PurchaseBanner, ReportNextSteps, ReportTeaser } from "./ReportJourney";
-import { hasFeasibilityAccess } from "@/lib/report-access";
-import { useReportAccess } from "./report-access-context";
-import { prettyAddress, saveParcel } from "@/lib/parcel-context";
-import { isProductKind, type ProductKind } from "@/lib/pricing";
-import { track } from "@/lib/analytics";
+import MasterPlan, { type PlanSnapshot } from "./MasterPlan";
+import ReportEmailGate from "./ReportEmailGate";
+import { hasReportAccess } from "@/lib/report-access";
 import SiteIntel from "./SiteIntel";
-import { ConstraintsGrid, RisksList } from "./ReportSections";
-import { StudyAnalysis, StudyConclusion, StudyTable, StudyUtilities } from "./StudySections";
-import { buildStudy, type Study } from "@/lib/report/study";
-import { loadPlan, savePlan, type DrawnSummary, type SavedPlan } from "@/lib/saved-plan";
+import { ConstraintsGrid, FactsStrip, RisksList, ScenariosGrid, VerifyStrip } from "./ReportSections";
 import { COST_PER_SF, constructionEstimate } from "@/lib/config/costs";
 import { calculatorHref } from "@/lib/calculator/inputs";
 import Link from "next/link";
@@ -64,11 +55,7 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   // Your estimate of the front house's after-repair value. Empty means break-even: what it costs plus the rehab.
   const [houseArvText, setHouseArvText] = useState("");
   const houseArvInput = Number(houseArvText.replace(/[^0-9.]/g, "")) || null;
-  // What the house costs to buy: the list price when it is for sale, or the user's own figure (an off-market deal, or
-  // an offer below list). With it, the strip shows the whole deal's profit, not only the DADU's.
-  const [purchaseText, setPurchaseText] = useState("");
-  const purchaseInput = Number(purchaseText.replace(/[^0-9.]/g, "")) || null;
-  // The DADU the estimate is for: the one drawn on the plan when there is one, else the largest the lot allows.
+  // The cottage the estimate is for: the one drawn on the plan when there is one, else the largest the lot allows.
   const estSf = drawnSf ?? s.max_buildable_sf?.value ?? null;
   const estCost = estSf ? constructionEstimate(estSf) : null;
   const asDrawn = drawnSf != null && s.max_buildable_sf != null && Math.round(drawnSf) !== Math.round(s.max_buildable_sf.value);
@@ -84,16 +71,11 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   const roiPct = e ? Math.round(e.roi * 100) : null;
   // Total ARV: the house at break-even (what it cost plus any rehab) or the user's own figure, plus the DADU's resale
   // value. Shown as its own block beside the headline; the deal profit and ROI tiles use it too.
-  // The house's basis: the purchase price (yours, else the list price), else the county's assessed value (land +
-  // building), so every lot gets a Total ARV, not only listed ones. Break-even is that basis plus any rehab.
-  const assessed = slim.assessedValueNum != null && slim.assessedValueNum > 0 ? slim.assessedValueNum : null;
-  const purchase = purchaseInput ?? listing?.price ?? null;
-  const basis = purchase != null ? { value: purchase, kind: "purchase" as const } : assessed != null ? { value: assessed, kind: "assessed" as const } : null;
-  const breakEven = basis && e ? basis.value + e.rehabCost : null;
+  const breakEven = listing && e ? listing.price + e.rehabCost : null;
   const houseArv = houseArvInput ?? breakEven;
-  const arv = e && houseArv != null ? { total: houseArv + e.saleValue, house: houseArv, own: houseArvInput != null } : null;
+  const arv = listing && e && houseArv != null ? { total: houseArv + e.saleValue, house: houseArv, own: houseArvInput != null } : null;
   const money = (n: number) => (n < 0 ? "−" : "") + usd(Math.abs(n));
-  // The strip: price when the home is for sale, then what the DADU costs and returns. Numbers lead, one line each.
+  // The strip: price when the home is for sale, then what the cottage costs and returns. Numbers lead, one line each.
   const tiles: { label: string; value: string; note?: string; tone?: "green" | "red"; extra?: React.ReactNode }[] = [];
   if (listing)
     tiles.push({
@@ -107,8 +89,6 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
         </span>
       ),
     });
-  if (purchaseInput != null)
-    tiles.push({ label: "Purchase price", value: usd(purchaseInput), note: listing ? `Your figure · listed at ${usd(listing.price)}` : "Your figure" });
   tiles.push({
     label: "Build estimate",
     value: estCost ? usd(estCost) : "None",
@@ -116,9 +96,9 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
   });
   if (e) {
     tiles.push({ label: "DADU resale value", value: usd(e.saleValue), note: `${usd(e.salePsf)} per sf · ${usd(e.allInCost)} all in` });
-    if (arv && purchase != null) {
-      // The whole deal: what it all sells for, less everything paid (the house, its rehab, the DADU and soft costs).
-      const cashIn = purchase + e.rehabCost + e.buildCost + e.softCosts;
+    if (arv && listing) {
+      // The whole deal: what it all sells for, less everything paid (the house, its rehab, the cottage and soft costs).
+      const cashIn = listing.price + e.rehabCost + e.buildCost + e.softCosts;
       const profit = arv.total - cashIn;
       const pct = Math.round((profit / cashIn) * 100);
       tiles.push({ label: "Deal profit", value: money(profit), note: `${usd(arv.total)} ARV − ${usd(cashIn)} in (house${e.rehabCost > 0 ? ", rehab" : ""}, build, soft costs)`, tone: profit >= 0 ? "green" : "red" });
@@ -149,7 +129,7 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
         </p>
       </div>
       <h2 id="rep-sum" className="mt-3 text-xl font-semibold leading-snug sm:text-2xl" style={{ color: "var(--ink)" }}>
-        {s.verdict === "Feasible" ? "This lot can take a DADU." : s.verdict === "Conditional" ? "A DADU could work here, with conditions." : "A DADU will not work on this lot as it stands."}
+        {s.verdict === "Feasible" ? "This lot can take a backyard cottage." : s.verdict === "Conditional" ? "A backyard cottage could work here, with conditions." : "A backyard cottage will not work on this lot as it stands."}
       </h2>
       <p className="mt-1 max-w-3xl text-base leading-relaxed" style={{ color: "var(--slate)" }}>{s.headline} {slim.neighborhood ? `${slim.neighborhood}. ` : ""}This is the site and code check.</p>
       </div>
@@ -158,7 +138,7 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
           <p className="text-sm font-semibold" style={{ color: "var(--slate)" }}>Total ARV</p>
           <p className="pa-display leading-none tabular-nums" style={{ color: "var(--ink)", fontSize: "clamp(32px, 4.5vw, 44px)" }}>{usd(arv.total)}</p>
           <p className="mt-1.5 text-xs tabular-nums" style={{ color: "var(--slate)" }}>
-            House {usd(arv.house)}{arv.own ? " (your ARV)" : ` ${basis?.kind === "assessed" ? "at county assessed value" : "at break-even"}${e!.rehabCost > 0 ? ` (${basis?.kind === "assessed" ? "+ " : ""}${REHAB_LABELS[e!.rehab].toLowerCase()} ${usd(e!.rehabCost)})` : ""}`}
+            House {usd(arv.house)}{arv.own ? " (your ARV)" : ` at break-even${e!.rehabCost > 0 ? ` (${REHAB_LABELS[e!.rehab].toLowerCase()} ${usd(e!.rehabCost)})` : ""}`}
             <br />+ DADU resale {usd(e!.saleValue)}
           </p>
         </div>
@@ -167,28 +147,7 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
 
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
         <RehabPicker value={rehab} onChange={setRehab} houseSqft={houseSqft} />
-        {e && (
-          <label className="flex items-center gap-2 text-xs font-semibold" style={{ color: "var(--ink)" }}>
-            Purchase price
-            <span className="pa-inset flex items-center gap-1 px-2.5" style={{ minHeight: 32 }}>
-              <span style={{ color: "var(--slate)" }}>$</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={purchaseText}
-                onChange={(ev) => setPurchaseText(ev.target.value)}
-                placeholder={listing ? Math.round(listing.price).toLocaleString("en-US") : "Enter to see deal profit"}
-                className="w-36 bg-transparent text-sm font-semibold tabular-nums outline-none"
-                style={{ color: "var(--ink)", boxShadow: "none" }}
-                aria-label={listing ? "Purchase price, dollars. Leave empty to use the list price." : "Purchase price of the house, dollars. Enter it to see the whole deal's profit."}
-              />
-            </span>
-            {purchaseInput != null && (
-              <button type="button" className="text-xs font-semibold" style={{ color: "var(--green)" }} onClick={() => setPurchaseText("")}>Reset</button>
-            )}
-          </label>
-        )}
-        {basis && (
+        {listing && (
           <label className="flex items-center gap-2 text-xs font-semibold" style={{ color: "var(--ink)" }}>
             Front house ARV
             <span className="pa-inset flex items-center gap-1 px-2.5" style={{ minHeight: 32 }}>
@@ -227,14 +186,11 @@ function Hero({ report, slim, listing, drawnSf, houseSqft }: { report: Feasibili
 const SECTION_TABS = [
   ["rep-overview", "Overview"],
   ["rep-plan", "Master plan"],
-  ["rep-property", "Property"],
-  ["rep-zoning", "Zoning"],
-  ["rep-standards", "Standards"],
-  ["rep-coverage", "Coverage and FAR"],
-  ["rep-dadu", "DADU rules"],
-  ["rep-intel", "Site conditions"],
+  ["rep-facts", "Facts"],
+  ["rep-intel", "Site intelligence"],
+  ["rep-scen", "Scenarios"],
   ["rep-risks", "Risks"],
-  ["rep-conclusion", "Conclusion"],
+  ["rep-cite", "Before you buy"],
   ["rep-all", "All data"],
 ] as const;
 
@@ -253,28 +209,7 @@ function SectionTabs() {
   );
 }
 
-/** The shape of a report, with no numbers in it: what sits behind the paywall before payment. */
-function LockedPlaceholder() {
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="pa-skeleton h-16 w-40 rounded-xl" />
-        <div className="pa-skeleton h-8 w-28 rounded-lg" />
-        <div className="pa-skeleton h-6 w-72 rounded-lg" />
-      </div>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-5">{[0, 1, 2, 3, 4].map((k) => <div key={k} className="pa-skeleton h-20 rounded-xl" />)}</div>
-      <div className="pa-skeleton h-[420px] rounded-2xl" />
-      <div className="grid gap-6 lg:grid-cols-2"><div className="pa-skeleton h-56 rounded-2xl" /><div className="pa-skeleton h-56 rounded-2xl" /></div>
-    </div>
-  );
-}
-
-/**
- * The report below the hero, in the order of an architect's DADU feasibility study: the master plan
- * (drawn by the visitor), property information, jurisdiction, development standards, lot coverage and FAR, DADU
- * rules, site conditions, overhead utilities, risks and the conclusion.
- */
-function ReportBody({ report, row, study, snapshotRef, onDaduChange, onDaduState, initialPlan, initialPlanId, onPlanChange }: { report: FeasibilityReport; row: FeasibilityTableRow; study: Study; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null>; onDaduChange: (sf: number | null) => void; onDaduState: (s: DaduState | null) => void; initialPlan: SavedPlan | null; initialPlanId: string | null; onPlanChange: (p: SavedPlan) => void }) {
+function ReportBody({ report, row, snapshotRef, onDaduChange }: { report: FeasibilityReport; row: FeasibilityTableRow; snapshotRef: MutableRefObject<(() => PlanSnapshot) | null>; onDaduChange: (sf: number | null) => void }) {
   return (
     <div className="flex flex-col gap-6">
       {/* The master plan breaks out of the page column to (nearly) the full screen width, so there is room to work. */}
@@ -288,60 +223,32 @@ function ReportBody({ report, row, study, snapshotRef, onDaduChange, onDaduState
           terrain={row.result.terrain ?? null}
           snapshotRef={snapshotRef}
           onDaduChange={onDaduChange}
-          onDaduState={onDaduState}
-          initialPlan={initialPlan}
-          initialPlanId={initialPlanId}
-          onPlanChange={onPlanChange}
         />
       </div>
 
       <div className="flex flex-col gap-6">
-        <Section id="rep-property" title="Property information">
-          <StudyTable rows={study.property} head={["Item", "Description"]} />
+        <Section id="rep-facts" title="Property facts">
+          <FactsStrip report={report} />
         </Section>
 
-        <Section id="rep-zoning" title="Jurisdiction and zoning" hint="Governed by the Seattle Municipal Code and reviewed by SDCI.">
-          <StudyTable rows={study.jurisdiction} head={["Item", "Description"]} />
-        </Section>
-
-        <Section id="rep-standards" title="Development standards" hint="The rules this report applies to the lot.">
-          <StudyTable rows={study.standards} head={["Item", "Requirement", "Basis"]} withRef />
-        </Section>
-
-        <div id="rep-coverage" className="grid scroll-mt-[190px] gap-6 lg:grid-cols-2">
-          {study.coverage && (
-            <Section id="rep-coverage-lot" title="Lot coverage analysis">
-              <StudyAnalysis block={study.coverage} />
-            </Section>
-          )}
-          {study.far && (
-            <Section id="rep-far" title="FAR analysis">
-              <StudyAnalysis block={study.far} />
-            </Section>
-          )}
-        </div>
-
-        <Section id="rep-dadu" title="DADU regulations">
-          <StudyTable rows={study.dadu} head={["Item", "Requirement", "Basis"]} withRef />
-        </Section>
-
-        <Section id="rep-intel" title="Site conditions" hint="What the city and county data say about this lot, with the source under each card.">
+        <Section id="rep-intel" title="Site intelligence" hint="What the city and county data say about this lot, with the source under each card.">
           <SiteIntel row={row} />
-          <div className="mt-6">
-            <ConstraintsGrid row={row} />
-          </div>
         </Section>
 
-        <Section id="rep-utilities" title="Overhead utilities">
-          <StudyUtilities study={study} />
+        <Section id="rep-scen" title="Scenarios" hint="Only the single cottage has a score today. The others show what the lot allows.">
+          <ScenariosGrid report={report} />
+        </Section>
+
+        <Section id="rep-constraints" title="Site checks">
+          <ConstraintsGrid row={row} />
         </Section>
 
         <Section id="rep-risks" title="Ranked risks" hint="Hard prohibitions come first.">
           <RisksList report={report} />
         </Section>
 
-        <Section id="rep-conclusion" title="Conclusion">
-          <StudyConclusion study={study} />
+        <Section id="rep-cite" title="Before you buy">
+          <VerifyStrip report={report} />
         </Section>
       </div>
     </div>
@@ -356,7 +263,6 @@ export default function FeasibilityReportView({
   favorite,
   onToggleFavorite,
   onBack,
-  owned,
 }: {
   slim: DashboardPropertySlim;
   detailRow: FeasibilityTableRow | null;
@@ -365,8 +271,6 @@ export default function FeasibilityReportView({
   favorite: boolean;
   onToggleFavorite: () => void;
   onBack: () => void;
-  /** Set by the portal for a buyer's paid report (checked on the server): the report opens in full. */
-  owned?: "feasibility_instant" | "feasibility_reviewed";
 }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -377,45 +281,17 @@ export default function FeasibilityReportView({
   }, [onBack]);
 
   const snapshotRef = useRef<(() => PlanSnapshot) | null>(null);
-  // The teaser is open to everyone; the full report opens after either paid tier (prices in src/lib/pricing.ts).
+  // Email wall: the report renders blurred until this browser has given an email once.
   // Read after mount so the server render and the first client render agree.
-  const gateAddress = slim.streetLine || slim.address;
-  const pin = slim.pin;
-  const { admin } = useReportAccess();
-  const [paid, setPaid] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
   const [accessChecked, setAccessChecked] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
-  const [purchase, setPurchase] = useState<{ kind: string; dueDate: string | null; email: string } | null>(null);
-  const [defaultTier, setDefaultTier] = useState<ProductKind | undefined>(undefined);
-  // A pre-approved design chosen on the plans page (?plan=<id>): placed on the master plan, which opens after payment.
-  const [initialPlanId, setInitialPlanId] = useState<string | null>(null);
   useEffect(() => {
-    setPaid(admin || !!owned || hasFeasibilityAccess(pin, gateAddress));
-    setInitialPlanId(new URLSearchParams(window.location.search).get("plan"));
-    const t = new URLSearchParams(window.location.search).get("tier");
-    const tier = t === "reviewed" ? "feasibility_reviewed" : t === "instant" ? "feasibility_instant" : t;
-    if (isProductKind(tier)) setDefaultTier(tier);
-    if (pin) saveParcel({ pin, address: slim.address });
+    setUnlocked(hasReportAccess());
     setAccessChecked(true);
-  }, [pin, gateAddress, slim.address, owned, admin]);
-  const unlocked = paid;
-  const eligible = !!detailRow && detailRow.siteScore.eligible && (detailRow.daduScore ?? 0) > 0;
-  useEffect(() => {
-    if (accessChecked && !paid && detailRow) track("teaser_viewed", { eligible });
-  }, [accessChecked, paid, detailRow, eligible]);
+  }, []);
   // The DADU as drawn on the plan: the build estimate and return follow it (the largest allowed size until it is drawn).
   const [drawnSf, setDrawnSf] = useState<number | null>(null);
-  // The drawing itself, saved per parcel in this browser: it reopens with the lot, goes into the PDF and the study,
-  // and is what Start my project carries into the project.
-  const [drawn, setDrawn] = useState<DrawnSummary | null>(null);
-  const [initialPlan] = useState<SavedPlan | null>(() => (typeof window === "undefined" ? null : loadPlan(slim.pin)?.plan ?? null));
-  const drawnRef = useRef<DrawnSummary | null>(null);
-  const onDaduState = useCallback((st: DaduState | null) => {
-    const d = st ? { living: st.living, footprint: st.footprint, w: st.w, d: st.d, stories: st.stories } : null;
-    drawnRef.current = d;
-    setDrawn(d);
-  }, []);
-  const onPlanChange = useCallback((plan: SavedPlan) => savePlan(slim.pin, plan, drawnRef.current), [slim.pin]);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   async function downloadPdf() {
@@ -426,7 +302,7 @@ export default function FeasibilityReportView({
       // Read the plan at click time so the PDF shows the units exactly where the user dragged them.
       const plan = snapshotRef.current?.() ?? null;
       const { buildReportPdf, reportPdfName } = await import("@/lib/report-pdf/build-report-pdf");
-      const pdf = await buildReportPdf({ slim, report, plan, study });
+      const pdf = await buildReportPdf({ slim, report, plan });
       pdf.save(reportPdfName(slim.streetLine || slim.address));
     } catch (e) {
       setPdfError(e instanceof Error ? e.message : "Could not make the PDF.");
@@ -434,7 +310,6 @@ export default function FeasibilityReportView({
       setPdfBusy(false);
     }
   }
-
 
   const { report, adapterError } = useMemo(() => {
     if (!detailRow) return { report: null, adapterError: null };
@@ -444,13 +319,6 @@ export default function FeasibilityReportView({
       return { report: null, adapterError: e instanceof Error ? e.message : "Could not build the report." };
     }
   }, [detailRow]);
-
-  const study = useMemo<Study | null>(() => {
-    if (!detailRow || !report) return null;
-    const p = detailRow.result.parcel;
-    const verdict = report.summary.verdict;
-    return buildStudy({ address: `${prettyAddress(slim.streetLine || slim.address)}, Seattle, WA${p?.zip ? ` ${p.zip}` : ""}`, pin: p?.pin ?? null, zoning: p?.zoning ?? slim.zoning, neighborhood: slim.neighborhood, urbanVillage: p?.urbanVillage ?? null, lotSqft: p?.lotSqft ?? slim.lotSizeSqft, yearBuilt: p?.yearBuilt ?? null, feasibility: detailRow.result.feasibility, adu: detailRow.report, verdict, drawn });
-  }, [detailRow, report, slim, drawn]);
 
   return (
     <div className="mx-auto w-full max-w-[1280px]">
@@ -469,15 +337,11 @@ export default function FeasibilityReportView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <a href={googleMapsUrl(slim.address, slim.lat, slim.lng)} target="_blank" rel="noopener noreferrer" className="pa-btn pa-btn-sm no-underline">
-            Google Maps
-            <ExternalLink size={14} aria-hidden />
-          </a>
           <a href={zillowUrl(slim.address)} target="_blank" rel="noopener noreferrer" className="pa-btn pa-btn-sm no-underline">
             Zillow
             <ExternalLink size={14} aria-hidden />
           </a>
-          <button type="button" className="pa-btn pa-btn-sm" onClick={downloadPdf} disabled={!report || pdfBusy || !unlocked} aria-busy={pdfBusy} title={unlocked ? undefined : "Unlock the full report to download the PDF"}>
+          <button type="button" className="pa-btn pa-btn-sm" onClick={downloadPdf} disabled={!report || pdfBusy || !unlocked} aria-busy={pdfBusy} title={unlocked ? undefined : "Enter your email to download the PDF"}>
             {pdfBusy ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <Download size={15} aria-hidden />}
             {pdfBusy ? "Making PDF…" : "Download PDF"}
           </button>
@@ -485,7 +349,7 @@ export default function FeasibilityReportView({
             <Heart size={15} aria-hidden fill={favorite ? "var(--flag)" : "none"} color={favorite ? "var(--flag)" : "var(--ink)"} />
             {favorite ? "Saved" : "Save"}
           </button>
-          {report && unlocked && (
+          {report && (
             <Link href={calculatorHref({ sf: drawnSf ?? report.summary.max_buildable_sf?.value, address: slim.address, price: detailRow?.result.listing?.price, houseSqft: detailRow?.result.listing?.livingSqft ?? detailRow?.result.feasibility?.totalBuildingSqft })} className="pa-btn pa-btn-primary pa-btn-sm no-underline">
               Estimate your return
             </Link>
@@ -499,17 +363,13 @@ export default function FeasibilityReportView({
         </div>
       )}
 
-      {accessChecked && !unlocked && detailRow && <ReportTeaser lotSqft={slim.lotSizeSqft} zoning={slim.zoning} />}
-      {unlocked && purchase && <PurchaseBanner kind={purchase.kind} dueDate={purchase.dueDate} email={purchase.email} />}
-
       <div className="relative">
-      {/* Locked: a placeholder stands in for the report. Nothing the report found reaches the page until it is paid for. */}
-      {!unlocked && accessChecked ? (
-        <div aria-hidden className="pointer-events-none max-h-[1100px] select-none overflow-hidden" style={{ filter: "blur(6px)", WebkitMaskImage: "linear-gradient(to bottom, #000 45%, transparent)", maskImage: "linear-gradient(to bottom, #000 45%, transparent)" }}>
-          <LockedPlaceholder />
-        </div>
-      ) : (
-      <div className={unlocked && justUnlocked ? "report-reveal" : undefined}>
+      <div
+        inert={!unlocked}
+        aria-hidden={!unlocked || undefined}
+        className={unlocked ? (justUnlocked ? "report-reveal" : undefined) : "pointer-events-none max-h-[1500px] select-none overflow-hidden"}
+        style={unlocked ? undefined : { filter: "blur(9px)", WebkitMaskImage: "linear-gradient(to bottom, #000 55%, transparent)", maskImage: "linear-gradient(to bottom, #000 55%, transparent)" }}
+      >
       {loading && !report && (
         <div className="grid gap-6 lg:grid-cols-2" aria-busy="true" aria-label="Building the report">
           <div className="pa-raised h-72 pa-skeleton" />
@@ -518,9 +378,8 @@ export default function FeasibilityReportView({
       )}
 
       {report && <Hero report={report} slim={slim} listing={detailRow?.result.listing ?? null} drawnSf={drawnSf} houseSqft={detailRow?.result.listing?.livingSqft ?? detailRow?.result.feasibility?.totalBuildingSqft ?? null} />}
-      {report && detailRow && <div className="mb-6"><LimitsStrip adu={detailRow.report} zoning={slim.zoning} lotSqft={slim.lotSizeSqft} buildingSqft={detailRow.result.feasibility?.totalBuildingSqft ?? null} /></div>}
       {report && detailRow && <SectionTabs />}
-      {report && detailRow && study && <ReportBody report={report} row={detailRow} study={study} snapshotRef={snapshotRef} onDaduChange={setDrawnSf} onDaduState={onDaduState} initialPlan={initialPlan} initialPlanId={initialPlanId} onPlanChange={onPlanChange} />}
+      {report && detailRow && <ReportBody report={report} row={detailRow} snapshotRef={snapshotRef} onDaduChange={setDrawnSf} />}
 
       <div className="mt-6">
         <Section id="rep-all" title="All property data">
@@ -530,28 +389,15 @@ export default function FeasibilityReportView({
         </Section>
       </div>
       </div>
-      )}
 
       {!unlocked && accessChecked && (
-        <div className="absolute inset-0 flex items-start justify-center px-2 pt-8 sm:pt-14">
-          <div className="sticky top-28 flex w-full flex-col items-center">
-            <p className="rt-overlay">Your full buildable envelope is ready.</p>
-            <ReportPaywall
-              pin={pin}
-              address={gateAddress}
-              defaultTier={defaultTier}
-              onUnlock={(r, email) => {
-                setPaid(true);
-                setJustUnlocked(true);
-                setPurchase({ kind: r.kind, dueDate: r.dueDate, email });
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            />
+        <div className="absolute inset-0 flex items-start justify-center px-2 pt-10 sm:pt-16">
+          <div className="sticky top-28 flex w-full justify-center">
+            <ReportEmailGate address={slim.streetLine || slim.address} onUnlock={() => { setUnlocked(true); setJustUnlocked(true); }} />
           </div>
         </div>
       )}
       </div>
-      {report && <ReportNextSteps pin={pin} address={slim.address} />}
     </div>
   );
 }

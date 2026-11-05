@@ -1,4 +1,3 @@
-import { zoningGate } from "@/lib/zoning";
 import {
   pickBestParcel,
   clipPathToBbox,
@@ -515,12 +514,8 @@ async function queryAdjacentParcels(
 
 export type FeasibilityQueryFailure = {
   ok: false;
-  status: 400 | 404 | 422;
+  status: 400 | 404;
   error: string;
-  /** Set when the property is turned away for its zoning (see src/lib/zoning.ts). */
-  code?: "not_nr" | "zoning_unknown";
-  /** The zoning recorded for the parcel, when there is one. */
-  zoning?: string | null;
 };
 
 export type FeasibilityQuerySuccess = { ok: true; data: FeasibilityResult };
@@ -556,11 +551,6 @@ export async function getFeasibilityForAddress(
       error: "No parcel data found at this location",
     };
   }
-
-  // The NR gate: nothing past this point runs for a lot outside Neighborhood Residential, or one whose zoning the
-  // parcel layer does not record. No partial analysis, no guessing (src/lib/zoning.ts).
-  const gate = zoningGate(p ? str(p.ZONING) : null, p ? str(p.BASE_ZONE) : null, p ? str(p.ZONELUT) : null);
-  if (!gate.ok) return { ok: false, status: 422, error: gate.message, code: gate.code, zoning: gate.zoning };
 
   const parcelRings = parcelResult?.geometry?.rings?.[0] as
     | number[][]

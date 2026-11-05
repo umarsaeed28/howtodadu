@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "Guides, zoning updates, and case studies on Seattle middle housing. Understand the rules and the numbers.",
 };
 
-const POSTS: { tag: string; title: string; body: string; href?: string }[] = [
+const POSTS = [
   {
     tag: "Guide",
     title: "What HB 1110 actually allows on your lot",
@@ -21,9 +21,8 @@ const POSTS: { tag: string; title: string; body: string; href?: string }[] = [
   },
   {
     tag: "Case study",
-    title: "5519 12th Ave NE: 12 student rooms from one lot",
-    body: "$1.225M in, $2.0M after, and $187,200 a year in room rents: the purchase, the basement, the DADU, line by line.",
-    href: "/case-studies/5519-12th-ave-ne",
+    title: "From single lot to six stacked flats",
+    body: "How the numbers came together on a Ballard parcel, from purchase to pro forma.",
   },
   {
     tag: "Guide",
@@ -61,7 +60,7 @@ export default function InsightsPage() {
         <Container>
           <div className="s-grid s-grid-3">
             {POSTS.map((post) => (
-              <CardLink key={post.title} href={post.href ?? "/insights"}>
+              <CardLink key={post.title} href="/insights">
                 <Pill>{post.tag}</Pill>
                 <h3 className="s-h3" style={{ marginTop: 16 }}>
                   {post.title}

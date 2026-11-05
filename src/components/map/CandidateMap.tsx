@@ -10,17 +10,16 @@ import { COST_LABEL, COST_PER_SF, constructionEstimate } from "@/lib/config/cost
 import { calculatorHref } from "@/lib/calculator/inputs";
 import { downloadListingsCsv, downloadSavedCsv } from "@/lib/listings-csv";
 import SaveButton from "@/components/listing/SaveButton";
-import OpportunityTile from "@/components/invest/OpportunityTile";
 import { useSavedListings } from "@/hooks/useSavedListings";
 import { gradeOf } from "@/lib/dadu-score";
 import { zillowUrl } from "@/lib/property-image";
-import { inPriceRange, priceLabel, readSearchParams } from "@/lib/search-filters";
-import { PriceRange, ZipChips } from "@/components/search/ZipPriceFields";
 
 const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE ?? "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const SEATTLE = { longitude: -122.335, latitude: 47.62, zoom: 10.6 };
 /** Results column on desktop: Zillow-style, map on the left and the list on the right. */
 const panelWidth = () => (typeof window === "undefined" ? 440 : Math.round(Math.min(780, Math.max(400, window.innerWidth * 0.46))));
+const PRICE_MAX = 3_000_000;
+const PRICE_STEP = 50_000;
 
 /** Every listing on the map can have a DADU. The grade says how good the lot is for one (site score 0 to 100). */
 const DADU_COLOR = "#145A40";
@@ -57,31 +56,22 @@ function viewPadding(detailOpen: boolean) {
   return { top: 72, bottom: Math.round(window.innerHeight * (detailOpen ? 0.5 : 0.3)), left: 24, right: 24 };
 }
 
-/** A plan set from the admin plan library, drawn as a precedent pin on the admin map only. */
-export interface PrecedentPin {
-  id: string;
-  title: string;
-  lat: number;
-  lng: number;
-  status: string;
-}
-
-export default function CandidateMap({ precedents }: { precedents?: PrecedentPin[] } = {}) {
+export default function CandidateMap() {
   const mapRef = useRef<MapRef | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const initial = useRef(typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams());
 
   const [listings, setListings] = useState<MapListing[]>([]);
   const [loaded, setLoaded] = useState<{ key: string; connected: boolean; source: string | null } | null>(null);
-  // ZIPs (up to five, Seattle only) and the price range come in on the URL, from the home page search or a shared link.
-  const startFilters = useRef(readSearchParams(initial.current));
-  const [zipSel, setZipSel] = useState<string[]>(startFilters.current.zips);
+  const [zipInput, setZipInput] = useState(initial.current.get("zip") ?? "");
+  const [zipSel, setZipSel] = useState<string[]>(() => (initial.current.get("zip") ?? "").split(",").filter((z) => /^98\d{3}$/.test(z)));
+  const [allZips, setAllZips] = useState<string[]>([]);
   const [shapes, setShapes] = useState<GeoJSON.FeatureCollection | null>(null);
   const [selectedPin, setSelectedPin] = useState<string | null>(() => initial.current.get("pin"));
   const [detail, setDetail] = useState<Candidate | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
-  const [price, setPrice] = useState({ min: startFilters.current.min, max: startFilters.current.max });
-  const [topOnly, setTopOnly] = useState(() => initial.current.get("top") === "1");
+  const [maxPrice, setMaxPrice] = useState(PRICE_MAX);
+  const [topOnly, setTopOnly] = useState(false);
   const [savedOnly, setSavedOnly] = useState(false);
   const [hidePending, setHidePending] = useState(false);
   // Off-market lots (the buy box, not listed) show as dots only when this is on. Remembered for the browser session.
@@ -109,6 +99,7 @@ export default function CandidateMap({ precedents }: { precedents?: PrecedentPin
         const rows = (d.listings ?? []) as MapListing[];
         setListings(rows);
         setLoaded({ key, connected: !!d.connected, source: d.source ?? null });
+        if (!zipSel.length) setAllZips([...new Set(rows.map((l) => l.zip))].sort());
       })
       .catch((e) => {
         if (!(e instanceof DOMException && e.name === "AbortError")) setError("Could not load listings.");
@@ -163,24 +154,21 @@ export default function CandidateMap({ precedents }: { precedents?: PrecedentPin
   useEffect(() => {
     const q = new URLSearchParams();
     if (zipSel.length) q.set("zip", zipSel.join(","));
-    if (price.min) q.set("min", String(price.min));
-    if (price.max) q.set("max", String(price.max));
-    if (topOnly) q.set("top", "1");
     if (selectedPin) q.set("pin", selectedPin);
-    const next = `${window.location.pathname}${q.toString() ? `?${q.toString().replace(/%2C/g, ",")}` : ""}`;
+    const next = `${window.location.pathname}${q.toString() ? `?${q}` : ""}`;
     if (next !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(null, "", next);
-  }, [zipSel, selectedPin, price, topOnly]);
+  }, [zipSel, selectedPin]);
 
   /* ---- what is on the map right now ---- */
   const shown = useMemo(() => {
-    const rows = listings.filter((l) => (!hidePending || !l.pending) && (!savedOnly || isSaved(l.mlsId)) && inPriceRange(l.price, price.min, price.max) && (!topOnly || l.tier === 3) && (!cornerOnly || l.corner) && (!alleyOnly || l.alley));
+    const rows = listings.filter((l) => (!hidePending || !l.pending) && (!savedOnly || isSaved(l.mlsId)) && (maxPrice >= PRICE_MAX || l.price <= maxPrice) && (!topOnly || l.tier === 3) && (!cornerOnly || l.corner) && (!alleyOnly || l.alley));
     const m = sort.dir === "asc" ? 1 : -1;
     return [...rows].sort((a, b) => {
       const x = sortValue(a, sort.key), y = sortValue(b, sort.key);
       const c = typeof x === "string" ? x.localeCompare(y as string) : (x as number) - (y as number);
       return c * m || a.price - b.price;
     });
-  }, [listings, price, topOnly, cornerOnly, alleyOnly, sort, savedOnly, isSaved, hidePending]);
+  }, [listings, maxPrice, topOnly, cornerOnly, alleyOnly, sort, savedOnly, isSaved, hidePending]);
 
   const byPin = useMemo(() => new globalThis.Map(shown.map((l) => [l.pin, l])), [shown]);
   const shapesColored = useMemo<GeoJSON.FeatureCollection | null>(() => {
@@ -286,6 +274,13 @@ export default function CandidateMap({ precedents }: { precedents?: PrecedentPin
     if (f) selectPin(String(f.properties?.pin));
   }, [selectPin]);
 
+  function applyZips(raw: string) {
+    const tokens = raw.split(/[\s,]+/).filter(Boolean);
+    const valid = tokens.filter((t) => allZips.length === 0 || allZips.includes(t));
+    setZipSel(valid);
+    setError(tokens.length && !valid.length ? "No listings in that ZIP code. Pick one from the list." : null);
+  }
+
   async function findAddress(e: React.FormEvent) {
     e.preventDefault();
     const q = addr.trim();
@@ -335,31 +330,27 @@ export default function CandidateMap({ precedents }: { precedents?: PrecedentPin
               {searching ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <button type="submit" aria-label="Search" className="-mr-1 flex h-8 w-8 items-center justify-center rounded-lg" style={{ color: "var(--ink)" }}><Search size={16} aria-hidden /></button>}
             </div>
           </form>
-          <button
-            type="button"
-            aria-pressed={topOnly}
-            onClick={() => setTopOnly((v) => !v)}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-sm font-bold transition-colors"
-            style={{ minHeight: 40, background: topOnly ? "#145A40" : "var(--green-tint)", color: topOnly ? "#fff" : "#145A40", boxShadow: `inset 0 0 0 1.5px #145A40` }}
-            title="Top picks: a DADU score of 93 or more"
-          >
-            <Star size={15} aria-hidden fill={topOnly ? "#fff" : "#145A40"} color={topOnly ? "#fff" : "#145A40"} />
-            Top picks{listings.length ? ` (${listings.filter((l) => l.tier === 3).length})` : ""}
-          </button>
-          <div className="w-[min(78vw,340px)] shrink-0">
-            <ZipChips zips={zipSel} onChange={(z) => { setZipSel(z); setError(null); }} placeholder="ZIP codes (up to 5)" />
+          <div className="flex h-10 shrink-0 items-center rounded-xl pl-3" style={{ boxShadow: "inset 0 0 0 1px var(--line-strong)" }}>
+            <label htmlFor="zip-input" className="sr-only">ZIP codes</label>
+            <input id="zip-input" list="zip-list" value={zipInput} onChange={(e) => setZipInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && applyZips(zipInput)} onBlur={() => applyZips(zipInput)} placeholder="ZIP" className="w-[92px] bg-transparent text-[16px] outline-none sm:text-sm" inputMode="numeric" autoComplete="off" style={{ boxShadow: "none" }} />
+            {zipSel.length > 0 && <button type="button" className="px-2 text-xs font-semibold" style={{ color: "var(--green)" }} onClick={() => { setZipInput(""); setZipSel([]); setError(null); }}>All</button>}
           </div>
+          <datalist id="zip-list">{allZips.map((z) => <option key={z} value={z} />)}</datalist>
           <details className="relative shrink-0">
-            <summary className={`pa-chip list-none [&::-webkit-details-marker]:hidden ${price.min || price.max ? "pa-chip-active" : ""}`} style={{ minHeight: 40 }}>
-              {price.min || price.max ? (price.min && price.max ? `${priceLabel(price.min)} to ${priceLabel(price.max)}` : price.min ? `${priceLabel(price.min)}+` : `Up to ${priceLabel(price.max)}`) : "Price"} <ChevronDown size={14} aria-hidden />
+            <summary className={`pa-chip list-none [&::-webkit-details-marker]:hidden ${maxPrice < PRICE_MAX ? "pa-chip-active" : ""}`} style={{ minHeight: 40 }}>
+              {maxPrice >= PRICE_MAX ? "Price" : `Up to ${usdShort(maxPrice)}`} <ChevronDown size={14} aria-hidden />
             </summary>
-            <div className="fixed z-30 mt-2 w-[min(90vw,320px)] rounded-2xl p-4" style={{ background: "var(--card)", boxShadow: "var(--shadow-pop)" }}>
-              <p className="mb-2 text-xs font-semibold" style={{ color: "var(--ink)" }}>Price range</p>
-              <PriceRange min={price.min} max={price.max} onChange={setPrice} />
-              {(price.min > 0 || price.max > 0) && <button type="button" className="mt-3 text-xs font-semibold" style={{ color: "var(--green)" }} onClick={() => setPrice({ min: 0, max: 0 })}>Any price</button>}
+            <div className="fixed z-30 mt-2 w-[min(90vw,300px)] rounded-2xl p-4" style={{ background: "var(--card)", boxShadow: "var(--shadow-pop)" }}>
+              <label htmlFor="price-max" className="flex items-baseline justify-between text-xs font-semibold" style={{ color: "var(--ink)" }}>
+                <span>Max price</span>
+                <span className="tabular-nums">{maxPrice >= PRICE_MAX ? "Any" : usd(maxPrice)}</span>
+              </label>
+              <input id="price-max" type="range" min={0} max={PRICE_MAX} step={PRICE_STEP} value={maxPrice} onChange={(e) => setMaxPrice(Number(e.target.value))} className="mt-3 w-full" aria-valuetext={maxPrice >= PRICE_MAX ? "No maximum, up to $3M" : `Up to ${usd(maxPrice)}`} />
+              <div className="flex justify-between text-[11px]" style={{ color: "var(--slate)" }} aria-hidden><span>$0</span><span>$3M+</span></div>
             </div>
           </details>
           <div className="flex shrink-0 gap-2" role="group" aria-label="Filter listings">
+            <Chip on={topOnly} onClick={() => setTopOnly((v) => !v)}>Top picks</Chip>
             <Chip on={cornerOnly} onClick={() => setCornerOnly((v) => !v)}>Corner lot</Chip>
             <Chip on={alleyOnly} onClick={() => setAlleyOnly((v) => !v)}>Alley access</Chip>
             {listings.some((l) => l.pending) && (
@@ -427,12 +418,6 @@ export default function CandidateMap({ precedents }: { precedents?: PrecedentPin
             />
           </Source>
         )}
-
-        {precedents?.map((p) => (
-          <Marker key={`plan-${p.id}`} longitude={p.lng} latitude={p.lat} anchor="center" style={{ zIndex: 4 }}>
-            <a href={`/admin/plans?set=${p.id}`} className="cm-precedent" title={`Precedent plan: ${p.title} (${p.status.replace("_", " ")})`} aria-label={`Precedent plan: ${p.title}`}>P</a>
-          </Marker>
-        ))}
 
         {searchPin && (
           <Marker longitude={searchPin.lng} latitude={searchPin.lat} anchor="center">
@@ -513,21 +498,7 @@ export default function CandidateMap({ precedents }: { precedents?: PrecedentPin
                     <button type="button" className="font-semibold underline" style={{ color: "var(--green)" }} onClick={() => setSavedOnly(false)}>Show all homes</button>
                   </li>
                 )}
-                {shown.map((l, i) =>
-                  l.invest ? (
-                    <OpportunityTile
-                      key={l.mlsId}
-                      o={l.invest}
-                      position={i + 1}
-                      source={loaded?.source ?? ""}
-                      watched={false}
-                      from="map"
-                      overlay={<SaveButton variant="overlay" item={{ mlsId: l.mlsId, address: cleanAddress(l.address), price: l.price, photo: l.photo, score: l.score, market: "on", pin: l.pin, tier: l.tier, lotSqft: l.lotSqft, daduSqft: l.daduSqft, daysOnMarket: l.daysOnMarket }} />}
-                    />
-                  ) : (
-                    <ListingCard key={l.mlsId} l={l} onSelect={() => selectPin(l.pin)} />
-                  ),
-                )}
+                {shown.map((l) => <ListingCard key={l.mlsId} l={l} onSelect={() => selectPin(l.pin)} />)}
                 {savedOnly && saved.filter((x) => x.market === "off" || !listings.some((l) => l.mlsId === x.mlsId)).map((x) => {
                   const t = tierOf(x.tier ?? gradeOf(x.score).tier);
                   const status = x.market === "off" ? "Off market" : "No longer listed";
@@ -549,7 +520,7 @@ export default function CandidateMap({ precedents }: { precedents?: PrecedentPin
                   );
                 })}
                 {loaded && loaded.connected && !shown.length && !savedOnly && (
-                  <li className="col-span-full py-8 text-sm" style={{ color: "var(--slate)" }}>No listings match. Widen the price range, add a ZIP or clear a filter.</li>
+                  <li className="col-span-full py-8 text-sm" style={{ color: "var(--slate)" }}>No listings match. Raise the price limit or clear a filter.</li>
                 )}
               </ul>
             </div>
@@ -677,8 +648,8 @@ function LotPanel({ pin, lot, error, listing, onBack }: { pin: string | null; lo
 
           <div className="mt-5 flex flex-col gap-2">
             {listing && (
-              <Link href={`/invest/${encodeURIComponent(listing.mlsId)}`} className="pa-btn pa-btn-primary w-full no-underline">
-                View the investment summary <ArrowRight size={15} aria-hidden />
+              <Link href={`/listing/${encodeURIComponent(listing.mlsId)}`} className="pa-btn pa-btn-primary w-full no-underline">
+                View the listing <ArrowRight size={15} aria-hidden />
               </Link>
             )}
             {listing && (

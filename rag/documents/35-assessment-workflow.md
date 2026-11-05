@@ -3,7 +3,7 @@
 > How to assess a lot, in order. Use only the facts you are given and the passages you retrieve.
 
 ## Steps
-1. Area: is the lot at least 3,800 sq ft, Pencil's hard lot screen? (Seattle itself has no minimum.)
+1. Area: is the lot at least 3,200 sq ft?
 2. Dimensions: how wide is it (40 ft, or 45 to 55 ft or more) and how deep? Width decides which layouts fit.
 3. Access: is there an alley, or does a car have to come in from the front street?
 4. Layout: pick the best archetype: single rear, side by side, or staggered. Never recommend a straight stack.

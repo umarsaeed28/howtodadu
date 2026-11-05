@@ -39,27 +39,15 @@ describe("proforma", () => {
     expect(p.costOnly?.costBreakdown.hard).toBe(350_000 + 240_000);
     expect(parseForm(form({ sf: "1000", houseSqft: "2000", rehabLevel: "custom", rehabPerSf: "50" })).rehab.cost).toBe(100_000);
   });
-  it("the sale price is the house at break-even plus the DADU resale; your ARV replaces the house side", () => {
+  it("sale price defaults to the house at break-even plus the DADU resale; your ARV replaces the house side", () => {
     const p = parseForm(form({ sf: "1000", price: "1000000", houseSqft: "2000", rehabLevel: "light" }));
-    expect(p.exit).toEqual({ house: 1_140_000, houseIsOwn: false, dadu: 680_000, daduIsOwn: false, aadu: null, aaduIsOwn: false, total: 1_820_000 });
+    expect(p.autoSaleParts).toEqual({ house: 1_140_000, dadu: 680_000, houseIsOwn: false });
     expect(p.sale?.result.exits.sell?.grossRevenue).toBe(1_820_000);
     const own = parseForm(form({ sf: "1000", price: "1000000", houseSqft: "2000", rehabLevel: "light", houseArv: "1300000" }));
-    expect(own.exit?.house).toBe(1_300_000);
-    expect(own.exit?.houseIsOwn).toBe(true);
-    const typed = parseForm(form({ sf: "1000", price: "1000000", houseArv: "1,250,000", daduArv: "750000" }));
-    expect(typed.exit).toMatchObject({ house: 1_250_000, dadu: 750_000, daduIsOwn: true, total: 2_000_000 });
+    expect(own.autoSaleParts?.house).toBe(1_300_000);
+    expect(own.autoSaleParts?.houseIsOwn).toBe(true);
+    const typed = parseForm(form({ sf: "1000", price: "1000000", salePrice: "2000000" }));
     expect(typed.sale?.result.exits.sell?.grossRevenue).toBe(2_000_000);
-  });
-  it("an AADU builds at the DADU's cost per sf and sells on the same curve; its area joins the build", () => {
-    const p = parseForm(form({ sf: "1000", price: "1000000", aaduSf: "600" }));
-    expect(p.aadu).toEqual({ sf: 600, construction: 210_000 });
-    expect(p.construction).toBe(350_000 + 210_000);
-    expect(p.sale?.inputs.hard.buildableSqft).toBe(1600);
-    // 600 sf is under the curve's 500 to 1,000 sf range floor of $800/sf... at 600 sf: 800 + (-0.6)(600-800) = $920/sf
-    expect(p.exit?.aadu).toBe(600 * 920);
-    expect(p.exit?.total).toBe(1_000_000 + 680_000 + 600 * 920);
-    const own = parseForm(form({ sf: "1000", price: "1000000", aaduSf: "600", aaduArv: "500000" }));
-    expect(own.exit).toMatchObject({ aadu: 500_000, aaduIsOwn: true });
   });
   it("the 6% box sets selling costs; unticked uses the typed percent", () => {
     expect(parseForm(form({ sf: "1000", sellSix: "1", sellingPct: "3" })).sellingPct).toBe(6);
@@ -71,19 +59,6 @@ describe("proforma", () => {
     expect(r.loanAmount).toBe(200_000);
     // carry 800 a month x 14 months = 11,200; permit interest on land only (none here); build 8 months at 60% drawn; sale 2 months fully drawn
     expect(r.costBreakdown.financing).toBe(Math.round(11_200 + 200_000 * 0.12 * ((8 / 12) * 0.6 + 2 / 12)));
-  });
-  it("the cash you have sets the loan: everything above it is borrowed, and the interest is reported on its own", () => {
-    const p = parseForm(form({ sf: "1000", price: "775000", cashDown: "300000", ratePct: "12", buildMonths: "8", permitMonths: "0", exitMonths: "0" }));
-    const r = p.costOnly!;
-    const preFinancing = r.costBreakdown.total - r.costBreakdown.financing;
-    expect(r.loanAmount).toBe(preFinancing - 300_000);
-    expect(r.interest).toBe(Math.round(r.loanAmount * 0.12 * (8 / 12) * 0.6));
-    expect(r.interestMonthlyPeak).toBe(Math.round((r.loanAmount * 0.12) / 12));
-    expect(r.equityRequired).toBe(300_000 + r.costBreakdown.financing);
-    // More cash than cost: no loan.
-    expect(parseForm(form({ sf: "1000", cashDown: "9000000" })).costOnly!.loanAmount).toBe(0);
-    // Cash wins over a typed loan amount.
-    expect(parseForm(form({ sf: "1000", price: "775000", cashDown: "300000", loanAmount: "100000" })).costOnly!.loanAmount).toBe(preFinancing - 300_000);
   });
   it("the link carries price, house area, rehab and ARV", () => {
     const href = calculatorHref({ sf: 870, address: "1 A St", price: 1_225_000, houseSqft: 2300, rehab: "heavy", houseArv: 1_500_000 });
@@ -104,7 +79,7 @@ describe("parseForm", () => {
     expect(p.costOnly).toBeNull();
   });
 
-  it("gives cost results plus the DADU's own resale value when there is no purchase price (an owner adding a DADU)", () => {
+  it("gives cost results plus the DADU's own resale value when there is no purchase price (an owner adding a cottage)", () => {
     const p = parseForm(form({ sf: "1000" }));
     expect(p.ready).toBe(true);
     expect(p.construction).toBe(350_000);
@@ -113,7 +88,7 @@ describe("parseForm", () => {
     expect(p.rent).toBeNull();
     expect(p.costOnly?.equityRequired).toBe(350_000);
     // No market number is invented: the only value is the team's DADU resale rule ($680 per sf at 1,000 sf).
-    expect(p.exit).toEqual({ house: null, houseIsOwn: false, dadu: 680_000, daduIsOwn: false, aadu: null, aaduIsOwn: false, total: 680_000 });
+    expect(p.autoSaleParts).toEqual({ house: 0, dadu: 680_000, houseIsOwn: false });
     expect(p.sale?.result.exits.sell?.grossRevenue).toBe(680_000);
   });
 
@@ -125,7 +100,7 @@ describe("parseForm", () => {
   });
 
   it("computes profit from a sale price: net revenue minus total cost", () => {
-    const p = parseForm(form({ sf: "1000", daduArv: "600000", sellingPct: "6" }));
+    const p = parseForm(form({ sf: "1000", salePrice: "600000", sellingPct: "6" }));
     expect(p.sale).not.toBeNull();
     const r = p.sale!.result;
     expect(r.exits.sell?.grossRevenue).toBe(600_000);
@@ -152,7 +127,7 @@ describe("parseForm", () => {
   });
 
   it("never returns NaN or Infinity (null means not applicable)", () => {
-    const p = parseForm(form({ sf: "800", price: "900000", ltcPct: "70", ratePct: "9", buildMonths: "10", permitMonths: "6", exitMonths: "3", daduArv: "700000" }));
+    const p = parseForm(form({ sf: "800", price: "900000", ltcPct: "70", ratePct: "9", buildMonths: "10", permitMonths: "6", exitMonths: "3", salePrice: "700000" }));
     const bad: string[] = [];
     const walk = (v: unknown, path: string) => {
       if (typeof v === "number" && !Number.isFinite(v)) bad.push(path);
@@ -165,7 +140,7 @@ describe("parseForm", () => {
 
 describe("URL round trip", () => {
   it("serializes only non-default values and restores them", () => {
-    const f = form({ sf: "900", daduArv: "650000", ltcPct: "65" });
+    const f = form({ sf: "900", salePrice: "650000", ltcPct: "65" });
     const q = toSearchParams(f, { addr: "1 A St" });
     expect(q.get("sf")).toBe("900");
     expect(q.get("cost")).toBeNull(); // default

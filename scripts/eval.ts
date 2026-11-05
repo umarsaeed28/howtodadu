@@ -23,7 +23,7 @@ async function main() {
   for (const c of golden.retrieval) {
     const t0 = Date.now();
     const p = await ragSearch(c.query, { k: 4 });
-    rec("component/objective", `retrieval: ${c.query}`, p.slice(0, 3).some((x) => x.docId === c.expectDoc || (c.alsoAccept ?? []).includes(x.docId)), `${Date.now() - t0} ms, top: ${p[0]?.docId}`);
+    rec("component/objective", `retrieval: ${c.query}`, p.slice(0, 3).some((x) => x.docId === c.expectDoc), `${Date.now() - t0} ms, top: ${p[0]?.docId}`);
   }
   // Component, objective: the HOA gate never calls a model.
   for (const g of golden.gate) {

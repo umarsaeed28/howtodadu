@@ -84,7 +84,7 @@ export default function LotSection({
   return (
     <div className="mt-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>Section A–A′ through the lot</h3>
+        <h4 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>Section A–A′ through the lot</h4>
         <div className="flex items-center gap-1 text-xs" role="group" aria-label="Front house height">
           <span className="mr-1" style={{ color: "var(--slate)" }}>Front house</span>
           {([1, 2] as const).map((n) => (
